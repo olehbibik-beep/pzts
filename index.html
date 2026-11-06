@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GOOM</title>
+    <style>
+        :root {
+            --bg-main: #121214; --bg-toolbar: #1c1c1f; --bg-input: #252529;
+            --text-main: #e1e1e6; --text-muted: #8d8d99;
+            --btn-cad-bg: #2a2a30;
+            --help-bg: #252529;
+            --help-bg-hover: #3a3a40;
+            --help-text-color: #8d8d99;
+            --color-help-highlight: #22c55e; 
+        }
+
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: var(--bg-main); color: var(--text-main); margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        body::after {
+            content: ''; position: fixed; inset: 0; z-index: 999998; pointer-events: none;
+            border: 2px solid transparent; border-radius: 8px; box-sizing: border-box;
+            background: linear-gradient(135deg, #38bdf8 0%, #38bdf8 18%, #8b5cf6 82%, #a855f7 100%) border-box;
+            -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+            mask-composite: exclude;
+            box-shadow: inset 0 0 10px rgba(56, 189, 248, 0.08), 0 0 10px rgba(168, 85, 247, 0.08);
+        }
+        
+        .toolbar { background: var(--bg-toolbar); display: flex; flex-direction: column; z-index: 10; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        .toolbar::after { content: ''; position: absolute; left: 0; right: 0; bottom: -40px; height: 40px; z-index: 8; }
+        
+       /* СДВИГАЕМ ЛОГОТИП ВПРАВО, освобождая место для язычка */
+        .app-title { 
+            font-size: 16px; font-weight: 700; color: var(--text-main); letter-spacing: 1px; 
+            display: flex; align-items: center; gap: 8px; 
+            padding: 6px 12px; border-radius: 6px; transition: background 0.2s; 
+            position: relative; z-index: 12; cursor: default;
+            margin-left: 75px; /* <-- Вот этот отступ отодвигает логотип */
+        }
+        .menu-logo-button {
+            position: relative; display: flex; align-items: center; justify-content: center;
+            padding: 6px; border: 0; border-radius: 6px; background: transparent; cursor: pointer;
+        }
+        .menu-logo-button:focus-visible { outline: 2px solid #38bdf8; outline-offset: 2px; }
+        .menu-logo-button { display: grid; }
+        .menu-logo-button img { display: block; grid-area: 1 / 1; width: 28px; height: 28px; object-fit: contain; transition: opacity 0.15s ease; }
+        .menu-logo-button .menu-logo-hover { opacity: 0; }
+        .menu-logo-button:hover .menu-logo-default, .menu-logo-button:focus-visible .menu-logo-default { opacity: 0; }
+        .menu-logo-button:hover .menu-logo-hover, .menu-logo-button:focus-visible .menu-logo-hover { opacity: 1; }
+        .app-brand-name { color: var(--text-main); }
+        .app-tooltip {
+            position: fixed; display: none; z-index: 2000; pointer-events: none;
+            padding: 7px 14px; border: 0; border-radius: 6px; background: #ffffff;
+            color: #2f3437; font-size: 12px; font-weight: 600; white-space: nowrap;
+            box-shadow: none; transition: none;
+        }
+        
+        .toolbar-row { display: flex; padding: 8px 20px; gap: 20px; align-items: center; box-sizing: border-box; position: relative; z-index: 10; }
+        
+        /* Светлое полупрозрачное меню */
+        .sliding-row-container { 
+            position: absolute; top: 100%; left: 0; width: 100%; 
+            max-height: 0; overflow: hidden; 
+            transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            background: rgba(244, 244, 245, 0.95); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+            z-index: 9; 
+        }
+        .sliding-row-container.open { max-height: 160px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+
+        /* ЯЗЫЧОК-СТРЕЛОЧКА (ОТ САМОГО ВЕРХА) */
+        .arrow-tab { 
+            position: absolute; 
+            top: 0; left: 15px; /* Прижимаем к левому краю и верху */
+            background: #7dd3fc; /* Голубой цвет */
+            border: none; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            width: 65px; 
+            height: 60px; /* Высота язычка (перекрывает меню и свисает вниз) */
+            border-radius: 0 0 12px 12px; 
+            color: #121214; /* Темная стрелочка */
+            cursor: pointer; z-index: 20; 
+            display: flex; justify-content: center; align-items: flex-end; /* Опускаем стрелочку в самый низ */
+            padding-bottom: 6px; box-sizing: border-box;
+            transition: all 0.3s ease;
+        }
+        .arrow-tab:hover { background: #38bdf8; }
+        .arrow-tab svg { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); width: 22px; height: 22px; }
+        .arrow-tab.open svg { transform: rotate(180deg); }
+        .arrow-tab.open { background: #0ea5e9; color: #ffffff; }
+        
+        /* Специфичные стили для светлого тулбара датчиков */
+        .sliding-row-container .device-selector-group { 
+            background: #ffffff; border: 1px solid #e4e4e7; box-shadow: 0 2px 10px rgba(0,0,0,0.05); 
+        }
+        .sliding-row-container .device-btn:hover { background: #f4f4f5; }
+        .sliding-row-container .device-btn.active { background: #e4e4e7; box-shadow: none; }
+        .sliding-row-container .menu-divider { background: #e4e4e7; }
+
+        .toolbar-section { display: flex; align-items: center; gap: 8px; }
+        
+        select { background: var(--bg-input); color: var(--text-main); border: none; padding: 6px 12px; border-radius: 4px; font-size: 14px; font-weight: bold; outline: none; cursor: pointer; width: 100px; text-align: center; }
+        input[type="text"], input[type="number"] { background: var(--bg-input); color: var(--text-main); border: none; padding: 6px 10px; border-radius: 4px; font-size: 13px; outline: none; font-weight: bold;}
+        
+        button.btn-cad { background: var(--btn-cad-bg); color: var(--text-main); border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; transition: 0.2s; font-weight: 500; font-size: 13px; display: flex; align-items: center; gap: 10px; }
+        button.btn-cad:hover { background: #35353d; }
+        button.btn-cad svg { width: 18px; height: 18px; }
+
+        .device-selector-group { display: flex; gap: 6px; background: rgba(37, 37, 41, 0.5); padding: 6px; border-radius: 8px; border: none; flex-wrap: wrap; justify-content: center; align-items: center; max-width: 1400px;}
+        
+        .device-btn { background: transparent; border: none; padding: 6px; border-radius: 6px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.1s;}
+        .device-btn:hover { background: var(--bg-input); }
+        .device-btn.active { background: var(--btn-cad-bg); box-shadow: none; }
+
+        .device-tooltip {
+            display: flex; flex-direction: column; align-items: center; gap: 7px;
+            min-width: 180px; max-width: 280px; padding: 18px 26px;
+            background: #ffffff; border: 0; border-radius: 6px;
+            color: #2f3437; text-align: center;
+            box-shadow: none; transition: none;
+        }
+        .device-tooltip #ttType { font-size: 14px; font-weight: 700; color: #2f3437; }
+        .device-tooltip #ttNumber, .device-tooltip #ttLoop, .device-tooltip #ttName {
+            font-size: 13px; color: #2f3437;
+        }
+        .device-tooltip #ttName { font-style: italic; }
+        .device-tooltip #ttNumber span { color: #555b60; font-size: 11px; }
+
+        .menu-divider { width: 2px; background: var(--bg-input); height: 24px; margin: 0 4px; border-radius: 2px; }
+
+        .canvas-container { flex: 1; background: #0f0f11; position: relative; overflow: hidden; cursor: crosshair; display: flex; }
+        canvas { display: block; position: absolute; top: 0; left: 0; }
+
+        .modal { display: none; position: fixed; z-index: 300; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); align-items: center; justify-content: center; }
+        .modal-content { background: rgba(28, 28, 31, 0.95); border: none; padding: 30px; border-radius: 12px; max-width: 450px; width: 100%; color: var(--text-main); box-shadow: 0 20px 50px rgba(0,0,0,0.7); }
+        #printPage { display: none; }
+        @media print {
+            @page { margin: 10mm; }
+            body > :not(#printPage) { display: none !important; }
+            body::after { display: none !important; }
+            #printPage { display: flex !important; position: fixed; inset: 0; align-items: center; justify-content: center; background: #fff; }
+            #printPage img { display: block; max-width: 100%; max-height: 100%; object-fit: contain; }
+        }
+        #mainMenuModal .main-menu-content { box-sizing: border-box; max-width: 680px; width: min(680px, calc(100vw - 40px)); }
+        .main-menu-layout {
+            display: grid; grid-template-columns: minmax(90px, 0.75fr) minmax(140px, 1fr);
+            align-items: center; gap: 18px; margin-top: 20px;
+        }
+        .main-menu-brand { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+        .main-menu-brand-name { color: #d1d5db; font-size: 20px; font-weight: 700; }
+        .main-menu-brand-accent { width: 82px; height: 3px; border-radius: 2px; background: #22c55e; }
+        .main-menu-actions { display: flex; flex-direction: column; gap: 12px; align-items: stretch; }
+        #iconEditorModal .modal-content { max-width: 1120px; width: min(1120px, calc(100vw - 32px)); max-height: 92vh; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #77777f #242428; box-sizing: border-box; padding: 10px 12px 14px 20px; }
+        #iconEditorModal .modal-content::-webkit-scrollbar { width: 9px; }
+        #iconEditorModal .modal-content::-webkit-scrollbar-track { background: #242428; border-radius: 8px; }
+        #iconEditorModal .modal-content::-webkit-scrollbar-thumb { min-height: 28px; border: 2px solid #242428; border-radius: 8px; background: #77777f; }
+        #iconEditorModal .modal-content::-webkit-scrollbar-thumb:hover { background: #a1a1aa; }
+        #iconEditorModal .modal-title { min-height: 26px; height: 26px; justify-content: space-between; margin: 0 0 8px; padding: 0 0 4px; border-bottom: 1px solid #3f3f46; text-align: right; line-height: 20px; }
+        #iconEditorModal .modal-title span { font-size: 14px; }
+        .toolbar-menu-list-shell { display: block; margin-bottom: 2px; }
+        .toolbar-menu-presets { display: flex; flex-direction: column; gap: 4px; overflow: visible; padding: 1px 2px; }
+        .toolbar-menu-preset { min-height: 36px; padding: 2px 6px; display: flex; align-items: center; gap: 7px; border: 1px solid #3f3f46; border-radius: 6px; background: #f4f4f5; color: #252529; cursor: pointer; }
+        .toolbar-menu-preset.selected { border-color: #22c55e; box-shadow: inset 0 0 0 1px #22c55e; opacity: 1; }
+        .toolbar-menu-preset:not(.selected) { opacity: .48; }
+        .toolbar-menu-active-indicator { width: 7px; height: 7px; flex: 0 0 7px; border-radius: 50%; background: #a1a1aa; }
+        .toolbar-menu-active-indicator.active { background: #22c55e; }
+        .toolbar-menu-preset-name { width: 120px; min-width: 70px; padding: 5px 3px !important; border: 0 !important; border-bottom: 1px solid #d4d4d8 !important; border-radius: 0 !important; background: transparent !important; color: inherit !important; text-align: left; font-size: 11px !important; font-weight: 700 !important; }
+        .toolbar-menu-preset-icons { display: flex; align-items: center; gap: 3px; min-width: 0; min-height: 28px; overflow-x: auto; }
+        .toolbar-menu-preset-icons button { width: 30px; height: 30px; flex: 0 0 30px; display: flex; align-items: center; justify-content: center; padding: 3px; border: 1px solid transparent; border-radius: 4px; background: transparent; cursor: pointer; }
+        .toolbar-menu-preset-icons button:hover { background: #e4e4e7; }
+        .toolbar-menu-preset-icons button.selected { border-color: #22c55e; background: #dcfce7; }
+        .toolbar-menu-preset-icons img, .toolbar-menu-preset-icons svg { width: 22px; height: 22px; }
+        .toolbar-menu-remove { width: 24px; height: 26px; flex: 0 0 24px; margin-left: auto; padding: 0 !important; justify-content: center; border: 0; background: transparent; color: #71717a; font-size: 19px !important; }
+        .toolbar-menu-remove:hover:not(:disabled) { background: transparent !important; color: #ef4444; }
+        .toolbar-menu-remove:disabled { visibility: hidden; }
+        .toolbar-menu-editor-actions { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 2px 0 8px; }
+        .toolbar-menu-editor-actions .toolbar-menu-editor-actions-group { margin-left: auto; }
+        #btnToolbarMenuSave:disabled { opacity: .48; cursor: default; }
+        .toolbar-menu-add { width: 30px; height: 28px; min-width: 30px; padding: 0 !important; justify-content: center; border: 0 !important; background: transparent !important; color: #8d8d99 !important; font-size: 20px !important; font-weight: 500 !important; box-shadow: none !important; }
+        .toolbar-menu-add:hover:not(:disabled) { background: transparent !important; color: #8d8d99 !important; box-shadow: none !important; }
+        .toolbar-menu-add:disabled { opacity: .45; cursor: default; }
+        .toolbar-menu-preset-icons .toolbar-menu-more { flex: 0 0 auto; color: #71717a; font-size: 10px; }
+        .icon-editor-close { border: 0; padding: 2px 8px !important; background: transparent !important; color: #a1a1aa !important; font-size: 24px !important; line-height: 1 !important; }
+        .icon-editor-close:hover { color: #ffffff !important; background: transparent !important; }
+        .icon-editor-layout { display: grid; grid-template-columns: minmax(0, 360px) 38px minmax(220px, 1fr); gap: 12px; align-items: start; }
+        .icon-editor-shape-tools { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+        .icon-editor-tools { display: flex; flex-direction: column; align-items: center; gap: 5px; margin: 0; }
+        .icon-editor-tools button { width: 34px; height: 34px; min-width: 34px; justify-content: center; padding: 6px !important; border: 0; background: transparent; color: #d4d4d8; }
+        .icon-editor-tools button:hover { background: #35353d; }
+        .icon-editor-tools button.active { background: #35353d; color: #22c55e; }
+        .icon-editor-tools button svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+        .icon-editor-color-label { display: block; margin: 2px 0 5px; color: var(--text-muted); font-size: 12px; }
+        .icon-editor-palette { display: grid; grid-template-columns: repeat(12, 16px); gap: 3px; margin-bottom: 6px; }
+        .icon-editor-color-swatch { width: 16px; height: 16px; min-width: 16px; padding: 0 !important; border: 1px solid rgba(255,255,255,.28) !important; border-radius: 3px !important; }
+        .icon-editor-color-swatch.selected { outline: 2px solid #fff; outline-offset: 1px; }
+        .icon-editor-custom-color { display: flex; align-items: center; gap: 7px; color: var(--text-muted); font-size: 11px; }
+        .icon-editor-custom-color input { width: 28px; height: 22px; padding: 0; border: 0; background: transparent; cursor: pointer; }
+        .icon-editor-actions { display: flex; gap: 5px; margin-top: 10px; }
+        .icon-editor-actions button { min-width: 0; flex: 1; justify-content: center; padding: 6px 2px; font-size: 9px; white-space: nowrap; }
+        .icon-editor-canvas-wrap { position: relative; width: min(100%, 360px); }
+        .icon-editor-canvas-controls { display: flex; align-items: center; justify-content: flex-end; margin-top: 2px; }
+        .icon-editor-canvas-controls .icon-editor-tools { flex-direction: row; }
+        .icon-editor-text-input { position: absolute; z-index: 2; width: min(160px, 80%); min-width: 44px; box-sizing: border-box; padding: 4px 6px !important; border: 1px solid #0ea5e9 !important; border-radius: 3px !important; background: rgba(255,255,255,.94) !important; color: #18181b !important; text-align: center; font-weight: 700; transform: translate(-50%, -50%); }
+        #iconEditorModal .icon-editor-field { gap: 4px; margin-bottom: 7px; }
+        .toolbar-menu-cycle { width: 30px; min-width: 30px; height: 34px; justify-content: center; padding: 5px !important; border: 0 !important; background: transparent !important; color: #d4d4d8; box-shadow: none !important; }
+        .toolbar-menu-cycle svg { width: 20px; height: 20px; }
+        .toolbar-menu-cycle:hover { color: #22c55e !important; background: transparent !important; }
+        #deviceSelector.menu-slide-out { animation: toolbarMenuSlideOut 140ms ease-in forwards; }
+        #deviceSelector.menu-slide-in { animation: toolbarMenuSlideIn 200ms cubic-bezier(0.2, 0.75, 0.25, 1) both; }
+        @keyframes toolbarMenuSlideOut { to { opacity: 0; transform: translateY(-14px); } }
+        @keyframes toolbarMenuSlideIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+        @media (prefers-reduced-motion: reduce) {
+            #deviceSelector.menu-slide-out, #deviceSelector.menu-slide-in { animation-duration: 1ms; }
+        }
+        #deviceSelector .device-btn[hidden], #deviceSelector .menu-divider[hidden] { display: none !important; }
+        #iconEditorCanvas { position: relative; top: auto; left: auto; display: block; width: min(100%, 360px); aspect-ratio: 1; background-color: #f4f4f5; background-image: linear-gradient(45deg, #e4e4e7 25%, transparent 25%), linear-gradient(-45deg, #e4e4e7 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e4e4e7 75%), linear-gradient(-45deg, transparent 75%, #e4e4e7 75%); background-size: 20px 20px; background-position: 0 0, 0 10px, 10px -10px, -10px 0; border: 1px solid #52525b; border-radius: 6px; cursor: crosshair; touch-action: none; }
+        .icon-editor-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; color: var(--text-muted); font-size: 12px; }
+        .icon-editor-field input[type="range"] { width: 100%; }
+        .icon-editor-selection { display: none; }
+        @media (max-width: 650px) {
+            #iconEditorModal .modal-content { padding: 14px; max-height: 92vh; }
+            .icon-editor-layout { grid-template-columns: minmax(0, 1fr) 38px; }
+            .icon-editor-layout > div:last-child { grid-column: 1 / -1; }
+            #iconEditorCanvas { width: min(100%, 360px); margin: 0 auto; }
+            .toolbar-menu-preset-name { width: 82px; }
+            .icon-editor-shape-tools { grid-column: 2; grid-row: 1; }
+            .icon-editor-layout > div:first-child { grid-column: 1; grid-row: 1; }
+            .icon-editor-layout > div:last-child { grid-row: 2; }
+            .icon-editor-palette { grid-template-columns: repeat(12, minmax(12px, 1fr)); }
+            .icon-editor-color-swatch { width: 100%; }
+        }
+        @media (max-width: 340px) {
+            .main-menu-layout { grid-template-columns: 1fr; gap: 20px; }
+            .main-menu-brand { gap: 5px; }
+        }
+        @media (min-width: 341px) and (max-width: 480px) {
+            #mainMenuModal .main-menu-content { padding: 24px; }
+            .main-menu-actions { gap: 8px; }
+            .main-menu-actions .btn-cad { padding: 10px 8px; font-size: 13px; }
+        }
+        .modal-title { font-size: 20px; font-weight: 600; margin-bottom: 25px; text-align: center; color: #22c55e; display: flex; justify-content: center; align-items: center; gap: 10px;}
+        .modal-text { font-size: 13px; color: var(--text-muted); margin-bottom: 22px; text-align: center;}
+        .modal-buttons { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;}
+
+        .help-container { position: fixed; bottom: 40px; left: 20px; z-index: 200; display: flex; align-items: center; gap: 15px; }
+        .help-btn { 
+            width: 44px; height: 44px; border-radius: 50%; background: var(--help-bg); border: none; color: var(--help-text-color); 
+            display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; cursor: pointer; 
+            transition: all 0.2s ease; box-shadow: 0 4px 10px rgba(0,0,0,0.5); flex-shrink: 0;
+        }
+        .help-btn:hover { background-color: var(--help-bg-hover); color: var(--color-help-highlight); }
+        
+        .help-panel {
+            background: rgba(28, 28, 31, 0.95); border-radius: 22px; padding: 0 25px;
+            display: flex; align-items: center; gap: 20px; height: 44px;
+            opacity: 0; pointer-events: none; transform: translateX(-15px); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4); white-space: nowrap; overflow-x: auto; max-width: calc(100vw - 120px); border: 1px solid #313135;
+        }
+        .help-panel.open { opacity: 1; pointer-events: auto; transform: translateX(0); }
+        .help-item { font-size: 13px; color: #d1d1d6; display: flex; align-items: center; gap: 6px;}
+        .help-key { background: #121214; padding: 3px 6px; border-radius: 4px; font-family: monospace; color: var(--color-help-highlight); font-weight: bold; font-size: 11px; }
+
+        .footer {
+            position: fixed; bottom: 0; left: 0; width: 100%; height: 24px;
+            background: rgba(28, 28, 31, 0.95); border-top: 1px solid #313135;
+            display: flex; justify-content: center; align-items: center; z-index: 100;
+            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+        }
+        .floor-controls { display: flex; align-items: center; gap: 16px; z-index: 2; height: 100%; }
+        .floor-name { font-size: 13px; font-weight: bold; color: #e1e1e6; font-family: monospace; letter-spacing: 1px; min-width: 40px; text-align: center; cursor: default; padding: 0 5px;}
+        .footer-icon { background: transparent; border: none; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; height: 100%; padding: 0 8px; transition: 0.2s; }
+        .footer-icon:hover { color: #0ea5e9; background: rgba(14, 165, 233, 0.1); }
+        .footer-icon svg { width: 14px; height: 14px; stroke-width: 2; stroke: currentColor; fill: none; }
+
+        .setting-col { display: flex; align-items: center; gap: 5px; }
+        .setting-label { font-size: 9px; color: #8d8d99; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;}
+        .toolbar-icon-button {
+            width: 28px; height: 28px; padding: 4px; display: inline-flex; align-items: center; justify-content: center;
+            border: 0; border-radius: 4px; background: transparent; color: #8d8d99; cursor: pointer;
+            transition: color 0.15s, background 0.15s;
+        }
+        .toolbar-icon-button svg { display: block; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+        .toolbar-icon-button:hover { color: #cbd5e1; }
+        .toolbar-icon-button[aria-pressed="true"] { color: #38bdf8; }
+        .toolbar-icon-button:focus-visible { outline: 1px solid currentColor; outline-offset: 2px; }
+        .grid-toggle {
+            width: 28px; height: 24px; padding: 3px; margin-top: 1px; border: 0; border-radius: 4px;
+            background: transparent; color: #8d8d99; cursor: pointer; transition: color 0.15s, background 0.15s;
+        }
+        .grid-toggle svg { display: block; width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+        .grid-toggle:hover { color: #cbd5e1; }
+        .grid-toggle[aria-pressed="true"] { color: #38bdf8; background: transparent; }
+        .grid-toggle:focus-visible { outline: 1px solid currentColor; outline-offset: 2px; }
+
+/* Убираем стрелочки у поля ввода чисел */
+        .clean-number-input::-webkit-outer-spin-button,
+        .clean-number-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .clean-number-input { -moz-appearance: textfield; }
+
+
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';</script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/dxf-parser@1.1.2/dist/dxf-parser.min.js"></script>
+</head>
+<body>
+
+    <input type="file" id="bipsLoader" accept=".bips" style="display:none;">
+    <input type="file" id="imageLoader" accept="image/*, application/pdf, .dxf" style="display:none;">
+
+    <div class="toolbar">
+        <div class="toolbar-row">
+            
+            <div class="app-title">
+                <button class="menu-logo-button" id="btnLogo" type="button" data-tooltip="Меню" aria-label="Меню">
+                    <img src="Link.png" class="menu-logo-default" alt="">
+                    <img src="Link2.png" class="menu-logo-hover" alt="">
+                </button>
+                <span class="app-brand-name">GooM</span>
+            </div>
+            
+            <div class="menu-divider" style="height: 20px;"></div>
+            <input type="text" id="projectNameInput" value="Nový projekt" placeholder="Název projektu..." style="background: transparent; border: none; color: #ffffff; font-size: 15px; font-weight: 600; width: 250px; outline: none; border-bottom: 1px dashed rgba(255,255,255,0.3); padding: 2px 5px;" title="Přejmenovat projekt">
+
+            <div class="toolbar-section" style="margin-left: auto; gap: 12px;">
+                <div class="setting-col">
+                    <svg viewBox="0 0 24 24" aria-hidden="true" style="width:18px;height:18px;fill:none;stroke:#8d8d99;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;" title="Размер значков датчиков">
+                        <path d="M4 8V4h4M20 8V4h-4M4 16v4h4M20 16v4h-4M8 8l-4-4M16 8l4-4M8 16l-4 4M16 16l4 4"></path>
+                    </svg>
+                    <input type="range" id="deviceSizeSlider" min="8" max="70" value="16" style="width: 80px; cursor: pointer;" title="Změnit velikost všech značek">
+                </div>
+                <div class="setting-col">
+                    <button id="togglePirCoverage" class="toolbar-icon-button" type="button" aria-pressed="true" title="Скрыть зоны PIR" aria-label="Скрыть зоны PIR">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12s3.2-6 9-6 9 6 9 6-3.2 6-9 6-9-6-9-6Z"></path><circle cx="12" cy="12" r="2.3"></circle><path d="M12 9.7V4"></path></svg>
+                    </button>
+                </div>
+                <div class="setting-col">
+                    <button id="togglePlanGrid" class="grid-toggle" type="button" aria-pressed="false" title="Показать сетку поверх чертежа" aria-label="Включить сетку">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M4 4h16v16H4zM9.33 4v16M14.67 4v16M4 9.33h16M4 14.67h16"></path>
+                        </svg>
+                    </button>
+                </div>
+                <button id="btnDetectionSettings" class="toolbar-icon-button" type="button" title="Настроить стены и диапазон PIR" aria-label="Настроить стены и диапазон PIR">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20V5l6-2v15l6 2 6-2V3"></path><path d="M9 3l6 2M15 5v15M4 10l4-1M16 12l2-1M16 16l2-1"></path></svg>
+                </button>
+                <button id="btnOpenToolbarMenuEditor" class="toolbar-icon-button" type="button" title="Редактировать меню и значки" aria-label="Редактировать меню и значки">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h10M18 5h2M4 12h2M10 12h10M4 19h10M18 19h2"></path><circle cx="16" cy="5" r="2"></circle><circle cx="8" cy="12" r="2"></circle><circle cx="16" cy="19" r="2"></circle></svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="arrow-tab" id="arrowTabBtn" title="Zobrazit / Skrýt panel nástrojů">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+
+        <div class="sliding-row-container">
+            <div class="toolbar-row" style="padding: 10px 20px; justify-content: center;">
+                <div class="device-selector-group" id="deviceSelector">
+                    <button id="btnCycleToolbarMenu" class="btn-cad toolbar-menu-cycle" type="button" title="Переключить набор меню" aria-label="Переключить набор меню">
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="2"></circle><circle cx="12" cy="12" r="2"></circle><circle cx="12" cy="19" r="2"></circle></svg>
+                    </button>
+                    <select id="loopSelect" style="margin: 0 4px; width: 95px;" title="Vyberte Sběrnici"></select>
+                    <div class="menu-divider"></div>
+
+                    <button class="device-btn" data-type="panel" title="Ústředna EZS"><svg width="24" height="24" viewBox="0 0 32 32"><rect x="1" y="8" width="30" height="16" fill="#ffffff" stroke="#0ea5e9" stroke-width="2"/><text x="16" y="19" font-size="9" fill="#0ea5e9" font-family="monospace" font-weight="bold" text-anchor="middle">EZS</text></svg></button>
+                    <button class="device-btn" data-type="expander" title="Expandér zón/výstupů (EXP)"><svg width="24" height="24" viewBox="0 0 32 32"><rect x="4" y="4" width="24" height="24" fill="#ffffff" stroke="#0ea5e9" stroke-width="2"/><text x="16" y="20" font-size="9" fill="#0ea5e9" font-family="monospace" font-weight="bold" text-anchor="middle">EXP</text></svg></button>
+                    <button class="device-btn" data-type="abax" title="Bezdrátový modul ABAX2"><svg width="24" height="24" viewBox="0 0 32 32"><rect x="2" y="4" width="21" height="24" fill="#ffffff" stroke="#0ea5e9" stroke-width="2"/><text x="12.5" y="19" font-size="7" fill="#0ea5e9" font-family="monospace" font-weight="bold" text-anchor="middle">ABAX2</text><path d="M26,11 A5,5 0 0,1 26,21 M30,8 A9,9 0 0,1 30,24" fill="none" stroke="#0ea5e9" stroke-width="1.5"/></svg></button>
+                    
+                    <div class="menu-divider"></div>
+                    <button class="device-btn" data-type="keypad" title="Klávesnice EZS"><svg width="24" height="24" viewBox="0 0 32 32"><rect x="6" y="6" width="20" height="20" fill="#ffffff" stroke="#52525b" stroke-width="2"/><polygon points="6,26 26,6 26,26" fill="#52525b"/></svg></button>
+                    <div class="menu-divider"></div>
+                    
+                    <button class="device-btn active" data-type="pir" title="Prostorový PIR detektor"><svg width="24" height="24" viewBox="0 0 32 32"><path d="M28,16 L10,6 A20,20 0 0,0 10,26 Z" fill="#ffffff" stroke="#22c55e" stroke-width="2"/><line x1="2" y1="6" x2="7" y2="9" stroke="#22c55e" stroke-width="2"/><line x1="0" y1="16" x2="5" y2="16" stroke="#22c55e" stroke-width="2"/><line x1="2" y1="26" x2="7" y2="23" stroke="#22c55e" stroke-width="2"/></svg></button>
+                    
+                    <button class="device-btn" data-type="pir_wl" title="Bezdrátový PIR detektor"><svg width="24" height="24" viewBox="0 0 32 32"><path d="M28,16 L10,6 A20,20 0 0,0 10,26 Z" fill="#ffffff" stroke="#22c55e" stroke-width="2"/><line x1="2" y1="6" x2="7" y2="9" stroke="#22c55e" stroke-width="2"/><line x1="0" y1="16" x2="5" y2="16" stroke="#22c55e" stroke-width="2"/><line x1="2" y1="26" x2="7" y2="23" stroke="#22c55e" stroke-width="2"/><path d="M22,12 A6,6 0 0,0 22,20 M16,8 A12,12 0 0,0 16,24" fill="none" stroke="#22c55e" stroke-width="1.5"/></svg></button>
+                    
+                    <button class="device-btn" data-type="magnet" title="Magnetický kontakt"><svg width="24" height="24" viewBox="0 0 32 32"><rect x="10" y="10" width="12" height="12" fill="#ffffff" stroke="#ef4444" stroke-width="3"/></svg></button>
+                    
+                    <button class="device-btn" data-type="magnet_wl" title="Bezdrátový Magnetický kontakt"><svg width="24" height="24" viewBox="0 0 32 32"><rect x="4" y="10" width="10" height="10" fill="#ffffff" stroke="#ef4444" stroke-width="2.5"/><path d="M16,12 A4,4 0 0,1 16,18 M20,9 A7,7 0 0,1 20,21" fill="none" stroke="#ef4444" stroke-width="1.5"/></svg></button>
+                    
+                    <button class="device-btn" data-type="glassbreak" title="Detektor tříštění skla"><svg width="24" height="24" viewBox="0 0 32 32"><path d="M16,16 L25,7 A12,12 0 1,0 25,25 Z" fill="#ffffff" stroke="#22c55e" stroke-width="2"/><line x1="16" y1="16" x2="28" y2="16" stroke="#22c55e" stroke-width="2"/></svg></button>
+                    
+                    <button class="device-btn" data-type="panic" title="Tísňové tlačítko (PANIC)"><svg width="24" height="24" viewBox="0 0 32 32"><rect x="6" y="6" width="20" height="20" rx="3" ry="3" fill="#ffffff" stroke="#ef4444" stroke-width="2"/><circle cx="16" cy="16" r="5" fill="#ef4444"/></svg></button>
+                    <button class="device-btn" data-type="siren" title="Siréna"><svg width="24" height="24" viewBox="0 0 32 32"><path d="M8 12 h6 l8 -8 v24 l-8 -8 h-6 z" fill="#ffffff" stroke="#ef4444" stroke-width="2"/><path d="M26 12 Q28 16 26 20" fill="none" stroke="#ef4444" stroke-width="2"/></svg></button>
+                    
+                    <div class="menu-divider"></div>
+                    
+                    <button class="device-btn" data-type="textNode" title="Přidat textovou poznámku"><svg width="24" height="24" viewBox="0 0 32 32"><rect x="4" y="6" width="24" height="20" rx="4" ry="4" fill="none" stroke="#52525b" stroke-width="2.5"/><text x="16" y="21" font-size="14" fill="#52525b" font-family="sans-serif" font-weight="bold" text-anchor="middle">T</text></svg></button>
+                    <div class="menu-divider"></div>
+                    
+                    <button id="btnToggleConnections" class="btn-cad" style="padding: 6px 10px;" title="Skrýt / Zobrazit čáry kabelů">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                    </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="help-container">
+        <button id="helpBtn" class="help-btn" title="Klávesové zkratky (Nápověda)">?</button>
+        <div id="helpPanel" class="help-panel">
+            <span class="help-item"><span class="help-key">S</span> Удерживать: вращение с паузой на 90°</span>
+            <span class="help-item"><span class="help-key">D</span> Deaktivovat</span>
+            <span class="help-item"><span class="help-key">Ctrl+Z</span> Zpět</span>
+            <span class="help-item"><span class="help-key">Del</span> Smazat</span>
+            <span class="help-item"><span class="help-key">Ctrl+C/V</span> Kopírovat/Vložit</span>
+            <span class="help-item"><span class="help-key">Alt</span> Volný pohyb</span>
+            <span class="help-item"><span class="help-key">Shift</span> Skupina</span>
+            <span class="help-item"><span class="help-key">Dvojklik</span> Vlastnosti/Kabel</span>
+        </div>
+    </div>
+
+    <div class="canvas-container" id="canvasContainer">
+        <canvas id="blueprintCanvas"></canvas>
+    </div>
+
+    <div class="footer" id="appFooter">
+        <div class="floor-controls">
+            <button id="btnOverview" class="footer-icon" title="Přehled celé budovy">
+                <svg viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 12 12 17 22 12"></polyline><polyline points="2 17 12 22 22 17"></polyline></svg>
+                <span style="font-family: sans-serif; font-size: 11px; margin-left: 6px; font-weight: bold; letter-spacing: 0.5px;">SŘEZ BUDOVY</span>
+            </button>
+        </div>
+    </div>
+
+    <div id="welcomeModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 1050px; width: 95%; height: auto; min-height: 700px; padding: 0; overflow: hidden; display: flex; flex-direction: row; background-image: url('Hi.png'); background-size: 100%; background-position: center; border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 30px 70px rgba(0,0,0,0.9); border-radius: 12px; position: relative;">
+            
+            <div style="flex: 1; max-width: 450px; padding: 50px; display: flex; flex-direction: column; justify-content: center; background: linear-gradient(to right, rgba(24, 24, 27, 0.95) 0%, rgba(24, 24, 27, 0.85) 65%, rgba(24, 24, 27, 0) 100%); box-sizing: border-box; z-index: 2;">
+                
+                <div style="font-size: 34px; font-weight: 800; color: #ffffff; letter-spacing: 0.5px; margin-bottom: 4px; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">GOOM</div>
+                <div style="font-size: 11px; color: #22c55e; font-weight: bold; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 30px; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">SPECIAL Edition</div>
+                
+                <div id="welcomeButtonsBlock" style="display: flex; flex-direction: column; gap: 14px; width: 100%;">
+                    <button id="btnWelcomeNew" class="btn-cad" style="width: 100%; padding: 14px 20px; justify-content: flex-start; background: #ef4444; color: #ffffff; font-weight: bold; border-radius: 6px; font-size: 14px; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3); border: none;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px; height:18px; margin-right:10px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+                        Nový projekt
+                    </button>
+                    <button id="btnWelcomeOpenBIPS" class="btn-cad" style="width: 100%; padding: 14px 20px; justify-content: flex-start; background: #cbd5e1; color: #0f0f11; font-weight: bold; border-radius: 6px; font-size: 14px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); border: none;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="#0f0f11" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:18px; height:18px; margin-right:10px;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                        Otevřít projekt (.BIPS)
+                    </button>
+                </div>
+
+                <div id="welcomeNamingBlock" style="display: none; flex-direction: column; gap: 14px; width: 100%;">
+                    <div style="font-size: 13px; color: #a1a1aa; margin-bottom: -6px;">Zadejte název projektu:</div>
+                    <input type="text" id="welcomeProjectNameInput" value="Nový projekt" placeholder="Např. Rodinný dom Praha..." style="width: 100%; background: #1c1c1f; border: 1px solid #313135; color: #ffffff; padding: 14px 16px; border-radius: 6px; font-size: 14px; font-weight: 600; outline: none; box-sizing: border-box; transition: border-color 0.2s;" onfocus="this.style.borderColor='#0ea5e9'" onblur="this.style.borderColor='#313135'">
+                    <div style="display: flex; gap: 10px; margin-top: 5px;">
+                        <button id="btnWelcomeCancelNaming" class="btn-cad" style="flex: 1; background: #252529; color: #a1a1aa; padding: 12px; font-weight: bold; border-radius: 6px; justify-content: center; border: none;">Zrušit</button>
+                        <button id="btnWelcomeConfirmNaming" class="btn-cad" style="flex: 1; background: #ef4444; color: #ffffff; padding: 12px; font-weight: bold; border-radius: 6px; justify-content: center; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2); border: none;">Vytvořit</button>
+                    </div>
+                </div>
+
+                <div style="margin-top: 60px; font-size: 11px; color: #a1a1aa; font-family: monospace; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">
+                    2026 GOOM
+                </div>
+            </div>
+            
+            <div style="flex: 1.5; pointer-events: none;"></div>
+
+        </div>
+    </div>
+
+    <div id="mainMenuModal" class="modal">
+        <div class="modal-content main-menu-content">
+            <div class="main-menu-layout">
+                <div class="main-menu-brand">
+                    <div class="main-menu-brand-name" id="menuTitleContainer">GooM</div>
+                    <div class="main-menu-brand-accent"></div>
+                </div>
+                <div class="main-menu-actions">
+                <button id="btnMenuNew" class="btn-cad" style="width: 100%; justify-content: flex-start; background: #ef4444; color: #ffffff; font-weight: bold;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+                    Nový projekt
+                </button>
+                <button id="btnMenuOpenBIPS" class="btn-cad" style="width: 100%; justify-content: flex-start; background: #cbd5e1; color: #0f0f11; font-weight: bold;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#0f0f11" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                    Otevřít projekt (.BIPS)
+                </button>
+                <button id="btnMenuLoadImg" class="btn-cad" style="width: 100%; justify-content: flex-start;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                    Nahrát výkres (PDF/IMG)
+                </button>
+                <button id="btnMenuSave" class="btn-cad" style="width: 100%; justify-content: flex-start;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                    Uložit / Export
+                </button>
+                <button id="btnMenuPrint" class="btn-cad" style="width: 100%; justify-content: flex-start;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                    Tisk
+                </button>
+            </div>
+        </div>
+    </div>
+    </div>
+
+    <div id="printPage" aria-hidden="true"></div>
+
+    <div id="detectionSettingsModal" class="modal">
+        <div class="modal-content" style="max-width: 430px;">
+            <div class="modal-title">Распознавание стен и PIR</div>
+            <label class="setting-label" for="wallThresholdInput">Порог яркости стен (0–255)</label>
+            <input id="wallThresholdInput" type="number" min="0" max="255" step="1" value="100" class="clean-number-input" style="width: 100%; box-sizing: border-box; margin: 8px 0 16px;">
+            <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">Тёмные пиксели на плане становятся преградами для лучей PIR. Уменьшите порог, если текст или мебель ошибочно блокируют обзор.</div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 14px;">Для выбранного датчика задаётся его радиус; если PIR не выбран — это радиус для новых датчиков. Угол обзора фиксированный: 90°.</div>
+
+            <label class="setting-label" for="pirRangeInput">Условный радиус луча, px (10–2000)</label>
+            <input id="pirRangeInput" type="number" min="10" max="2000" step="10" value="180" class="clean-number-input" style="width: 100%; box-sizing: border-box; margin: 8px 0 16px;">
+            <div class="modal-buttons">
+                <button id="btnCloseDetectionSettings" class="btn-cad" type="button">Закрыть</button>
+                <button id="btnSaveDetectionSettings" class="btn-cad" type="button" style="background: #22c55e; color: #121214; font-weight: bold;">Применить</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="iconEditorModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-title">
+                <button id="btnIconEditorClose" class="btn-cad icon-editor-close" type="button" title="Закрыть редактор" aria-label="Закрыть редактор">×</button>
+                <span>Редактор меню и значков</span>
+            </div>
+            <div class="toolbar-menu-list-shell">
+                <div class="toolbar-menu-presets" id="toolbarMenuPresets" aria-label="Меню и датчики для редактирования">
+                </div>
+            </div>
+            <select id="iconEditorTarget" aria-label="Тип устройства для значка" style="display:none;"></select>
+            <div class="toolbar-menu-editor-actions">
+                <button id="btnToolbarMenuNew" class="btn-cad toolbar-menu-add" type="button" title="Добавить меню" aria-label="Добавить меню">+</button>
+                <span id="toolbarMenuEditorStatus" style="color:var(--text-muted);font-size:12px;"></span>
+                <div class="toolbar-menu-editor-actions-group">
+                    <button id="btnToolbarMenuSave" class="btn-cad" type="button" style="background:#22c55e;color:#121214;font-weight:bold;">Сохранить меню</button>
+                </div>
+            </div>
+            <strong id="iconEditorCurrentType" style="display:block;color:#d4d4d8;font-size:12px;margin:0 0 6px;">Значок датчика</strong>
+            <div class="icon-editor-layout">
+                <div>
+                    <div class="icon-editor-canvas-wrap">
+                        <canvas id="iconEditorCanvas" width="400" height="400" aria-label="Холст редактирования значка"></canvas>
+                    </div>
+                    <div class="icon-editor-canvas-controls">
+                        <div class="icon-editor-tools" aria-label="Действия с холстом">
+                            <button class="btn-cad" type="button" id="btnIconEditorUndo" title="Отменить действие" aria-label="Отменить действие"><svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"></path><path d="M4 9h10a6 6 0 0 1 0 12h-2"></path></svg></button>
+                        </div>
+                    </div>
+                    <div class="icon-editor-selection" id="iconEditorSelection" aria-live="polite"></div>
+                </div>
+                <div class="icon-editor-shape-tools">
+                    <div class="icon-editor-tools" aria-label="Добавить фигуру">
+                        <button class="btn-cad" type="button" data-icon-shape="circle" title="Круг" aria-label="Круг"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle></svg></button>
+                        <button class="btn-cad" type="button" data-icon-shape="rect" title="Квадрат" aria-label="Квадрат"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16"></rect></svg></button>
+                        <button class="btn-cad" type="button" data-icon-shape="roundRect" title="Скруглённый квадрат" aria-label="Скруглённый квадрат"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"></rect></svg></button>
+                        <button class="btn-cad" type="button" data-icon-shape="triangle" title="Треугольник" aria-label="Треугольник"><svg viewBox="0 0 24 24"><path d="M12 4 21 20H3Z"></path></svg></button>
+                        <button class="btn-cad" type="button" data-icon-shape="diamond" title="Ромб" aria-label="Ромб"><svg viewBox="0 0 24 24"><path d="m12 3 9 9-9 9-9-9z"></path></svg></button>
+                        <button class="btn-cad" type="button" data-icon-shape="line" title="Линия" aria-label="Линия"><svg viewBox="0 0 24 24"><path d="M4 20 20 4"></path></svg></button>
+                        <button class="btn-cad" type="button" data-icon-shape="text" title="Текст" aria-label="Текст"><svg viewBox="0 0 24 24"><path d="M5 5h14M12 5v14M8 19h8"></path></svg></button>
+                    </div>
+                </div>
+                <div>
+                    <span class="icon-editor-color-label">Цвет</span>
+                    <div id="iconEditorColorPalette" class="icon-editor-palette" aria-label="Палитра цветов"></div>
+                    <label class="icon-editor-custom-color">Другой цвет
+                        <input id="iconEditorColor" type="color" value="#22c55e" aria-label="Выбрать другой цвет">
+                    </label>
+                    <label class="icon-editor-field" style="flex-direction:row;align-items:center;">
+                        <input id="iconEditorFill" type="checkbox" checked>
+                        Заливка фигуры
+                    </label>
+                    <label class="icon-editor-field">Размер
+                        <input id="iconEditorSize" type="range" min="10" max="400" value="90">
+                    </label>
+                    <label class="icon-editor-field">Толщина линии
+                        <input id="iconEditorStroke" type="range" min="1" max="24" value="6">
+                    </label>
+                    <label class="icon-editor-field">Поворот
+                        <input id="iconEditorRotation" type="range" min="-180" max="180" value="0">
+                    </label>
+                    <div class="icon-editor-actions">
+                        <button id="btnIconEditorDelete" class="btn-cad" type="button" title="Удалить фигуру">Удалить</button>
+                        <button id="btnIconEditorClear" class="btn-cad" type="button">Очистить</button>
+                        <button id="btnIconEditorReset" class="btn-cad" type="button" title="Сбросить значок">Сбросить</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="saveModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-title">Exportovat projekt</div>
+            <div class="modal-text">Zvolte formát pro uložení. .BIPS slouží pro opětovné otevření a úpravu projektu.</div>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <button id="btnExportBIPS" class="btn-cad" style="background: #22c55e; justify-content: center; font-weight: bold; color: #121214;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#121214" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                    Uložit Projekt (.BIPS)
+                </button>
+                <button id="btnExportPNG" class="btn-cad" style="justify-content: center; margin-top: 10px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                    Export jako Obrázek (PNG)
+                </button>
+                <button id="btnExportPDF" class="btn-cad" style="justify-content: center;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                    Export jako Dokument (PDF)
+                </button>
+            </div>
+        </div>
+    </div>
+
+   <div id="textModal" class="modal">
+        <div class="modal-content" style="max-width: 320px;">
+            <div class="modal-title">Poznámka / Text</div>
+            <input type="text" id="devTextInput" style="width: 100%; background: #1c1c1f; border: 1px solid #313135; color: #ffffff; padding: 12px 16px; border-radius: 6px; font-size: 14px; outline: none; margin-bottom: 20px; box-sizing: border-box;" placeholder="Zadejte text...">
+            <button id="btnSaveText" class="btn-cad" style="background: #0ea5e9; color: #ffffff; width: 100%; justify-content: center; font-weight: bold; padding: 12px;">Uložit text</button>
+        </div>
+    </div>
+
+    <div id="numberModal" class="modal">
+        <div class="modal-content" style="max-width: 260px; text-align: center; padding: 25px;">
+            <div class="modal-title" style="margin-bottom: 5px; justify-content: center;">Adresa prvku</div>
+            <div class="modal-text" style="margin-bottom: 20px; font-size: 12px;">Smažte pole pro návrat na "Auto".</div>
+
+            <div style="display: flex; align-items: center; justify-content: center; gap: 15px;">
+                <input type="number" id="devNumberInput" class="clean-number-input" style="width: 80px; text-align: center; font-size: 22px; font-weight: bold; padding: 8px; border-radius: 8px; border: 2px solid #313135; background: #1c1c1f; color: #ffffff; outline: none;" placeholder="Auto" min="1">
+                
+                <button id="btnSaveNumber" title="Uložit" style="background: transparent; border: none; cursor: pointer; font-size: 28px; padding: 0; display: flex; align-items: center; justify-content: center; transition: transform 0.1s;">
+                    ✅
+                </button>
+            </div>
+            
+            <div id="duplicateWarning" style="color: #ef4444; font-size: 13px; font-weight: bold; margin-top: 15px; display: none;">❌ Adresa je obsazena!</div>
+        </div>
+    </div>
+
+    <div id="deviceTooltip" class="device-tooltip" style="position: fixed; opacity: 0; pointer-events: none; z-index: 1000;">
+        <div id="ttType">Typ prvku</div>
+        <div id="ttNumber">Adresa: <strong>-</strong></div>
+        <div id="ttLoop">Sběrnice: 1</div>
+        <div id="ttName">Poznámka</div>
+    </div>
+
+
+    <div id="ramenModal" class="modal">
+        <div class="modal-content" style="max-width: 320px; text-align: center;">
+            <div style="font-size: 60px; margin-bottom: 10px; line-height: 1;">🍜</div>
+            <div class="modal-title" style="color: #ea580c; margin-bottom: 10px; justify-content: center;">Tajný režim RAMEN!</div>
+            <div class="modal-text" style="font-size: 14px; margin-bottom: 20px;">Nástroj pro přidání čerstvého ramenu byl aktivován. Můžete zapojovat nudlové kabely!</div>
+            <button class="btn-cad" style="background: #ea580c; width: 100%; justify-content: center; font-weight: bold; font-size: 14px;" onclick="document.getElementById('ramenModal').style.display='none'">Chutné!</button>
+        </div>
+    </div>
+
+    <div id="overviewScreen" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #0b0b0d; z-index: 999999; flex-direction: column;">
+        
+        <div id="overviewCanvasContainer" style="flex: 1; width: 100%; position: relative; overflow: hidden;">
+            <canvas id="overviewCanvas" style="display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></canvas>
+        </div>
+
+        <div class="footer" style="position: relative; height: 24px; padding: 0 20px; justify-content: space-between; border-top: 1px solid #313135;">
+            <div style="font-size: 10px; color: #8d8d99; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center;">
+                <span id="overviewProjectNameDisplay" style="color: #0ea5e9; margin-right: 15px; font-size: 11px;">Nový projekt</span>
+                
+                <span style="color: #ef4444; margin-right: 4px;">🔴</span> Indikátory: Počet aktivních prvků <span style="margin: 0 8px; color: #404046;">|</span> Kliknutím na podlaží jej otevřete
+            </div>
+            
+            <div class="floor-controls">
+                <button id="btnCloseOverviewScreen" class="footer-icon" title="Návrat na půdorys" style="gap: 6px;">
+                    <svg viewBox="0 0 24 24" style="width: 14px; height: 14px;"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                    <span style="font-family: sans-serif; font-size: 11px; font-weight: bold; letter-spacing: 0.5px;">NÁVRAT ZPĚT</span>
+                </button>
+            </div>
+        </div>
+    </div>
+    <script src="config.js"></script>
+    <script src="state.js"></script>
+    <script src="engine.js"></script>
+    <script src="storage.js"></script>
+    <script src="render.js"></script>
+    <script src="app.js"></script>
+    <script src="icon-editor.js"></script>
+    <script src="toolbar-menus.js"></script>
+</body>
+</html>
