@@ -33,13 +33,25 @@ async function getFirebaseAuth() {
             if (!window.firebase.apps.length) window.firebase.initializeApp(FIREBASE_CONFIG);
             firebaseAuthInstance = window.firebase.auth();
             await firebaseAuthInstance.setPersistence(window.firebase.auth.Auth.Persistence.LOCAL);
-            firebaseAuthInstance.onAuthStateChanged(user => {
+                        firebaseAuthInstance.onAuthStateChanged(user => {
                 const status = document.getElementById('googleAuthStatus');
                 const userLabel = document.getElementById('googleAuthUser');
                 const signInButton = document.getElementById('btnGoogleSignIn');
-                if (status) status.style.display = user ? 'flex' : 'none';
-                if (userLabel) userLabel.textContent = user ? `Вы вошли как ${user.displayName || user.email || 'Google-пользователь'}` : '';
-                if (signInButton) signInButton.textContent = user ? 'Аккаунт Google подключён' : 'Войти или зарегистрироваться с Google';
+                
+                // Скрываем блок со статусом и почтой, если пользователь просит
+                if (status) status.style.display = 'none'; 
+                
+                if (signInButton) {
+                    if (user) {
+                        signInButton.textContent = 'Аккаунт Google подключён';
+                        signInButton.style.background = '#22c55e'; // Зеленый цвет для индикации успеха
+                        signInButton.style.color = '#121214';
+                    } else {
+                        signInButton.textContent = 'Войти или зарегистрироваться с Google';
+                        signInButton.style.background = ''; // Сброс к стилям из CSS
+                        signInButton.style.color = '';
+                    }
+                }
                 document.dispatchEvent(new CustomEvent('goom-auth-state-changed', { detail: { user } }));
             });
             return firebaseAuthInstance;
