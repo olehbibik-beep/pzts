@@ -86,7 +86,17 @@ async function syncProjectToCloud(manual = false) {
         if (manual) showAppAlert('Дождитесь загрузки проекта и повторите попытку.', 'Облачные проекты');
         return false;
     }
-    if (!manual && !cloudProjectId && !hasProjectContent()) return false;
+        if (!manual && !cloudProjectId && !hasProjectContent()) return false;
+
+    // Автоматически называем проект, если он "Nový projekt" при ручном сохранении
+    if (manual && (!payload.projectName || payload.projectName === 'Nový projekt')) {
+        const newName = await showAppPrompt('Введите название для сохранения в облаке:', 'Сохранить проект');
+        if (!newName) return false;
+        projectName = newName;
+        payload.projectName = newName;
+        const pInput = document.getElementById('projectNameInput');
+        if (pInput) pInput.value = newName;
+    }
 
     if (activeCloudSync) {
         if (!manual) {
