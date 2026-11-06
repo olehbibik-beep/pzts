@@ -2,6 +2,13 @@
 // 6. UI A EVENTY (APP)
 // ==========================================
 
+document.addEventListener('contextmenu', event => event.preventDefault());
+document.addEventListener('dragstart', event => {
+    if (event.target instanceof Element && event.target.closest('img')) {
+        event.preventDefault();
+    }
+});
+
 const appTooltip = document.createElement('div');
 appTooltip.className = 'app-tooltip';
 appTooltip.setAttribute('role', 'tooltip');
@@ -140,7 +147,7 @@ document.getElementById('btnSaveDetectionSettings').addEventListener('click', ()
     const pirRangePixels = Number(document.getElementById('pirRangeInput').value);
     if (!Number.isInteger(wallThreshold) || wallThreshold < 0 || wallThreshold > 255 ||
         !Number.isFinite(pirRangePixels) || pirRangePixels < 10 || pirRangePixels > 2000) {
-        alert('Укажите порог яркости от 0 до 255 и радиус PIR от 10 до 2000 пикселей.');
+        showAppAlert('Укажите порог яркости от 0 до 255 и радиус PIR от 10 до 2000 пикселей.', 'Некорректные настройки');
         return;
     }
 
@@ -149,7 +156,7 @@ document.getElementById('btnSaveDetectionSettings').addEventListener('click', ()
         wallMask = createWallMask(floor, wallThreshold);
     } catch (error) {
         console.error('Ошибка распознавания стен:', error);
-        alert(`Не удалось распознать стены: ${error.message}`);
+        showAppAlert(`Не удалось распознать стены: ${error.message}`, 'Ошибка распознавания стен');
         return;
     }
 
@@ -214,8 +221,8 @@ window.openNewProjectNamingModal = function() {
 
 let btnMenuNew = document.getElementById('btnMenuNew');
 if (btnMenuNew) {
-    btnMenuNew.addEventListener('click', () => {
-        if (confirm("Opravdu chcete začít nový projekt? Neuložené změny budou ztraceny.")) {
+    btnMenuNew.addEventListener('click', async () => {
+        if (await showAppConfirm("Opravdu chcete začít nový projekt? Neuložené změny budou ztraceny.")) {
             document.getElementById('mainMenuModal').style.display = 'none';
             let welcomeScreen = document.getElementById('welcomeModal');
             if (welcomeScreen) welcomeScreen.style.display = 'flex';
@@ -282,7 +289,7 @@ function exportToPDF() {
 
 function printCurrentFloor() {
     if (currentFloorIndex === -1 || (floors[currentFloorIndex].devices.length === 0 && !floors[currentFloorIndex].image)) {
-        alert("Žádná data k tisku.");
+        showAppAlert("Žádná data k tisku.", 'Печать');
         return;
     }
 
@@ -303,13 +310,13 @@ function printCurrentFloor() {
             image.onload = () => window.print();
             image.onerror = () => {
                 console.error('Не удалось загрузить изображение чертежа для печати.');
-                alert('Не удалось подготовить чертёж к печати.');
+                showAppAlert('Не удалось подготовить чертёж к печати.', 'Ошибка печати');
             };
             document.getElementById('printPage').replaceChildren(image);
             image.src = canvas.toDataURL('image/png');
         } catch (error) {
             console.error('Не удалось подготовить чертёж к печати:', error);
-            alert(`Не удалось подготовить чертёж к печати: ${error.message}`);
+            showAppAlert(`Не удалось подготовить чертёж к печати: ${error.message}`, 'Ошибка печати');
         } finally {
             canvas.width = previousCanvas.width;
             canvas.height = previousCanvas.height;
@@ -840,6 +847,7 @@ window.addEventListener('mouseup', (e) => {
 });
 
 function loadDefaultFloors(showWelcome = false, newProjectName = "Nový projekt") {
+    window.resetActiveCloudProject?.();
     customDeviceIcons = {};
     if (typeof refreshCustomDeviceIcons === 'function') refreshCustomDeviceIcons();
     floors = [
@@ -914,6 +922,7 @@ async function initProject() {
                 document.getElementById('welcomeModal').style.display = 'none';
                 
                 loadDefaultFloors(false, finalName);
+                setTimeout(() => window.startGoomOnboarding?.(), 350);
             };
         }
 
@@ -1080,7 +1089,7 @@ document.getElementById('imageLoader').addEventListener('change', async function
             wallMask = createWallMask({ ...floor, image }, floor.wallThreshold);
         } catch (error) {
             console.error('Ошибка распознавания стен:', error);
-            alert(`Изображение загружено, но стены распознать не удалось: ${error.message}`);
+            showAppAlert(`Изображение загружено, но стены распознать не удалось: ${error.message}`, 'План загружен с предупреждением');
             return false;
         }
         floor.image = image;
@@ -1107,7 +1116,7 @@ document.getElementById('imageLoader').addEventListener('change', async function
                     } else { isSystemReady = true; requestRedraw(); }
                 }
                 img.src = dataUrl;
-            } catch (error) { alert("Chyba při načítání PDF."); console.error(error); isSystemReady = true; requestRedraw(); }
+            } catch (error) { showAppAlert("Chyba při načítání PDF.", 'Ошибка загрузки PDF'); console.error(error); isSystemReady = true; requestRedraw(); }
         };
         fileReader.readAsArrayBuffer(file);
     } else if (file.name.toLowerCase().endsWith('.dxf')) {
@@ -1193,7 +1202,7 @@ document.getElementById('imageLoader').addEventListener('change', async function
                 img.src = dataUrl;
 
             } catch (err) {
-                alert("Chyba při zpracování DXF souboru.");
+                showAppAlert("Chyba při zpracování DXF souboru.", 'Ошибка загрузки DXF');
                 console.error(err);
                 isSystemReady = true; requestRedraw();
             }
@@ -1215,7 +1224,8 @@ document.getElementById('imageLoader').addEventListener('change', async function
     e.target.value = '';
 });
 
-function importFileContent(file) {
+function importFileContent(file, options = {}) {
+    return new Promise(resolve => {
     const reader = new FileReader();
     reader.onload = async function(e) {
         try {
@@ -1223,6 +1233,7 @@ function importFileContent(file) {
             if (!text || text.trim() === "") throw new Error("Soubor je prázdný.");
 
             const data = JSON.parse(text);
+            window.resetActiveCloudProject?.();
             let loadedFloors = [];
             
             if (Array.isArray(data)) {
@@ -1265,16 +1276,25 @@ function importFileContent(file) {
             isSystemReady = true; 
             changeFloor(); 
             saveStateToHistory(); 
-            triggerAutoSave();
+            triggerAutoSave(options);
+            resolve(true);
 
         } catch (err) { 
             console.error("Chyba importu:", err);
-            alert("Chyba při načítání souboru .BIPS!\n\nDetail chyby: " + err.message); 
+            showAppAlert("Chyba při načítání souboru .BIPS!\n\nDetail chyby: " + err.message, 'Ошибка открытия проекта'); 
             isSystemReady = true; 
             requestRedraw(); 
+            resolve(false);
         }
     };
+    reader.onerror = () => {
+        const error = reader.error || new Error('Не удалось прочитать файл проекта.');
+        console.error('Ошибка чтения файла проекта:', error);
+        showAppAlert(error.message, 'Ошибка открытия проекта');
+        resolve(false);
+    };
     reader.readAsText(file);
+    });
 }
 
 let pInput = document.getElementById('projectNameInput');

@@ -118,9 +118,12 @@ function initDB() {
     });
 }
 
-function triggerAutoSave() {
+function triggerAutoSave(options = {}) {
     if (autoSaveTimer) clearTimeout(autoSaveTimer);
-    autoSaveTimer = setTimeout(saveToDB, 1500); 
+    autoSaveTimer = setTimeout(() => {
+        saveToDB(options);
+        if (!options.skipCloudSync) window.scheduleCloudSync?.();
+    }, 1500);
 }
 
 function getProjectDataPayload() {
@@ -140,14 +143,24 @@ function getProjectDataPayload() {
     };
 }
 
-function saveToDB() {
+function saveToDB(options = {}) {
     if(!isSystemReady || isExporting || !db) return;
     try {
         const projectData = getProjectDataPayload();
         let tx = db.transaction(STORE_NAME, 'readwrite');
         let store = tx.objectStore(STORE_NAME);
         store.put(projectData, 'latest_save');
-    } catch(e) {}
+        tx.oncomplete = () => {
+            if (!options.skipCloudSync) window.scheduleCloudSync?.();
+        };
+        tx.onerror = () => {
+            console.error('Ошибка локального автосохранения:', tx.error);
+            window.setCloudSyncStatus?.('Ошибка локального сохранения', 'error');
+        };
+    } catch (error) {
+        console.error('Ошибка локального автосохранения:', error);
+        window.setCloudSyncStatus?.('Ошибка локального сохранения', 'error');
+    }
 }
 
 async function loadFromDB() {
@@ -184,7 +197,7 @@ async function loadFromDB() {
 }
 
 function exportToBIPS() {
-    if (floors.length === 0) { alert("Žádná data k exportu."); return; }
+    if (floors.length === 0) { showAppAlert("Žádná data k exportu.", 'Экспорт проекта'); return; }
     try {
         const payload = getProjectDataPayload();
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload));
@@ -195,7 +208,7 @@ function exportToBIPS() {
         downloadAnchor.click();
         downloadAnchor.remove();
     } catch (err) {
-        alert("Chyba při generování exportu.");
+        showAppAlert("Chyba při generování exportu.", 'Ошибка экспорта');
         console.error(err);
     }
 }

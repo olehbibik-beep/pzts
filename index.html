@@ -100,6 +100,7 @@
         .toolbar-section { display: flex; align-items: center; gap: 8px; }
         
         select { background: var(--bg-input); color: var(--text-main); border: none; padding: 6px 12px; border-radius: 4px; font-size: 14px; font-weight: bold; outline: none; cursor: pointer; width: 100px; text-align: center; }
+        #loopSelect { box-sizing: border-box; width: 128px; min-width: 128px; padding: 6px 28px 6px 10px; text-align: left; }
         input[type="text"], input[type="number"] { background: var(--bg-input); color: var(--text-main); border: none; padding: 6px 10px; border-radius: 4px; font-size: 13px; outline: none; font-weight: bold;}
         
         button.btn-cad { background: var(--btn-cad-bg); color: var(--text-main); border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; transition: 0.2s; font-weight: 500; font-size: 13px; display: flex; align-items: center; gap: 10px; }
@@ -133,6 +134,82 @@
 
         .modal { display: none; position: fixed; z-index: 300; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); align-items: center; justify-content: center; }
         .modal-content { background: rgba(28, 28, 31, 0.95); border: none; padding: 30px; border-radius: 12px; max-width: 450px; width: 100%; color: var(--text-main); box-shadow: 0 20px 50px rgba(0,0,0,0.7); }
+        #welcomeModal { padding: 24px; box-sizing: border-box; }
+        #welcomeModal .welcome-card {
+            box-sizing: border-box; width: min(920px, calc(100vw - 48px)); max-width: 920px;
+            height: min(600px, calc(100vh - 48px)); min-height: 0; padding: 0; overflow: hidden;
+            display: flex; flex-direction: row; position: relative; border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.16);
+            background: linear-gradient(90deg, rgba(18,18,20,0.96) 0%, rgba(18,18,20,0.88) 33%, rgba(18,18,20,0.22) 72%, rgba(18,18,20,0.18) 100%), url('Hi.png') center / cover no-repeat;
+            box-shadow: 0 30px 70px rgba(0,0,0,0.75);
+        }
+        #welcomeModal .welcome-panel {
+            box-sizing: border-box; z-index: 1; display: flex; flex: 0 0 390px;
+            flex-direction: column; justify-content: center; padding: 38px 42px;
+        }
+        #welcomeModal .welcome-brand { font-size: 34px; font-weight: 800; color: #fff; letter-spacing: 0.5px; margin-bottom: 4px; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+        #welcomeModal .welcome-edition { font-size: 11px; color: #22c55e; font-weight: bold; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 26px; }
+        #welcomeModal .welcome-actions { display: flex; flex-direction: column; gap: 12px; width: 100%; }
+        #welcomeModal .welcome-actions .btn-cad { width: 100%; min-height: 48px; box-sizing: border-box; padding: 12px 16px; justify-content: flex-start; border-radius: 6px; font-size: 14px; }
+        #welcomeModal .welcome-actions svg { width: 18px; height: 18px; margin-right: 10px; flex: 0 0 auto; }
+        #welcomeModal .welcome-auth-status { display: none; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: 6px; background: rgba(15,23,42,0.72); color: #d4d4d8; font-size: 12px; overflow-wrap: anywhere; }
+        #welcomeModal .welcome-signout { align-self: flex-start; padding: 5px 8px; background: transparent; color: #c4c4cc; font-size: 12px; }
+        #welcomeModal .welcome-naming { display: none; flex-direction: column; gap: 12px; width: 100%; }
+        #welcomeModal .welcome-project-name { width: 100%; box-sizing: border-box; padding: 12px 14px; border-radius: 6px; }
+        #welcomeModal .welcome-name-buttons { display: flex; gap: 10px; margin-top: 4px; }
+        #welcomeModal .welcome-name-buttons .btn-cad { flex: 1; justify-content: center; padding: 11px; }
+        #welcomeModal .welcome-copyright { margin-top: 38px; font-size: 11px; color: #c4c4cc; font-family: monospace; }
+        #welcomeModal .welcome-art-space { flex: 1 1 auto; pointer-events: none; }
+        #welcomeModal .welcome-auth-button { background: rgba(37,37,41,0.82); color: #f4f4f5; border: 1px solid rgba(255,255,255,0.22); }
+        #cloudSyncIndicator { max-width: 220px; overflow: hidden; color: #8d8d99; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+        #cloudSyncIndicator[data-state="saved"] { color: #86efac; }
+        #cloudSyncIndicator[data-state="syncing"] { color: #7dd3fc; }
+        #cloudSyncIndicator[data-state="error"], #cloudSyncIndicator[data-state="conflict"] { color: #fca5a5; }
+        .cloud-projects-content { box-sizing: border-box; max-width: 720px; max-height: min(720px, calc(100vh - 40px)); overflow: auto; }
+        .cloud-projects-header, .cloud-projects-toolbar, .cloud-project-row, .cloud-project-actions { display: flex; align-items: center; gap: 12px; }
+        .cloud-projects-header, .cloud-projects-toolbar { justify-content: space-between; }
+        .cloud-projects-header { margin-bottom: 12px; }
+        .cloud-projects-header .modal-title { margin: 0; }
+        #cloudProjectsUser { color: #a1a1aa; font-size: 12px; overflow-wrap: anywhere; }
+        #cloudProjectsStatus { min-height: 20px; margin: 0 0 12px; color: #a1a1aa; font-size: 12px; overflow-wrap: anywhere; }
+        #cloudProjectsList { display: flex; flex-direction: column; gap: 8px; max-height: 52vh; overflow-y: auto; }
+        .cloud-project-row { justify-content: space-between; padding: 12px; border: 1px solid #35353d; border-radius: 8px; }
+        .cloud-project-details { display: flex; min-width: 0; flex-direction: column; gap: 5px; overflow-wrap: anywhere; }
+        .cloud-project-details span { color: #a1a1aa; font-size: 11px; }
+        .cloud-project-actions { flex-shrink: 0; }
+        .cloud-project-delete { background: #7f1d1d; color: #fff; }
+        .cloud-projects-toolbar { margin-bottom: 12px; }
+        .cloud-projects-toolbar .btn-cad { justify-content: center; }
+        @media (max-width: 560px) {
+            #cloudSyncIndicator { display: none; }
+            .cloud-project-row { align-items: stretch; flex-direction: column; }
+            .cloud-project-actions { justify-content: flex-end; }
+        }
+        .app-dialog-backdrop { position: fixed; inset: 0; z-index: 10010; display: flex; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; background: rgba(0,0,0,0.58); backdrop-filter: blur(6px); }
+        .app-dialog-backdrop[hidden] { display: none; }
+        .app-dialog-card { width: min(420px, 100%); padding: 24px; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; background: #1c1c1f; color: var(--text-main); box-shadow: 0 24px 70px rgba(0,0,0,0.6); }
+        .app-dialog-title { margin: 0 0 12px; font-size: 18px; font-weight: 700; }
+        .app-dialog-message { margin: 0 0 20px; color: #c4c4cc; font-size: 14px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+        .app-dialog-input { width: 100%; margin: 0 0 18px; padding: 11px 12px; box-sizing: border-box; border: 1px solid #404046; border-radius: 6px; background: #121214; color: #fff; font: inherit; }
+        .app-dialog-actions { display: flex; justify-content: flex-end; gap: 10px; }
+        .app-dialog-actions button { min-width: 100px; justify-content: center; }
+        .app-dialog-cancel { background: #303036 !important; color: #e1e1e6 !important; }
+        .app-dialog-confirm { background: #0ea5e9 !important; color: #fff !important; }
+        .onboarding-backdrop { position: fixed; inset: 0; z-index: 10000; pointer-events: none; }
+        .onboarding-highlight { position: fixed; z-index: 10000; pointer-events: none; border: 2px solid #38bdf8; border-radius: 9px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.58), 0 0 24px rgba(56,189,248,0.35); transition: all 0.18s ease; }
+        .onboarding-card { position: fixed; z-index: 10001; width: min(360px, calc(100vw - 32px)); padding: 18px; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.14); border-radius: 12px; background: #1c1c1f; color: var(--text-main); box-shadow: 0 18px 55px rgba(0,0,0,0.55); pointer-events: auto; }
+        .onboarding-step { margin: 0 0 8px; color: #38bdf8; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+        .onboarding-title { margin: 0 0 8px; font-size: 17px; }
+        .onboarding-message { margin: 0 0 16px; color: #c4c4cc; font-size: 13px; line-height: 1.5; }
+        .onboarding-actions { display: flex; justify-content: space-between; gap: 8px; }
+        .onboarding-actions button { justify-content: center; }
+        .onboarding-actions .onboarding-next { background: #0ea5e9; color: #fff; }
+        @media (max-width: 600px) {
+            #welcomeModal { padding: 12px; }
+            #welcomeModal .welcome-card { width: calc(100vw - 24px); height: min(560px, calc(100vh - 24px)); background-position: 58% center; }
+            #welcomeModal .welcome-panel { flex: 1 1 auto; padding: 30px clamp(22px, 8vw, 42px); background: rgba(18,18,20,0.4); }
+            #welcomeModal .welcome-art-space { display: none; }
+        }
         #printPage { display: none; }
         @media print {
             @page { margin: 10mm; }
@@ -320,9 +397,34 @@
                 </button>
                 <span class="app-brand-name">GooM</span>
             </div>
-            
+
+            <div id="cloudProjectsModal" class="modal">
+                <div class="modal-content cloud-projects-content">
+                    <div class="cloud-projects-header">
+                        <div>
+                            <div class="modal-title">Облачные проекты</div>
+                            <div id="cloudProjectsUser"></div>
+                        </div>
+                        <button id="btnCloudProjectsClose" class="btn-cad" type="button">Закрыть</button>
+                    </div>
+                    <p id="cloudProjectsStatus" role="status" aria-live="polite"></p>
+                    <div class="cloud-projects-toolbar">
+                        <button id="btnCloudSaveCurrent" class="btn-cad" type="button" style="background:#22c55e;color:#121214;font-weight:bold;">Сохранить текущий проект</button>
+                        <div style="display:flex;gap:8px;">
+                            <button id="btnCloudRefresh" class="btn-cad" type="button">Обновить</button>
+                            <button id="btnCloudSignOut" class="btn-cad" type="button">Выйти</button>
+                        </div>
+                    </div>
+                    <div id="cloudProjectsList"></div>
+                </div>
+            </div>
+
             <div class="menu-divider" style="height: 20px;"></div>
             <input type="text" id="projectNameInput" value="Nový projekt" placeholder="Název projektu..." style="background: transparent; border: none; color: #ffffff; font-size: 15px; font-weight: 600; width: 250px; outline: none; border-bottom: 1px dashed rgba(255,255,255,0.3); padding: 2px 5px;" title="Přejmenovat projekt">
+            <button id="btnOpenCloudProjectsToolbar" class="toolbar-icon-button" type="button" data-open-cloud-projects title="Облачные проекты" aria-label="Облачные проекты">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18a4.6 4.6 0 0 1-.2-9.2A6 6 0 0 1 18 10a4 4 0 0 1-.5 8H7Z"></path><path d="m9 13 3-3 3 3M12 10v8"></path></svg>
+            </button>
+            <span id="cloudSyncIndicator" role="status" aria-live="polite"></span>
 
             <div class="toolbar-section" style="margin-left: auto; gap: 12px;">
                 <div class="setting-col">
@@ -362,7 +464,7 @@
                     <button id="btnCycleToolbarMenu" class="btn-cad toolbar-menu-cycle" type="button" title="Переключить набор меню" aria-label="Переключить набор меню">
                         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="2"></circle><circle cx="12" cy="12" r="2"></circle><circle cx="12" cy="19" r="2"></circle></svg>
                     </button>
-                    <select id="loopSelect" style="margin: 0 4px; width: 95px;" title="Vyberte Sběrnici"></select>
+                    <select id="loopSelect" style="margin: 0 4px; width: 128px;" title="Vyberte Sběrnici"></select>
                     <div class="menu-divider"></div>
 
                     <button class="device-btn" data-type="panel" title="Ústředna EZS"><svg width="24" height="24" viewBox="0 0 32 32"><rect x="1" y="8" width="30" height="16" fill="#ffffff" stroke="#0ea5e9" stroke-width="2"/><text x="16" y="19" font-size="9" fill="#0ea5e9" font-family="monospace" font-weight="bold" text-anchor="middle">EZS</text></svg></button>
@@ -404,13 +506,9 @@
         <button id="helpBtn" class="help-btn" title="Klávesové zkratky (Nápověda)">?</button>
         <div id="helpPanel" class="help-panel">
             <span class="help-item"><span class="help-key">S</span> Удерживать: вращение с паузой на 90°</span>
-            <span class="help-item"><span class="help-key">D</span> Deaktivovat</span>
             <span class="help-item"><span class="help-key">Ctrl+Z</span> Zpět</span>
             <span class="help-item"><span class="help-key">Del</span> Smazat</span>
             <span class="help-item"><span class="help-key">Ctrl+C/V</span> Kopírovat/Vložit</span>
-            <span class="help-item"><span class="help-key">Alt</span> Volný pohyb</span>
-            <span class="help-item"><span class="help-key">Shift</span> Skupina</span>
-            <span class="help-item"><span class="help-key">Dvojklik</span> Vlastnosti/Kabel</span>
         </div>
     </div>
 
@@ -428,41 +526,77 @@
     </div>
 
     <div id="welcomeModal" class="modal" style="display: none;">
-        <div class="modal-content" style="max-width: 1050px; width: 95%; height: auto; min-height: 700px; padding: 0; overflow: hidden; display: flex; flex-direction: row; background-image: url('Hi.png'); background-size: 100%; background-position: center; border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 30px 70px rgba(0,0,0,0.9); border-radius: 12px; position: relative;">
-            
-            <div style="flex: 1; max-width: 450px; padding: 50px; display: flex; flex-direction: column; justify-content: center; background: linear-gradient(to right, rgba(24, 24, 27, 0.95) 0%, rgba(24, 24, 27, 0.85) 65%, rgba(24, 24, 27, 0) 100%); box-sizing: border-box; z-index: 2;">
+        <div class="modal-content welcome-card">
+            <div class="welcome-panel">
                 
-                <div style="font-size: 34px; font-weight: 800; color: #ffffff; letter-spacing: 0.5px; margin-bottom: 4px; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">GOOM</div>
-                <div style="font-size: 11px; color: #22c55e; font-weight: bold; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 30px; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">SPECIAL Edition</div>
+                <div class="welcome-brand">GOOM</div>
+                <div class="welcome-edition">SPECIAL Edition</div>
                 
-                <div id="welcomeButtonsBlock" style="display: flex; flex-direction: column; gap: 14px; width: 100%;">
-                    <button id="btnWelcomeNew" class="btn-cad" style="width: 100%; padding: 14px 20px; justify-content: flex-start; background: #ef4444; color: #ffffff; font-weight: bold; border-radius: 6px; font-size: 14px; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3); border: none;">
+                <div id="welcomeButtonsBlock" class="welcome-actions">
+                    <button id="btnWelcomeNew" class="btn-cad" style="background: #ef4444; color: #ffffff; font-weight: bold; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3); border: none;">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px; height:18px; margin-right:10px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
                         Nový projekt
                     </button>
-                    <button id="btnWelcomeOpenBIPS" class="btn-cad" style="width: 100%; padding: 14px 20px; justify-content: flex-start; background: #cbd5e1; color: #0f0f11; font-weight: bold; border-radius: 6px; font-size: 14px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); border: none;">
+                    <button id="btnWelcomeOpenBIPS" class="btn-cad" style="background: #cbd5e1; color: #0f0f11; font-weight: bold; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); border: none;">
                         <svg viewBox="0 0 24 24" fill="none" stroke="#0f0f11" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:18px; height:18px; margin-right:10px;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
                         Otevřít projekt (.BIPS)
                     </button>
-                </div>
-
-                <div id="welcomeNamingBlock" style="display: none; flex-direction: column; gap: 14px; width: 100%;">
-                    <div style="font-size: 13px; color: #a1a1aa; margin-bottom: -6px;">Zadejte název projektu:</div>
-                    <input type="text" id="welcomeProjectNameInput" value="Nový projekt" placeholder="Např. Rodinný dom Praha..." style="width: 100%; background: #1c1c1f; border: 1px solid #313135; color: #ffffff; padding: 14px 16px; border-radius: 6px; font-size: 14px; font-weight: 600; outline: none; box-sizing: border-box; transition: border-color 0.2s;" onfocus="this.style.borderColor='#0ea5e9'" onblur="this.style.borderColor='#313135'">
-                    <div style="display: flex; gap: 10px; margin-top: 5px;">
-                        <button id="btnWelcomeCancelNaming" class="btn-cad" style="flex: 1; background: #252529; color: #a1a1aa; padding: 12px; font-weight: bold; border-radius: 6px; justify-content: center; border: none;">Zrušit</button>
-                        <button id="btnWelcomeConfirmNaming" class="btn-cad" style="flex: 1; background: #ef4444; color: #ffffff; padding: 12px; font-weight: bold; border-radius: 6px; justify-content: center; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2); border: none;">Vytvořit</button>
+                    <button id="btnGoogleSignIn" class="btn-cad welcome-auth-button" type="button" aria-label="Войти или зарегистрироваться через Google">
+                        <svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#4285F4" d="M43.6 24.5c0-1.4-.1-2.8-.4-4.1H24v7.8h11c-.5 2.5-1.9 4.6-4 6v5h6.5c3.8-3.5 6.1-8.6 6.1-14.7z"/><path fill="#34A853" d="M24 44c5.5 0 10.1-1.8 13.5-4.8l-6.5-5c-1.8 1.2-4.1 2-7 2-5.3 0-9.8-3.6-11.4-8.4H5.9v5.2C9.3 39.5 16 44 24 44z"/><path fill="#FBBC05" d="M12.6 27.8a12 12 0 0 1 0-7.6V15H5.9a20 20 0 0 0 0 18l6.7-5.2z"/><path fill="#EA4335" d="M24 11.8c3 0 5.7 1 7.8 3.1l5.8-5.8C34.1 5.8 29.5 4 24 4 16 4 9.3 8.5 5.9 15l6.7 5.2c1.6-4.8 6.1-8.4 11.4-8.4z"/></svg>
+                        Войти или зарегистрироваться с Google
+                    </button>
+                    <button id="btnWelcomeCloudProjects" class="btn-cad welcome-auth-button" type="button" data-open-cloud-projects>
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18a4.6 4.6 0 0 1-.2-9.2A6 6 0 0 1 18 10a4 4 0 0 1-.5 8H7Z"></path><path d="m9 13 3-3 3 3M12 10v8"></path></svg>
+                        Облачные проекты
+                    </button>
+                    <div id="googleAuthStatus" class="welcome-auth-status" aria-live="polite">
+                        <span id="googleAuthUser"></span>
+                        <button id="btnGoogleSignOut" class="btn-cad welcome-signout" type="button">Выйти</button>
                     </div>
                 </div>
 
-                <div style="margin-top: 60px; font-size: 11px; color: #a1a1aa; font-family: monospace; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">
+                <div id="welcomeNamingBlock" class="welcome-naming">
+                    <div style="font-size: 13px; color: #a1a1aa; margin-bottom: -6px;">Zadejte název projektu:</div>
+                    <input type="text" id="welcomeProjectNameInput" class="welcome-project-name" value="Nový projekt" placeholder="Např. Rodinný dom Praha..." style="background: #1c1c1f; border: 1px solid #313135; color: #ffffff; font-size: 14px; font-weight: 600; outline: none; transition: border-color 0.2s;" onfocus="this.style.borderColor='#0ea5e9'" onblur="this.style.borderColor='#313135'">
+                    <div class="welcome-name-buttons">
+                        <button id="btnWelcomeCancelNaming" class="btn-cad" style="background: #252529; color: #a1a1aa; font-weight: bold; border: none;">Zrušit</button>
+                        <button id="btnWelcomeConfirmNaming" class="btn-cad" style="background: #ef4444; color: #ffffff; font-weight: bold; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2); border: none;">Vytvořit</button>
+                    </div>
+                </div>
+
+                <div class="welcome-copyright">
                     2026 GOOM
                 </div>
             </div>
             
-            <div style="flex: 1.5; pointer-events: none;"></div>
+            <div class="welcome-art-space"></div>
 
         </div>
+    </div>
+
+    <div id="appDialog" class="app-dialog-backdrop" hidden>
+        <section class="app-dialog-card" aria-labelledby="appDialogTitle" aria-describedby="appDialogMessage">
+            <h2 class="app-dialog-title" id="appDialogTitle"></h2>
+            <p class="app-dialog-message" id="appDialogMessage"></p>
+            <input id="appDialogInput" class="app-dialog-input" type="text" hidden>
+            <div class="app-dialog-actions">
+                <button id="appDialogCancel" class="btn-cad app-dialog-cancel" type="button">Отмена</button>
+                <button id="appDialogConfirm" class="btn-cad app-dialog-confirm" type="button">Подтвердить</button>
+            </div>
+        </section>
+    </div>
+
+    <div id="onboardingBackdrop" class="onboarding-backdrop" hidden>
+        <div id="onboardingHighlight" class="onboarding-highlight"></div>
+        <section id="onboardingCard" class="onboarding-card" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle">
+            <p class="onboarding-step" id="onboardingStep"></p>
+            <h2 class="onboarding-title" id="onboardingTitle"></h2>
+            <p class="onboarding-message" id="onboardingMessage"></p>
+            <div class="onboarding-actions">
+                <button id="onboardingSkip" class="btn-cad" type="button">Пропустить</button>
+                <button id="onboardingNext" class="btn-cad onboarding-next" type="button">Далее</button>
+            </div>
+        </section>
     </div>
 
     <div id="mainMenuModal" class="modal">
@@ -488,6 +622,10 @@
                 <button id="btnMenuSave" class="btn-cad" style="width: 100%; justify-content: flex-start;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
                     Uložit / Export
+                </button>
+                <button id="btnMenuCloudProjects" class="btn-cad" type="button" data-open-cloud-projects style="width: 100%; justify-content: flex-start;">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18a4.6 4.6 0 0 1-.2-9.2A6 6 0 0 1 18 10a4 4 0 0 1-.5 8H7Z"></path><path d="m9 13 3-3 3 3M12 10v8"></path></svg>
+                    Облачные проекты
                 </button>
                 <button id="btnMenuPrint" class="btn-cad" style="width: 100%; justify-content: flex-start;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
@@ -676,8 +814,12 @@
     <script src="state.js"></script>
     <script src="engine.js"></script>
     <script src="storage.js"></script>
-    <script src="render.js"></script>
+    <script src="dialogs.js"></script>
+    <script src="render.js?v=20261106-selection-style"></script>
     <script src="app.js"></script>
+    <script src="onboarding.js"></script>
+    <script src="firebase-auth.js"></script>
+    <script src="firebase-sync.js?v=20261106-cloud-sync"></script>
     <script src="icon-editor.js"></script>
     <script src="toolbar-menus.js"></script>
 </body>

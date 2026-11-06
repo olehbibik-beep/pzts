@@ -56,12 +56,42 @@ function createWallMask(floor, threshold = floor.wallThreshold) {
     maskCtx.drawImage(floor.image, 0, 0, width, height);
     const pixels = maskCtx.getImageData(0, 0, width, height).data;
     const data = new Uint8Array(width * height);
+    const columnInk = new Uint32Array(width);
+    const rowInk = new Uint32Array(height);
     for (let source = 0, target = 0; target < data.length; source += 4, target++) {
         const luminance = 0.2126 * pixels[source] + 0.7152 * pixels[source + 1] + 0.0722 * pixels[source + 2];
         data[target] = pixels[source + 3] > 127 && luminance <= threshold ? 1 : 0;
+        if (pixels[source + 3] > 127 && luminance < 230) {
+            columnInk[target % width]++;
+            rowInk[Math.floor(target / width)]++;
+        }
     }
 
-    return { data, width, height, imageWidth, imageHeight };
+    const findEdgeLines = (counts, span) => {
+        const margin = Math.ceil(counts.length * 0.025);
+        const thresholdRatio = 0.85;
+        const left = [];
+        const right = [];
+        for (let i = 0; i < margin; i++) {
+            if (counts[i] / span >= thresholdRatio) left.push(i);
+            const oppositeIndex = counts.length - 1 - i;
+            if (counts[oppositeIndex] / span >= thresholdRatio) right.push(oppositeIndex);
+        }
+        return left.length && right.length ? [...left, ...right] : [];
+    };
+    const frameColumns = findEdgeLines(columnInk, height);
+    const frameRows = findEdgeLines(rowInk, width);
+
+    if (frameColumns.length || frameRows.length) {
+        for (let y = 0; y < height; y++) {
+            for (const x of frameColumns) data[y * width + x] = 0;
+        }
+        for (const y of frameRows) {
+            data.fill(0, y * width, (y + 1) * width);
+        }
+    }
+
+    return { data, width, height, imageWidth, imageHeight, frameColumns, frameRows };
 }
 
 const pirCoverageCache = new WeakMap();
@@ -83,9 +113,7 @@ function getPIRCoveragePoints(floor, device) {
     const maskScaleY = mask ? mask.height / mask.imageHeight : 1;
     const originX = device.x * maskScaleX;
     const originY = device.y * maskScaleY;
-    const range = mask
-        ? Math.min(rangePixels * maskScaleX, Math.hypot(mask.width, mask.height))
-        : rangePixels;
+    const range = rangePixels * maskScaleX;
     const fov = fovDegrees * Math.PI / 180;
     const centerAngle = ((device.rotation || 0) + (isGlassbreak ? 0 : 180)) * Math.PI / 180;
     const rayCount = Math.max(12, Math.ceil(fovDegrees));
@@ -103,9 +131,10 @@ function getPIRCoveragePoints(floor, device) {
             const x = originX + dx * distance;
             const y = originY + dy * distance;
             if (mask) {
-                if (x < 0 || y < 0 || x >= mask.width || y >= mask.height) break;
-                const pixelIndex = Math.floor(y) * mask.width + Math.floor(x);
-                if (distance > 3 && mask.data[pixelIndex]) break;
+                if (x >= 0 && y >= 0 && x < mask.width && y < mask.height) {
+                    const pixelIndex = Math.floor(y) * mask.width + Math.floor(x);
+                    if (distance > 3 && mask.data[pixelIndex]) break;
+                }
             }
             lastX = x;
             lastY = y;
@@ -433,7 +462,37 @@ function redraw() {
     } else { ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, canvas.width, canvas.height); }
 
     ctx.translate(offsetX, offsetY); ctx.scale(scale, scale);
-    if (floor.image) ctx.drawImage(floor.image, 0, 0);
+    if (floor.image) {
+        ctx.drawImage(floor.image, 0, 0);
+        const frame = floor.wallMask;
+        if (frame?.frameColumns?.length || frame?.frameRows?.length) {
+            const scaleX = frame.width / frame.imageWidth;
+            const scaleY = frame.height / frame.imageHeight;
+            ctx.save();
+            ctx.fillStyle = '#ffffff';
+            const fillFrameLines = (lines, lineScale, length, vertical) => {
+                const sorted = [...lines].sort((a, b) => a - b);
+                let start = sorted[0];
+                let end = start;
+                for (let i = 1; i <= sorted.length; i++) {
+                    if (i < sorted.length && sorted[i] <= end + 1) {
+                        end = sorted[i];
+                        continue;
+                    }
+                    const center = (start + end) / (2 * lineScale);
+                    const thickness = Math.max((end - start + 3) / lineScale, 3 / scale);
+                    const position = center - thickness / 2;
+                    if (vertical) ctx.fillRect(position, 0, thickness, length);
+                    else ctx.fillRect(0, position, length, thickness);
+                    start = sorted[i];
+                    end = start;
+                }
+            };
+            if (frame.frameColumns.length) fillFrameLines(frame.frameColumns, scaleX, frame.imageHeight, true);
+            if (frame.frameRows.length) fillFrameLines(frame.frameRows, scaleY, frame.imageWidth, false);
+            ctx.restore();
+        }
+    }
     drawPlanGrid(ctx, floor);
     drawPIRCoverage(ctx, floor);
 
@@ -445,9 +504,9 @@ function redraw() {
     }
 
     if (isSelecting) {
-        ctx.fillStyle = "rgba(34, 197, 94, 0.15)"; ctx.strokeStyle = "#22c55e"; ctx.lineWidth = 1.5 / scale;
-        ctx.setLineDash([5 / scale, 5 / scale]); const w = selEndX - selStartX; const h = selEndY - selStartY;
-        ctx.fillRect(selStartX, selStartY, w, h); ctx.strokeRect(selStartX, selStartY, w, h); ctx.setLineDash([]);
+        ctx.fillStyle = "rgba(128, 128, 128, 0.08)"; ctx.strokeStyle = "rgba(128, 128, 128, 0.75)"; ctx.lineWidth = 1 / scale;
+        const w = selEndX - selStartX; const h = selEndY - selStartY;
+        ctx.fillRect(selStartX, selStartY, w, h); ctx.strokeRect(selStartX, selStartY, w, h);
     }
     drawFloorData(ctx, floor, false);
 }

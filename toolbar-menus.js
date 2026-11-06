@@ -86,7 +86,7 @@ function saveToolbarMenus() {
         return true;
     } catch (error) {
         console.error('Не удалось сохранить наборы меню:', error);
-        alert('Не удалось сохранить наборы меню в этом браузере.');
+        showAppAlert('Не удалось сохранить наборы меню в этом браузере.', 'Ошибка сохранения');
         return false;
     }
 }
@@ -170,7 +170,7 @@ function renderToolbarMenuPresets() {
         name.className = 'toolbar-menu-preset-name';
         name.value = menu.name;
         name.setAttribute('aria-label', `Название меню: ${menu.name}`);
-        name.addEventListener('focus', () => selectToolbarMenuForEditing(menu.id, true));
+        name.addEventListener('focus', async () => { await selectToolbarMenuForEditing(menu.id, true); });
         name.addEventListener('input', () => {
             if (editingToolbarMenu?.id !== menu.id) return;
             editingToolbarMenu.name = name.value.slice(0, 32);
@@ -187,9 +187,9 @@ function renderToolbarMenuPresets() {
             iconButton.setAttribute('aria-label', iconButton.title);
             iconButton.classList.toggle('selected', activeToolbarMenuId === menu.id && iconEditorTarget.value === type);
             iconButton.innerHTML = toolbarMenuButtonContent(type, menu);
-            iconButton.addEventListener('click', event => {
+            iconButton.addEventListener('click', async event => {
                 event.stopPropagation();
-                if (editingToolbarMenu?.id !== menu.id && !selectToolbarMenuForEditing(menu.id)) return;
+                if (editingToolbarMenu?.id !== menu.id && !await selectToolbarMenuForEditing(menu.id)) return;
                 if (iconEditorDeviceTypes.some(([iconType]) => iconType === type)) {
                     selectIconEditorTarget(type);
                 }
@@ -259,9 +259,9 @@ function discardUnsavedNewMenu() {
     applyToolbarMenu(previousMenu, false);
 }
 
-function selectToolbarMenuForEditing(id, focusName = false) {
+async function selectToolbarMenuForEditing(id, focusName = false) {
     if (editingToolbarMenu?.id === id) return true;
-    if (editorHasUnsavedChanges() && !confirm('Отбросить несохранённые изменения?')) return false;
+    if (editorHasUnsavedChanges() && !await showAppConfirm('Отбросить несохранённые изменения?')) return false;
     discardUnsavedNewMenu();
     const menu = toolbarMenus.find(item => item.id === id);
     if (!menu) return false;
@@ -294,21 +294,20 @@ document.getElementById('iconEditorModal').addEventListener('click', event => {
         event.stopImmediatePropagation();
     }
 }, true);
-document.getElementById('btnIconEditorClose').addEventListener('click', event => {
-    if (editorHasUnsavedChanges() && !confirm('Закрыть редактор меню без сохранения изменений?')) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        return;
-    }
+document.getElementById('btnIconEditorClose').addEventListener('click', async event => {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if (editorHasUnsavedChanges() && !await showAppConfirm('Закрыть редактор меню без сохранения изменений?')) return;
     discardUnsavedNewMenu();
     saveToolbarMenus();
+    document.getElementById('iconEditorModal').style.display = 'none';
 }, true);
-document.getElementById('btnToolbarMenuNew').addEventListener('click', () => {
+document.getElementById('btnToolbarMenuNew').addEventListener('click', async () => {
     if (toolbarMenus.length >= toolbarMenuLimit) {
-        alert('Достигнут лимит в 7 меню.');
+        showAppAlert('Достигнут лимит в 7 меню.', 'Лимит меню');
         return;
     }
-    if (editorHasUnsavedChanges() && !confirm('Сохранить текущие изменения перед созданием меню?')) return;
+    if (editorHasUnsavedChanges() && !await showAppConfirm('Сохранить текущие изменения перед созданием меню?')) return;
     if (editorHasUnsavedChanges()) document.getElementById('btnToolbarMenuSave').click();
     const source = getActiveToolbarMenu();
     toolbarMenuPreviousActiveId = activeToolbarMenuId;
@@ -328,9 +327,9 @@ document.getElementById('btnToolbarMenuNew').addEventListener('click', () => {
     renderToolbarMenuEditor();
     document.querySelector(`.toolbar-menu-preset[data-menu-id="${editingToolbarMenu.id}"] .toolbar-menu-preset-name`)?.focus();
 });
-function deleteToolbarMenu(id) {
+async function deleteToolbarMenu(id) {
     const menu = toolbarMenus.find(item => item.id === id);
-    if (!menu || toolbarMenus.length < 2 || !confirm(`Удалить меню «${menu.name}»?`)) return;
+    if (!menu || toolbarMenus.length < 2 || !await showAppConfirm(`Удалить меню «${menu.name}»?`)) return;
     toolbarMenus = toolbarMenus.filter(item => item.id !== id);
     if (!toolbarMenus.length) toolbarMenus = [{ ...defaultToolbarMenu }];
     const activeMenuWasDeleted = activeToolbarMenuId === id;
@@ -346,12 +345,12 @@ document.getElementById('btnToolbarMenuSave').addEventListener('click', () => {
     if (!editingToolbarMenu) return;
     const name = editingToolbarMenu.name.trim();
     if (!name) {
-        alert('Укажите название набора меню.');
+        showAppAlert('Укажите название набора меню.', 'Название меню');
         document.querySelector(`.toolbar-menu-preset[data-menu-id="${editingToolbarMenu.id}"] .toolbar-menu-preset-name`)?.focus();
         return;
     }
     if (!editingToolbarMenu.deviceTypes.length) {
-        alert('Выберите хотя бы один датчик или инструмент для набора меню.');
+        showAppAlert('Выберите хотя бы один датчик или инструмент для набора меню.', 'Пустое меню');
         return;
     }
     editingToolbarMenu.name = name.slice(0, 32);
