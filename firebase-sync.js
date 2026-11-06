@@ -328,8 +328,10 @@ async function deleteCloudProject(projectId, metadata) {
 }
 
 async function openCloudProjects() {
+    if (!cloudUser && window.firebase?.auth) {
+        cloudUser = window.firebase.auth().currentUser;
+    }
     if (!cloudUser) {
-        document.getElementById('welcomeModal').style.display = 'flex';
         showAppAlert('Войдите через Google, чтобы открыть облачные проекты.', 'Облачные проекты');
         return;
     }

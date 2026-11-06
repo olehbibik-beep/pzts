@@ -32,6 +32,7 @@ async function getFirebaseAuth() {
             if (!window.firebase?.auth) await loadFirebaseScript(firebaseSdkUrls[1]);
             if (!window.firebase.apps.length) window.firebase.initializeApp(FIREBASE_CONFIG);
             firebaseAuthInstance = window.firebase.auth();
+            window.getFirebaseUser = () => firebaseAuthInstance.currentUser;
             await firebaseAuthInstance.setPersistence(window.firebase.auth.Auth.Persistence.LOCAL);
                         firebaseAuthInstance.onAuthStateChanged(user => {
                 const status = document.getElementById('googleAuthStatus');
