@@ -438,6 +438,10 @@ devTextInput.addEventListener('keypress', function (e) { if (e.key === 'Enter') 
 
 window.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (isOverviewMode) {
+        if (e.key === 'Escape') closeBuildingOverview();
+        return;
+    }
     if (!isSystemReady) {
         if (e.key === 'Escape') document.getElementById('cloudProjectsModal').style.display = 'none';
         return;
@@ -1099,83 +1103,53 @@ async function initProject() {
     }
 }
 
-let btnOverview = document.getElementById('btnOverview');
-if(btnOverview) { 
-    btnOverview.addEventListener('click', (e) => { 
-        e.preventDefault(); e.stopPropagation();
-        document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
-        editingDevice = null; 
-        isOverviewMode = true;
-        document.getElementById('overviewScreen').style.display = 'flex';
-        
-        setTimeout(() => { if(typeof drawBuildingOverview === 'function') drawBuildingOverview(); }, 50);
-    }); 
-}
-
-let btnCloseOverview = document.getElementById('btnCloseOverviewScreen');
-if(btnCloseOverview) {
-    btnCloseOverview.addEventListener('click', () => {
-        document.getElementById('overviewScreen').style.display = 'none';
-        isOverviewMode = false;
-        
-        setTimeout(() => {
-            window.dispatchEvent(new Event('resize'));
-            requestRedraw();
-        }, 50);
+function closeBuildingOverview(index = currentFloorIndex) {
+    const changed = index !== currentFloorIndex;
+    currentFloorIndex = index;
+    document.getElementById('overviewScreen').style.display = 'none';
+    isOverviewMode = false;
+    window.clearGoomTooltips?.();
+    requestAnimationFrame(() => {
+        window.dispatchEvent(new Event('resize'));
+        if (changed) changeFloor();
+        else requestRedraw();
+        document.getElementById('btnOverview').focus({ preventScroll: true });
     });
 }
 
-const overviewCanvas = document.getElementById('overviewCanvas');
-if (overviewCanvas) {
-    overviewCanvas.addEventListener('mousemove', (e) => {
-        if (!isOverviewMode) return;
-        const rect = overviewCanvas.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        
-        let foundHover = null;
-        if (window.overviewHitboxes) {
-            for (let hb of window.overviewHitboxes) {
-                if (x >= hb.xMin && x <= hb.xMax && y >= hb.yMin && y <= hb.yMax) {
-                    foundHover = hb.realIndex;
-                    break;
-                }
-            }
-        }
-        
-        if (window.hoveredOverviewFloor !== foundHover) {
-            window.hoveredOverviewFloor = foundHover;
-            overviewCanvas.style.cursor = foundHover !== null ? 'pointer' : 'default';
-            if (typeof drawBuildingOverview === 'function') drawBuildingOverview();
-        }
+document.getElementById('btnOverview').addEventListener('click', event => {
+    event.preventDefault(); event.stopPropagation();
+    if (!isSystemReady || !floors.length) return;
+    document.querySelectorAll('.modal').forEach(modal => modal.style.display = 'none');
+    editingDevice = null; clearCanvasDrag(); window.clearGoomTooltips?.();
+    isOverviewMode = true;
+    document.getElementById('overviewScreen').style.display = 'flex';
+    requestRedraw();
+    requestAnimationFrame(() => {
+        drawBuildingOverview();
+        document.querySelector('.overview-floor[aria-current="true"]')?.focus({ preventScroll: true });
     });
-
-    overviewCanvas.addEventListener('click', (e) => {
-        if (!isOverviewMode) return;
-        const rect = overviewCanvas.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        
-        if (window.overviewHitboxes) {
-            for (let hb of window.overviewHitboxes) {
-                if (x >= hb.xMin && x <= hb.xMax && y >= hb.yMin && y <= hb.yMax) {
-                    if (hb.realIndex !== -1) {
-                        currentFloorIndex = hb.realIndex;
-                        
-                        document.getElementById('overviewScreen').style.display = 'none';
-                        isOverviewMode = false;
-                        
-                        setTimeout(() => {
-                            window.dispatchEvent(new Event('resize'));
-                            changeFloor();
-                        }, 50);
-                    }
-                    break;
-                }
-            }
-        }
-    });
-}
+});
+document.getElementById('btnCloseOverviewScreen').addEventListener('click', () => closeBuildingOverview());
+document.getElementById('overviewFloors').addEventListener('click', event => {
+    const button = event.target.closest('[data-overview-floor]');
+    if (!button || button.disabled || !isOverviewMode) return;
+    const index = getOverviewFloorIndex(button.dataset.overviewFloor);
+    if (index >= 0) closeBuildingOverview(index);
+});
+document.getElementById('overviewFloors').addEventListener('keydown', event => {
+    if (!['ArrowDown','ArrowUp','Home','End'].includes(event.key)) return;
+    event.preventDefault(); event.stopPropagation();
+    const buttons = [...document.querySelectorAll('.overview-floor:not(:disabled)')];
+    if (!buttons.length) return;
+    let next = buttons.indexOf(document.activeElement);
+    if (event.key === 'Home') next = 0;
+    else if (event.key === 'End') next = buttons.length - 1;
+    else next = (next + (event.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length;
+    buttons[next].focus({ preventScroll: true });
+});
+new ResizeObserver(() => { if (isOverviewMode) drawBuildingOverview(); }).observe(document.getElementById('overviewStage'));
+window.addEventListener('goom-language-changed', () => { if (isOverviewMode) drawBuildingOverview(); });
 
  function centerCurrentFloor() {
     const floor = floors[currentFloorIndex];
@@ -1426,16 +1400,6 @@ if (pInput) {
         projectName = e.target.value;
         triggerAutoSave(); 
     });
-}
-
-let btnOverviewNameSync = document.getElementById('btnOverview');
-if(btnOverviewNameSync) { 
-    btnOverviewNameSync.addEventListener('click', () => { 
-        let pNameDisplay = document.getElementById('overviewProjectNameDisplay');
-        if (pNameDisplay) {
-            pNameDisplay.textContent = projectName || tr("Bez názvu");
-        }
-    }); 
 }
 
 const arrowTabBtn = document.getElementById('arrowTabBtn');

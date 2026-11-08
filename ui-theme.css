@@ -18,6 +18,30 @@ body::after {
 .toolbar { border-radius: 10px 10px 0 0; }
 .canvas-container { border-radius: 0 0 10px 10px; }
 #overviewScreen { top: var(--app-edge) !important; left: var(--app-edge) !important; width: calc(100vw - 2 * var(--app-edge)) !important; height: calc(100dvh - 2 * var(--app-edge)) !important; border-radius: 10px; overflow: hidden; }
+#overviewScreen { position: fixed; z-index: 999999; flex-direction: column; background: #252529; }
+#overviewCanvasContainer { flex: 1; min-height: 0; width: 100%; overflow: auto; }
+#overviewStage { position: relative; width: 100%; height: 100%; min-height: 360px; }
+#overviewCanvas { display: block; position: absolute; inset: 0; width: 100%; height: 100%; }
+#overviewFloors { position: absolute; inset: 0; }
+#overviewScreen button { user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
+.overview-floor {
+    position: absolute; display: grid; grid-template-columns: 64px minmax(0,1fr) 48px;
+    align-items: center; gap: 12px; box-sizing: border-box; padding: 0;
+    border: 0; border-radius: 7px; background: transparent; color: #a7a7ad;
+    font: 600 16px 'Segoe UI', sans-serif; cursor: pointer; touch-action: manipulation;
+}
+.overview-floor-label { text-align: right; }
+.overview-floor-body { align-self: stretch; border-radius: 4px; }
+.overview-floor:hover .overview-floor-body, .overview-floor:focus-visible .overview-floor-body { background: rgba(255,255,255,.09); }
+.overview-floor[aria-current="true"] .overview-floor-body { background: rgba(255,255,255,.06); box-shadow: inset 3px 0 #c4c4c9; }
+.overview-floor[aria-current="true"] .overview-floor-label { color: #f0f0f2; }
+.overview-floor:focus-visible { outline: 1px solid #c4c4c9; outline-offset: -2px; }
+.overview-floor:disabled { color: #626268; cursor: default; }
+.overview-floor:disabled .overview-floor-body { background: none; }
+.overview-floor-count { justify-self: start; min-width: 26px; padding: 4px; border-radius: 5px; font-size: 12px; background: #37373d; color: #d4d4d8; }
+.overview-footer { flex: 0 0 56px; display: flex; align-items: center; justify-content: center; box-sizing: border-box; padding: 6px 12px; border-top: 1px solid #45454b; background: #1c1c1f; }
+.overview-footer .overview-return { min-height: 44px; padding: 10px 20px; justify-content: center; }
+.overview-return svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 #welcomeModal { padding: 24px; background: transparent; }
 #welcomeModal .welcome-card {
     width: min(1040px, 100%); max-width: 1040px;

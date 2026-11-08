@@ -524,90 +524,85 @@ function redraw() {
 // ==========================================
 // RENDER SŘEZU BUDOVY (PŘEHLED)
 // ==========================================
-window.overviewHitboxes = [];
-window.hoveredOverviewFloor = null;
+const overviewFloorLabels = ['3NP', '2NP', '1NP', '1PP', '2PP'];
+
+function getOverviewFloorIndex(label) {
+    return floors.findIndex(floor => String(floor.name).replace(/\s/g, '').toUpperCase() === label);
+}
+
+function updateOverviewFloorButtons(layout) {
+    const group = document.getElementById('overviewFloors');
+    if (!group.children.length) {
+        for (const label of overviewFloorLabels) {
+            const button = document.createElement('button');
+            button.type = 'button'; button.className = 'overview-floor'; button.dataset.overviewFloor = label;
+            button.innerHTML = '<span class="overview-floor-label"></span><span class="overview-floor-body" aria-hidden="true"></span><span class="overview-floor-count" aria-hidden="true"></span>';
+            button.querySelector('.overview-floor-label').textContent = label;
+            group.appendChild(button);
+        }
+    }
+    [...group.children].forEach((button, row) => {
+        const index = getOverviewFloorIndex(button.dataset.overviewFloor);
+        const count = index < 0 ? 0 : floors[index].devices.filter(device => !['deactivated','textNode','ramen','cableTool'].includes(device.type)).length;
+        button.disabled = index < 0;
+        button.setAttribute('aria-current', String(index === currentFloorIndex));
+        button.setAttribute('aria-label', button.dataset.overviewFloor + ' · ' + tr`Počet prvků: ${count}`);
+        button.style.left = (layout.x - 76) + 'px';
+        button.style.top = (layout.y + row * layout.rowHeight) + 'px';
+        button.style.width = (layout.width + 136) + 'px';
+        button.style.height = layout.rowHeight + 'px';
+        const badge = button.querySelector('.overview-floor-count');
+        badge.hidden = count === 0; badge.textContent = String(count);
+    });
+}
 
 function drawBuildingOverview() {
-    const oCanvas = document.getElementById('overviewCanvas');
-    const container = document.getElementById('overviewCanvasContainer');
-    if(!oCanvas || !container) return;
+    const canvas = document.getElementById('overviewCanvas');
+    const stage = document.getElementById('overviewStage');
+    if (!canvas || !stage || !isOverviewMode) return;
+    const { width, height } = stage.getBoundingClientRect();
+    if (!width || !height) return;
+    const ratio = window.devicePixelRatio || 1;
+    canvas.width = Math.round(width * ratio); canvas.height = Math.round(height * ratio);
+    const context = canvas.getContext('2d');
+    context.setTransform(ratio, 0, 0, ratio, 0, 0);
+    context.fillStyle = '#252529'; context.fillRect(0,0,width,height);
+    context.fillStyle = '#111115'; context.beginPath();
+    for (let x = 14; x < width; x += 28) for (let y = 14; y < height; y += 28) {
+        context.moveTo(x + 1.7, y); context.arc(x,y,1.7,0,Math.PI * 2);
+    }
+    context.fill();
 
-    const rect = container.getBoundingClientRect();
-    oCanvas.width = rect.width; oCanvas.height = rect.height;
+    const buildingWidth = Math.min(440, width - 184);
+    const roofHeight = Math.min(84, buildingWidth * .2);
+    const rowHeight = Math.max(44, Math.min(88, (height - roofHeight - 48) / 5));
+    const totalHeight = roofHeight + 5 * rowHeight;
+    const x = (width - buildingWidth) / 2;
+    const roofTop = (height - totalHeight) / 2;
+    const y = roofTop + roofHeight;
+    const groundY = y + 3 * rowHeight;
+    updateOverviewFloorButtons({ x, y, width: buildingWidth, rowHeight });
 
-    const ctx = oCanvas.getContext('2d');
-    const width = oCanvas.width; const height = oCanvas.height;
+    context.strokeStyle = '#88888f'; context.lineWidth = 1.5; context.setLineDash([8,7]);
+    context.beginPath(); context.moveTo(20,groundY); context.lineTo(width - 20,groundY); context.stroke(); context.setLineDash([]);
+    context.fillStyle = '#aaaab0'; context.font = '12px sans-serif'; context.textAlign = 'left';
+    context.fillText(tr('Terén'), 24, groundY - 10);
 
-    ctx.fillStyle = "#0b0b0d"; ctx.fillRect(0, 0, width, height);
-
-    ctx.strokeStyle = "#1a1a1e"; ctx.lineWidth = 1;
-    for(let i = 0; i < width; i += 20) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, height); ctx.stroke(); }
-    for(let i = 0; i < height; i += 20) { ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(width, i); ctx.stroke(); }
-
-    const bWidth = 480; const bX = (width - bWidth) / 2; 
-    const fHeight = 95; const buildingTotalHeight = (5 * fHeight) + 120; 
-    const startY = (height + buildingTotalHeight) / 2 - 30; 
-    const floorLabels = ["2PP", "1PP", "1NP", "2NP", "3NP"]; 
-    
-    window.overviewHitboxes = [];
-    const groundY = startY - 2 * fHeight; 
-    ctx.strokeStyle = "#22c55e"; ctx.lineWidth = 2; ctx.setLineDash([10, 8]);
-    ctx.beginPath(); ctx.moveTo(20, groundY); ctx.lineTo(width - 20, groundY); ctx.stroke(); ctx.setLineDash([]);
-    ctx.fillStyle = "#22c55e"; ctx.font = "bold 14px sans-serif"; ctx.fillText(tr("Terén"), 30, groundY - 10);
-
-    ctx.strokeStyle = "#0ea5e9"; ctx.lineWidth = 3; ctx.beginPath();
-    ctx.moveTo(bX, startY); ctx.lineTo(bX, startY - 5 * fHeight); ctx.lineTo(bX + bWidth, startY - 5 * fHeight); ctx.lineTo(bX + bWidth, startY);
-    ctx.closePath(); ctx.stroke();
-
-    ctx.beginPath(); ctx.moveTo(bX - 35, startY - 5 * fHeight); ctx.lineTo(bX + bWidth / 2, startY - 5 * fHeight - 120); ctx.lineTo(bX + bWidth + 35, startY - 5 * fHeight);
-    ctx.closePath(); ctx.fillStyle = "rgba(14, 165, 233, 0.05)"; ctx.fill(); ctx.stroke();
-
-    for(let i=0; i<5; i++) {
-        let currentY = startY - i * fHeight; 
-        let realIdx = floors.findIndex(f => f.name === floorLabels[i]);
-        window.overviewHitboxes.push({ realIndex: realIdx, xMin: bX, xMax: bX + bWidth, yMin: currentY - fHeight, yMax: currentY });
-
-        if (window.hoveredOverviewFloor === realIdx && realIdx !== -1) {
-            ctx.fillStyle = "rgba(255, 255, 255, 0.07)"; ctx.fillRect(bX, currentY - fHeight, bWidth, fHeight);
-        }
-
-        if (i > 0) {
-            ctx.strokeStyle = "#0ea5e9"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(bX, currentY); ctx.lineTo(bX + bWidth, currentY); ctx.stroke();
-        }
-
-        ctx.fillStyle = "#ffffff"; ctx.font = "bold 20px monospace"; ctx.textAlign = "right"; ctx.fillText(floorLabels[i], bX - 25, currentY - 35); ctx.textAlign = "left"; 
-
-        ctx.strokeStyle = "#64748b"; ctx.lineWidth = 2; let winW = 60, winH = 40;
-        if (floorLabels[i] === "1NP") {
-            ctx.strokeRect(bX + bWidth/2 - 30, currentY - 70, 60, 70); ctx.beginPath(); ctx.arc(bX + bWidth/2 + 20, currentY - 35, 3, 0, Math.PI*2); ctx.stroke(); 
-            ctx.strokeRect(bX + 50, currentY - 60, winW, winH); ctx.strokeRect(bX + bWidth - 50 - winW, currentY - 60, winW, winH);
-        } else if (floorLabels[i].includes("NP")) {
-            ctx.strokeRect(bX + 50, currentY - 60, winW, winH); ctx.strokeRect(bX + bWidth/2 - winW/2, currentY - 60, winW, winH); ctx.strokeRect(bX + bWidth - 50 - winW, currentY - 60, winW, winH);
-        } else {
-            ctx.strokeRect(bX + 80, currentY - 35, 50, 20); ctx.strokeRect(bX + bWidth - 130, currentY - 35, 50, 20);
-        }
-
-        let sysFloor = floors.find(f => f.name === floorLabels[i]);
-        if (sysFloor) {
-            let validDevices = sysFloor.devices.filter(d => d.type !== 'deactivated' && d.type !== 'textNode' && d.type !== 'ramen' && d.type !== 'cableTool');
-            let devCount = validDevices.length; let hasPanel = validDevices.some(d => d.type === 'panel');
-            let cx = bX + bWidth + 50; let cy = currentY - 45;
-
-            if (devCount > 0) {
-                ctx.fillStyle = "#ef4444"; ctx.beginPath(); ctx.arc(cx, cy, 18, 0, Math.PI*2); ctx.fill();
-                ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 2; ctx.stroke();
-                ctx.fillStyle = "#ffffff"; ctx.font = "bold 15px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(devCount, cx, cy);
-            } else {
-                ctx.fillStyle = "#252529"; ctx.beginPath(); ctx.arc(cx, cy, 10, 0, Math.PI*2); ctx.fill();
-            }
-
-            if (hasPanel) {
-                let pztsX = cx + 30; let pW = 50, pH = 24, pR = 4;
-                ctx.fillStyle = "#0ea5e9"; ctx.beginPath();
-                ctx.moveTo(pztsX + pR, cy - pH/2); ctx.lineTo(pztsX + pW - pR, cy - pH/2); ctx.quadraticCurveTo(pztsX + pW, cy - pH/2, pztsX + pW, cy - pH/2 + pR); ctx.lineTo(pztsX + pW, cy + pH/2 - pR); ctx.quadraticCurveTo(pztsX + pW, cy + pH/2, pztsX + pW - pR, cy + pH/2); ctx.lineTo(pztsX + pR, cy + pH/2); ctx.quadraticCurveTo(pztsX, cy + pH/2, pztsX, cy + pH/2 - pR); ctx.lineTo(pztsX, cy - pH/2 + pR); ctx.quadraticCurveTo(pztsX, cy - pH/2, pztsX + pR, cy - pH/2); ctx.fill();
-                ctx.fillStyle = "#ffffff"; ctx.font = "bold 13px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("PZTS", pztsX + pW/2, cy + 1);
-            }
-            ctx.textAlign = "left"; ctx.textBaseline = "alphabetic"; 
+    context.fillStyle = 'rgba(255,255,255,.025)'; context.strokeStyle = '#99999f'; context.lineWidth = 2;
+    context.beginPath(); context.moveTo(x - 24,y); context.lineTo(x + buildingWidth / 2,roofTop); context.lineTo(x + buildingWidth + 24,y); context.closePath(); context.fill(); context.stroke();
+    context.fillRect(x,y,buildingWidth,5 * rowHeight); context.strokeRect(x,y,buildingWidth,5 * rowHeight);
+    context.fillStyle = 'rgba(0,0,0,.1)'; context.fillRect(x,groundY,buildingWidth,2 * rowHeight);
+    for (let row = 0; row < 5; row++) {
+        const top = y + row * rowHeight;
+        if (row) { context.strokeStyle = '#77777f'; context.lineWidth = 1; context.beginPath(); context.moveTo(x,top); context.lineTo(x + buildingWidth,top); context.stroke(); }
+        context.strokeStyle = '#88888f'; context.lineWidth = 1.5;
+        const windowWidth = buildingWidth * .115, windowHeight = rowHeight * (row > 2 ? .2 : .32);
+        const centers = row > 2 ? [.25,.75] : row === 2 ? [.2,.8] : [.2,.5,.8];
+        for (const center of centers) context.strokeRect(x + buildingWidth * center - windowWidth / 2, top + (rowHeight - windowHeight) / 2, windowWidth,windowHeight);
+        if (row === 2) {
+            const doorWidth = buildingWidth * .11, doorHeight = rowHeight * .68;
+            context.strokeRect(x + buildingWidth / 2 - doorWidth / 2,top + rowHeight - doorHeight,doorWidth,doorHeight);
+            context.beginPath(); context.arc(x + buildingWidth / 2 + doorWidth * .28,top + rowHeight - doorHeight / 2,1.7,0,Math.PI * 2); context.stroke();
         }
     }
 }
