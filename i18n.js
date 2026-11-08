@@ -185,7 +185,14 @@
         ['Firemní údaje můžete upravit později. PRO je dostupné v uživatelském účtu.', 'You can edit company details later. PRO is available in your account.'],
         ['Ovládání detektoru', 'Detector controls'], ['Výběr', 'Select'], ['Posun', 'Pan'], ['Výběr detektoru', 'Select detector'],
         ['Posun plánu', 'Pan plan'], ['Otočit o 90°', 'Rotate 90°'], ['Duplikovat', 'Duplicate'], ['Odstranit vybrané', 'Delete selected'],
-        ['Synchronizace je připravena', 'Sync is ready'], ['Místní ukládání', 'Local saving']
+        ['Synchronizace je připravena', 'Sync is ready'], ['Místní ukládání', 'Local saving'],
+        ['PZTS PRO — 39 € / měsíc', 'PZTS PRO — €39 / month'], ['PRO Suite — 99 € / měsíc', 'PRO Suite — €99 / month'],
+        ['Měsíční předplatné PZTS', 'Monthly PZTS subscription'], ['Měsíčně: PZTS, EPS, CCTV a SK', 'Monthly: PZTS, EPS, CCTV and SK'],
+        ['Předplatné se obnovuje každý měsíc od data nákupu. Automatické obnovení můžete zrušit v účtu.', 'Your subscription renews monthly from the purchase date. You can cancel automatic renewal in your account.'],
+        ['Spravovat předplatné', 'Manage subscription'], ['Přístup do: {0}', 'Access until: {0}'],
+        ['Automatické obnovení je vypnuto.', 'Automatic renewal is off.'], ['Měsíční předplatné.', 'Monthly subscription.'],
+        ['Správu předplatného nyní nelze otevřít. Zkuste to později.', 'Subscription management is unavailable. Please try again later.'], ['Adresa', 'Address'],
+        ['Máte již předplatné. Spravujte je v uživatelském účtu.', 'You already have a subscription. Manage it in your account.']
     ];
 
     const catalog = new Map();

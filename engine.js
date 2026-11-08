@@ -63,6 +63,12 @@ function recalcCableHandles(c, d1, d2) {
     c.h3x = d1.x + (d2.x - d1.x)*0.75; c.h3y = d1.y + (d2.y - d1.y)*0.75;
 }
 
+function getDeviceAddressParts(device) {
+    if (!device.number || ['panel', 'abax', 'textNode', 'ramen', 'deactivated', 'cableTool'].includes(device.type)) return { prefix: '', number: '' };
+    const prefix = ['expander', 'keypad', 'siren'].includes(device.type) ? '' : `${device.loopId || 1}/`;
+    return { prefix, number: String(device.number) };
+}
+
 function calculateDynamicNumbersGlobal(floorsArray) {
     if (!floorsArray || floorsArray.length === 0) return;
 

@@ -370,16 +370,25 @@ function drawDevice(ctx, dev, skipSelection = false) {
     }
     ctx.restore(); 
 
-    let labelText = "";
-    if (!['panel', 'abax', 'textNode', 'ramen'].includes(dev.type)) { labelText = dev.number ? String(dev.number) : ""; }
+    const label = getDeviceAddressParts(dev);
+    const labelText = label.prefix + label.number;
 
     if (labelText !== "" || (dev.manualName && dev.type !== 'textNode')) {
         ctx.textAlign = "center"; ctx.textBaseline = "middle";
         let textX = dev.x + size + (8 * labelScale); let textY = dev.y + size + (8 * labelScale);
         if (labelText !== "") {
-            let radius = 10 * labelScale; if (labelText.length > 2) radius = 12 * labelScale;
-            ctx.fillStyle = "#000000"; ctx.beginPath(); ctx.arc(textX, textY, radius, 0, Math.PI*2); ctx.fill();
-            ctx.font = "bold " + (12 * labelScale) + "px sans-serif"; ctx.fillStyle = "#ffffff"; ctx.fillText(labelText, textX, textY);
+            const fontSize = 12 * labelScale;
+            ctx.font = `400 ${fontSize}px sans-serif`;
+            const prefixWidth = ctx.measureText(label.prefix).width;
+            ctx.font = `700 ${fontSize}px sans-serif`;
+            const numberWidth = ctx.measureText(label.number).width;
+            const width = prefixWidth + numberWidth;
+            ctx.fillStyle = '#000'; ctx.beginPath();
+            ctx.roundRect(textX - width / 2 - 5 * labelScale, textY - 10 * labelScale, width + 10 * labelScale, 20 * labelScale, 9 * labelScale); ctx.fill();
+            ctx.fillStyle = '#fff'; ctx.textAlign = 'left';
+            ctx.font = `400 ${fontSize}px sans-serif`; ctx.fillText(label.prefix, textX - width / 2, textY);
+            ctx.font = `700 ${fontSize}px sans-serif`; ctx.fillText(label.number, textX - width / 2 + prefixWidth, textY);
+            ctx.textAlign = 'center';
         }
         if (dev.manualName && dev.type !== 'textNode') { 
             let nameY = (labelText !== "") ? textY + (16 * labelScale) : textY;

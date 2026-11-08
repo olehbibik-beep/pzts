@@ -13,8 +13,9 @@ service cloud.firestore {
       return owner(uid) && request.auth.token.email_verified == true
         && license.status == 'active' && license.uid == uid && license.plan == 'pro'
         && license.paymentStatus == 'paid' && license.source == 'stripe'
+        && license.billingMode == 'monthly'
         && application in license.applications
-        && (license.expiresAt == null || license.expiresAt > request.time);
+        && license.applicationExpiresAt[application] > request.time;
     }
     function validProfile() {
       let p = request.resource.data;

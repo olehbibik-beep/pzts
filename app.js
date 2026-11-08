@@ -771,7 +771,8 @@ container.addEventListener('pointermove', (e) => {
                 document.getElementById('ttLoop').style.display = 'block';
                 
                 let isManual = foundHoverDevice.manualNumber ? tr(" (Ručně)") : "";
-                document.getElementById('ttNumber').innerHTML = `Adresa: <strong>${foundHoverDevice.number || "Auto"}</strong><span>${isManual}</span>`;
+                const address = getDeviceAddressParts(foundHoverDevice);
+                document.getElementById('ttNumber').innerHTML = `${tr('Adresa')}: ${address.prefix}<strong>${address.number || 'Auto'}</strong><span>${isManual}</span>`;
                 document.getElementById('ttLoop').textContent = tr`Sběrnice: ${foundHoverDevice.loopId || 1}`;
             }
 
@@ -934,6 +935,7 @@ container.addEventListener('pointercancel', () => {
 });
 
 function loadDefaultFloors(showWelcome = false, newProjectName = tr("Nový projekt")) {
+    resetPlacementTool();
     window.resetActiveCloudProject?.();
     customDeviceIcons = {};
     if (typeof refreshCustomDeviceIcons === 'function') refreshCustomDeviceIcons();
@@ -966,6 +968,7 @@ function loadDefaultFloors(showWelcome = false, newProjectName = tr("Nový proje
 }
     
 function showWelcomeScreen(step = 'auth') {
+    resetPlacementTool();
     if (!['auth', 'email'].includes(step) && !window.getFirebaseUser?.()) step = 'auth';
     const modal = document.getElementById('welcomeModal');
     modal.dataset.step = step;
@@ -979,7 +982,16 @@ function showWelcomeScreen(step = 'auth') {
     naming.style.display = step === 'naming' ? 'flex' : 'none';
 }
 
-async function initProject() { 
+function resetPlacementTool() {
+    selectedTool = 'select';
+    window.tabletPanMode = false;
+    document.querySelectorAll('#deviceSelector .device-btn').forEach(button => button.classList.remove('active'));
+    activeDeviceIds.clear();
+    clearCanvasDrag();
+    window.clearGoomTooltips?.();
+}
+
+async function initProject() {
     try {
         canvas.width = container.clientWidth; canvas.height = container.clientHeight;
         updateLoopSelect();
@@ -1382,7 +1394,7 @@ function importFileContent(file, options = {}) {
             
             currentFloorIndex = (data && data.currentFloorIndex !== undefined) ? data.currentFloorIndex : 0;
             if (currentFloorIndex >= floors.length || currentFloorIndex < 0) currentFloorIndex = 0; 
-            
+            resetPlacementTool();
             isSystemReady = true; 
             changeFloor(); 
             saveStateToHistory(); 

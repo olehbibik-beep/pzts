@@ -32,8 +32,10 @@
             const url = new URL(result.url);
             if (url.protocol !== 'https:' || url.hostname !== 'checkout.stripe.com') throw new Error('Invalid checkout URL');
             window.location.assign(url.href);
-        } catch {
-            byId('proPurchaseStatus').textContent = tr('Platbu nyní nelze otevřít. Zkuste to později.');
+        } catch (error) {
+            byId('proPurchaseStatus').textContent = tr(error.code?.includes('already-exists')
+                ? 'Máte již předplatné. Spravujte je v uživatelském účtu.'
+                : 'Platbu nyní nelze otevřít. Zkuste to později.');
         } finally { purchasePending = false; byId('btnProPurchase').disabled = false; }
     });
     async function handleReturn() {

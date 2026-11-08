@@ -5,6 +5,7 @@
     let generation = 0;
     let ready = Promise.resolve();
     let unsubscribe = [];
+    let expiryTimer;
     const byId = id => document.getElementById(id);
     const userIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21v-2a8 8 0 0 1 16 0v2"></path></svg>';
 
@@ -17,13 +18,13 @@
     }
     window.isValidCompanyIco = validIco;
     function licenseIsCurrent() {
-        if (!license?.expiresAt) return true;
-        const expiresAt = license.expiresAt.toMillis?.() ?? license.expiresAt.seconds * 1000;
+        const value = license?.applicationExpiresAt?.[APP_PRODUCT];
+        const expiresAt = value?.toMillis?.() ?? value?.seconds * 1000;
         return Number.isFinite(expiresAt) && expiresAt > Date.now();
     }
     window.hasProAccess = () => Boolean(window.getFirebaseUser()?.emailVerified && uid === window.getFirebaseUser()?.uid
         && license?.status === 'active' && license.uid === uid && license.plan === 'pro'
-        && license.paymentStatus === 'paid' && license.source === 'stripe'
+        && license.paymentStatus === 'paid' && license.source === 'stripe' && license.billingMode === 'monthly'
         && license.applications?.includes(APP_PRODUCT) && licenseIsCurrent());
     window.hasCloudAccess = window.hasProAccess;
 
@@ -49,6 +50,12 @@
         byId('accountCloudKeyBlock').hidden = !entitled;
         byId('accountCloudKey').value = entitled ? license.licenseId || `PZTS-PRO-${license.keySuffix}` : '';
         byId('btnAccountCopyKey').hidden = !entitled;
+        byId('btnManageSubscription').hidden = !license?.billingCustomerId;
+        const expires = license?.applicationExpiresAt?.[APP_PRODUCT];
+        const expiryMs = expires?.toMillis?.() ?? expires?.seconds * 1000;
+        byId('accountSubscriptionPeriod').textContent = Number.isFinite(expiryMs)
+            ? tr`Přístup do: ${new Date(expiryMs).toLocaleDateString(getGoomLanguage() === 'cs' ? 'cs-CZ' : 'en-GB')}`
+                + ' · ' + tr(license.cancelAtPeriodEnd ? 'Automatické obnovení je vypnuto.' : 'Měsíční předplatné.') : '';
         const label = tr('Uživatelský účet');
         const toolbarButton = byId('btnOpenCloudProjectsToolbar');
         toolbarButton.setAttribute('aria-label', label);
@@ -61,6 +68,10 @@
     }
     function announce() {
         render();
+        clearTimeout(expiryTimer);
+        const expires = license?.applicationExpiresAt?.[APP_PRODUCT];
+        const expiryMs = expires?.toMillis?.() ?? expires?.seconds * 1000;
+        if (expiryMs > Date.now()) expiryTimer = setTimeout(announce, Math.min(2147483647, expiryMs - Date.now() + 25));
         document.dispatchEvent(new CustomEvent('goom-account-changed', { detail: { user: window.getFirebaseUser(), profile, licensed: window.hasCloudAccess() } }));
     }
     function fillForm() {
@@ -222,6 +233,17 @@
     byId('btnAccountSignOut').addEventListener('click', async () => {
         try { await (await getFirebaseAuth()).signOut(); }
         catch { feedback(tr('Не удалось выйти из аккаунта'), true); }
+    });
+    byId('btnManageSubscription').addEventListener('click', async event => {
+        const button = event.currentTarget;
+        button.disabled = true;
+        try {
+            const result = await window.callProBilling('createProPortal');
+            const url = new URL(result.url);
+            if (url.protocol !== 'https:' || url.hostname !== 'billing.stripe.com') throw new Error('Invalid billing URL');
+            location.assign(url.href);
+        } catch { feedback(tr('Správu předplatného nyní nelze otevřít. Zkuste to později.'), true); }
+        finally { button.disabled = false; }
     });
     window.addEventListener('goom-language-changed', render);
     render();

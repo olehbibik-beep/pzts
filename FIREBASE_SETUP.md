@@ -1,6 +1,6 @@
 # PZTS / GooM Special Edition — Firebase deployment
 
-Release: `20261108-pro-ui-4`. Czech is the default; English is available. Publish the website, rules, and billing functions together. GitHub uploads do not deploy Firebase rules or functions.
+Release: `20261108-monthly-ui-5`. Czech is the default; English is available. Publish the website, rules, and billing functions together. GitHub uploads do not deploy Firebase rules or functions.
 
 ## Authentication
 
@@ -12,14 +12,14 @@ References: [password authentication](https://firebase.google.com/docs/auth/web/
 
 ## Paid access
 
-| Purchase | One-time price | Applications |
+| Purchase | Monthly price | Applications |
 | --- | --- | --- |
-| PZTS PRO | 39 EUR | PZTS |
-| PRO Suite | 99 EUR | PZTS, EPS, CCTV, SK |
+| PZTS PRO | 39 EUR / month | PZTS |
+| PRO Suite | 99 EUR / month | PZTS, EPS, CCTV, SK |
 
 UPDATE PRO in the account panel enables cloud plan storage, menu/icon editing and planning hints. Personal and company accounts can purchase. The suite entitlement supports four applications; this release contains PZTS only.
 
-The server creates Stripe Checkout sessions using configured prices. A signed webhook or server confirmation retrieves and validates the payment, then writes the entitlement via Firebase Admin. Redirect parameters cannot activate PRO. Full refunds revoke the affected purchase while preserving other paid purchases. License IDs are account-bound references, not transferable login credentials.
+The server creates Stripe Checkout sessions using configured prices. Signed webhooks and server confirmation validate the subscription, its monthly price, and a paid invoice/payment. Firebase Admin writes an entitlement with a separate expiration date for each application. The monthly billing anchor is the purchase date; no trial or fixed calendar day is applied. Redirect parameters cannot activate PRO. Paid invoices extend the paid period; failed renewals never extend it. Disabling renewal keeps the paid period, and a canceled/deleted subscription revokes access. Full refunds revoke the affected paid month; later paid months can restore access. License IDs are account-bound references, not transferable login credentials.
 
 See [STRIPE_SETUP_RU.md](STRIPE_SETUP_RU.md). Real payments have not been configured or deployed in this workspace.
 
@@ -29,13 +29,13 @@ See [STRIPE_SETUP_RU.md](STRIPE_SETUP_RU.md). Real payments have not been config
 | --- | --- |
 | `users/{uid}` | Owner profile, IČO, language |
 | `cloudLicenses/{uid}` | Owner-readable, server-written paid entitlement |
-| `proPurchases/{checkoutSessionId}` | Server-only receipts |
+| `proSubscriptions/{subscriptionId}` | Server-only subscription state, customer and paid invoice period |
 | `users/{uid}/projects/{projectId}` | Existing PZTS cloud metadata |
 | Storage: `users/{uid}/projects/{projectId}/{fileName}` | Existing PZTS files |
 | `users/{uid}/apps/{application}/projects/{projectId}` | Metadata namespace for each application |
 | Storage: `users/{uid}/apps/{application}/projects/{projectId}/{fileName}` | Files for each application |
 
-Rules check ownership, verified email, paid server entitlement, application and expiry. All browser writes to licenses are denied. Old free company keys do not satisfy the new rules; existing project files are not deleted.
+Rules check ownership, verified email, paid monthly server entitlement and the application-specific expiry. All browser writes to licenses are denied. Old free company keys and non-expiring one-time entitlements do not satisfy the monthly rules; existing project files are not deleted.
 
 ```powershell
 firebase deploy --project pztsepscctv --only "firestore:rules,storage"
@@ -63,3 +63,5 @@ npm run test:firebase
 UI tests use headless Microsoft Edge. Firebase tests require Java 21+ and Firebase CLI and run against local `demo-goom` Authentication, Firestore and Storage emulators. Billing tests use simulated Stripe responses and signature validation. The real-SDK flow uses Admin against emulators for trusted paid fulfillment. Tests do not modify production data or charge real cards.
 
 Never put Stripe secret keys or service-account credentials in frontend files or the release archive.
+
+For migration, create new Stripe monthly recurring prices and use their IDs; the former one-time Price IDs are rejected. Enable Customer Portal with payment-method updates, invoice history and cancellation at period end. Publish createProPortal as well as Checkout, confirmation and webhook functions. See STRIPE_SETUP_RU.md for required renewal/cancellation events.

@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GOOM</title>
-    <script src="i18n.js?v=20261108-pro-ui-4"></script>
-    <script src="device-support.js?v=20261108-pro-ui-4"></script>
+    <script src="i18n.js?v=20261108-monthly-ui-5"></script>
+    <script src="device-support.js?v=20261108-monthly-ui-5"></script>
     <style>
         :root {
             --bg-main: #121214; --bg-toolbar: #1c1c1f; --bg-input: #252529;
@@ -151,7 +151,7 @@
             display: flex; flex-direction: row; position: relative; border-radius: 0;
             border: 0; background: transparent; box-shadow: none; isolation: isolate;
         }
-        #welcomeModal .welcome-card::before { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: url('Hi.png?v=20261108-accounts-cs-en-3') center / contain no-repeat; }
+        #welcomeModal .welcome-card::before { display: none; }
         .welcome-controls { position: absolute; top: 0; left: 0; right: 0; z-index: 3; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px; pointer-events: none; }
         .welcome-controls > * { pointer-events: auto; }
         .welcome-back { width: 42px; height: 42px; padding: 10px; border: 0; border-radius: 50%; background: rgba(18,18,20,0.8); color: #fff; cursor: pointer; }
@@ -441,7 +441,7 @@
 
 
     </style>
-    <link rel="stylesheet" href="ui-theme.css?v=20261108-pro-ui-4">
+    <link rel="stylesheet" href="ui-theme.css?v=20261108-monthly-ui-5">
 </head>
 <body>
     <div id="deviceSupportNotice" role="alert">
@@ -522,7 +522,7 @@
                     <button class="device-btn" data-type="keypad" title="Klávesnice EZS"><svg width="24" height="24" viewBox="0 0 32 32"><rect x="6" y="6" width="20" height="20" fill="#ffffff" stroke="#52525b" stroke-width="2"/><polygon points="6,26 26,6 26,26" fill="#52525b"/></svg></button>
                     <div class="menu-divider"></div>
                     
-                    <button class="device-btn active" data-type="pir" title="Prostorový PIR detektor"><svg width="24" height="24" viewBox="0 0 32 32"><path d="M28,16 L10,6 A20,20 0 0,0 10,26 Z" fill="#ffffff" stroke="#22c55e" stroke-width="2"/><line x1="2" y1="6" x2="7" y2="9" stroke="#22c55e" stroke-width="2"/><line x1="0" y1="16" x2="5" y2="16" stroke="#22c55e" stroke-width="2"/><line x1="2" y1="26" x2="7" y2="23" stroke="#22c55e" stroke-width="2"/></svg></button>
+                    <button class="device-btn" data-type="pir" title="Prostorový PIR detektor"><svg width="24" height="24" viewBox="0 0 32 32"><path d="M28,16 L10,6 A20,20 0 0,0 10,26 Z" fill="#ffffff" stroke="#22c55e" stroke-width="2"/><line x1="2" y1="6" x2="7" y2="9" stroke="#22c55e" stroke-width="2"/><line x1="0" y1="16" x2="5" y2="16" stroke="#22c55e" stroke-width="2"/><line x1="2" y1="26" x2="7" y2="23" stroke="#22c55e" stroke-width="2"/></svg></button>
                     
                     <button class="device-btn" data-type="pir_wl" title="Bezdrátový PIR detektor"><svg width="24" height="24" viewBox="0 0 32 32"><path d="M28,16 L10,6 A20,20 0 0,0 10,26 Z" fill="#ffffff" stroke="#22c55e" stroke-width="2"/><line x1="2" y1="6" x2="7" y2="9" stroke="#22c55e" stroke-width="2"/><line x1="0" y1="16" x2="5" y2="16" stroke="#22c55e" stroke-width="2"/><line x1="2" y1="26" x2="7" y2="23" stroke="#22c55e" stroke-width="2"/><path d="M22,12 A6,6 0 0,0 22,20 M16,8 A12,12 0 0,0 16,24" fill="none" stroke="#22c55e" stroke-width="1.5"/></svg></button>
                     
@@ -576,7 +576,7 @@
         <div class="modal-content welcome-card" role="dialog" aria-modal="true" aria-label="Vítejte v GOOM">
             <div class="welcome-controls">
                 <button id="btnWelcomeAccount" class="welcome-back" type="button" aria-label="Zpět" title="Zpět" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"></path></svg></button>
-                <select class="language-picker" data-language-select aria-label="Jazyk"><option value="cs">Čeština</option><option value="en">English</option></select>
+                <select class="language-picker" data-language-select aria-label="Jazyk"><option value="cs">Cz</option><option value="en">En</option></select>
             </div>
             <div class="welcome-panel">
                 
@@ -644,7 +644,7 @@
                 <div class="welcome-copyright"><strong>GooM</strong><span>Special Edition</span><small>2026</small></div>
             </div>
             
-            <div class="welcome-art-space"><img src="Hi.png?v=20261108-pro-ui-4" alt="" aria-hidden="true"></div>
+            <div class="welcome-art-space"><img src="Hi.png?v=20261108-monthly-ui-5" alt="" aria-hidden="true"></div>
 
         </div>
     </div>
@@ -652,14 +652,14 @@
     <div id="userAccountModal" class="modal">
         <section class="modal-content account-card" role="dialog" aria-modal="true" aria-labelledby="userAccountTitle">
             <div class="account-header"><h2 id="userAccountTitle">Uživatelský účet</h2><button id="btnAccountClose" class="btn-cad" type="button">Zavřít</button></div>
-            <dl class="account-details">
+            <div class="account-columns"><div class="account-personal"><dl class="account-details">
                 <dt>Jméno</dt><dd id="accountName" data-user-content></dd>
                 <dt>E-mail</dt><dd id="accountEmail" data-user-content></dd>
                 <dt>Typ účtu</dt><dd id="accountTypeLabel"></dd>
                 <dt id="accountIcoLabel" hidden>IČO</dt><dd id="accountIcoValue" data-user-content hidden></dd>
             </dl>
             <form id="accountProfileForm" class="account-form">
-                <label>Jazyk<select class="language-picker account-input" data-language-select aria-label="Jazyk"><option value="cs">Čeština</option><option value="en">English</option></select></label>
+                <label>Jazyk<select class="language-picker account-input" data-language-select aria-label="Jazyk"><option value="cs">Cz</option><option value="en">En</option></select></label>
                 <label>Jméno<input id="accountDisplayName" class="account-input" name="displayName" autocomplete="name" maxlength="120" required></label>
                 <label>Typ účtu<select id="accountTypeSelect" class="account-input" name="accountType"><option value="personal">Osobní účet</option><option value="company">Firma</option></select></label>
                 <label id="accountIcoField" hidden>IČO<input id="accountIcoInput" class="account-input" name="ico" inputmode="numeric" maxlength="8" placeholder="8 číslic včetně kontrolní číslice"></label>
@@ -667,7 +667,7 @@
             </form>
             <p id="accountEmailStatus" class="account-note"></p>
             <div class="account-actions"><button id="btnAccountVerifyEmail" class="btn-cad" type="button">Ověřit e-mail</button><button id="btnAccountRefresh" class="btn-cad" type="button">E-mail jsem ověřil(a)</button></div>
-            <div class="account-cloud">
+            </div><div class="account-subscription"><div class="account-cloud">
                 <h3>Cloudové úložiště</h3>
                 <p id="accountCloudInfo" class="account-note"></p>
                 <div id="accountCloudKeyBlock" hidden>
@@ -681,7 +681,7 @@
                 <p id="accountProStatus" class="pro-status"></p>
                 <button id="btnUpdatePro" class="btn-cad auth-primary" type="button">UPDATE PRO</button>
             </div>
-            <p id="accountFeedback" role="status" aria-live="polite" hidden></p>
+            <p id="accountSubscriptionPeriod" class="account-note"></p><button id="btnManageSubscription" class="btn-cad" type="button" hidden>Spravovat předplatné</button></div></div><p id="accountFeedback" role="status" aria-live="polite" hidden></p>
             <div class="account-actions"><button id="btnAccountSignOut" class="btn-cad" type="button">Odhlásit se</button></div>
         </section>
     </div>
@@ -689,13 +689,13 @@
     <div id="proUpgradeModal" class="modal" style="z-index: 460;">
         <section class="modal-content account-card" role="dialog" aria-modal="true" aria-labelledby="proUpgradeTitle">
             <div class="account-header"><h2 id="proUpgradeTitle">PZTS PRO</h2><button id="btnProClose" class="btn-cad" type="button">Zavřít</button></div>
-            <p class="account-note">Rozšiřte svůj účet o nástroje PRO.</p>
-            <ul class="pro-features"><li>Cloudové ukládání plánů</li><li>Editor nabídek a ikon</li><li>Tipy při plánování</li></ul>
+            <div class="pro-columns"><div><p class="account-note">Rozšiřte svůj účet o nástroje PRO.</p>
+            <ul class="pro-features"><li>Cloudové ukládání plánů</li><li>Editor nabídek a ikon</li><li>Tipy při plánování</li></ul></div>
             <div class="pro-offers">
-                <label class="pro-offer"><input type="radio" name="proOffer" value="single" checked><span><strong>PZTS PRO — 39 €</strong><small>Jednorázová licence pro PZTS</small></span></label>
-                <label class="pro-offer"><input type="radio" name="proOffer" value="suite"><span><strong>PRO Suite — 99 €</strong><small>PZTS, EPS, CCTV a SK</small></span></label>
+                <label class="pro-offer"><input type="radio" name="proOffer" value="single" checked><span><strong>PZTS PRO — 39 € / měsíc</strong><small>Měsíční předplatné PZTS</small></span></label>
+                <label class="pro-offer"><input type="radio" name="proOffer" value="suite"><span><strong>PRO Suite — 99 € / měsíc</strong><small>Měsíčně: PZTS, EPS, CCTV a SK</small></span></label>
             </div>
-            <p id="proPurchaseStatus" class="pro-status" role="status" aria-live="polite"></p>
+            </div><p class="account-note">Předplatné se obnovuje každý měsíc od data nákupu. Automatické obnovení můžete zrušit v účtu.</p><p id="proPurchaseStatus" class="pro-status" role="status" aria-live="polite"></p>
             <button id="btnProPurchase" class="btn-cad auth-primary" type="button">Koupit PRO</button>
         </section>
     </div>
@@ -964,6 +964,6 @@
         <button type="button" data-tablet-action="delete" class="tool-danger">×</button>
         <button type="button" data-tablet-action="undo">↶</button>
     </div>
-    <script src="bootstrap.js?v=20261108-pro-ui-4"></script>
+    <script src="bootstrap.js?v=20261108-monthly-ui-5"></script>
 </body>
 </html>

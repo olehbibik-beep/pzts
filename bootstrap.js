@@ -1,6 +1,6 @@
 (() => {
     // Change this version whenever publishing application files together.
-    const version = '20261108-pro-ui-4';
+    const version = '20261108-monthly-ui-5';
     let started = false;
     function loadScript(src) {
         return new Promise((resolve, reject) => {
