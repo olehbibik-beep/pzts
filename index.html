@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GOOM</title>
-    <script src="i18n.js?v=20261108-accounts-cs-en-3"></script>
-    <script src="device-support.js?v=20261108-accounts-cs-en-3"></script>
+    <script src="i18n.js?v=20261108-pro-ui-4"></script>
+    <script src="device-support.js?v=20261108-pro-ui-4"></script>
     <style>
         :root {
             --bg-main: #121214; --bg-toolbar: #1c1c1f; --bg-input: #252529;
@@ -441,6 +441,7 @@
 
 
     </style>
+    <link rel="stylesheet" href="ui-theme.css?v=20261108-pro-ui-4">
 </head>
 <body>
     <div id="deviceSupportNotice" role="alert">
@@ -470,7 +471,6 @@
             <button id="btnOpenCloudProjectsToolbar" class="toolbar-icon-button" type="button" data-open-account title="Uživatelský účet" aria-label="Uživatelský účet">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21v-2a8 8 0 0 1 16 0v2"></path></svg>
             </button>
-            <select class="language-picker" data-language-select aria-label="Jazyk"><option value="cs">Čeština</option><option value="en">English</option></select>
             <span id="cloudSyncIndicator" role="status" aria-live="polite"></span>
 
             <div class="toolbar-section" style="margin-left: auto; gap: 12px;">
@@ -580,9 +580,8 @@
             </div>
             <div class="welcome-panel">
                 
-                <div class="welcome-brand">GOOM</div>
-                <div class="welcome-edition">SPECIAL Edition</div>
-                
+                <div class="welcome-brand">PZTS</div>
+                <div class="welcome-step-content">
                 <div id="welcomeAuthBlock" class="welcome-actions">
                     <h1 class="welcome-heading">Vítejte!</h1>
                     <p class="welcome-description">Přihlaste se a pokračujte ke svým projektům.</p>
@@ -612,7 +611,7 @@
                         <label id="emailConfirmField" hidden>Potvrdit heslo<input id="emailAuthConfirm" class="account-input" type="password" name="passwordConfirm" autocomplete="new-password"></label>
                         <label id="emailTypeField" hidden>Typ účtu<select id="emailAccountType" class="account-input" name="accountType"><option value="personal">Osobní účet</option><option value="company">Firma</option></select></label>
                         <label id="emailIcoField" hidden>IČO<input id="emailCompanyIco" class="account-input" name="ico" inputmode="numeric" maxlength="8" placeholder="8 číslic včetně kontrolní číslice"></label>
-                        <p id="emailCompanyHelp" class="welcome-description" hidden>Po ověření e-mailu získá firemní účet automaticky klíč ke cloudovému úložišti.</p>
+                        <p id="emailCompanyHelp" class="welcome-description" hidden>Firemní údaje můžete upravit později. PRO je dostupné v uživatelském účtu.</p>
                         <p id="emailAuthFeedback" class="account-note" role="status" aria-live="polite" hidden></p>
                         <button id="btnEmailAuthSubmit" class="btn-cad auth-primary" type="submit">Přihlásit se</button>
                         <button id="btnEmailResetPassword" class="auth-link" type="button">Zapomenuté heslo?</button>
@@ -641,12 +640,11 @@
                     </div>
                 </div>
 
-                <div class="welcome-copyright">
-                    2026 GOOM
                 </div>
+                <div class="welcome-copyright"><strong>GooM</strong><span>Special Edition</span><small>2026</small></div>
             </div>
             
-            <div class="welcome-art-space"></div>
+            <div class="welcome-art-space"><img src="Hi.png?v=20261108-pro-ui-4" alt="" aria-hidden="true"></div>
 
         </div>
     </div>
@@ -661,6 +659,7 @@
                 <dt id="accountIcoLabel" hidden>IČO</dt><dd id="accountIcoValue" data-user-content hidden></dd>
             </dl>
             <form id="accountProfileForm" class="account-form">
+                <label>Jazyk<select class="language-picker account-input" data-language-select aria-label="Jazyk"><option value="cs">Čeština</option><option value="en">English</option></select></label>
                 <label>Jméno<input id="accountDisplayName" class="account-input" name="displayName" autocomplete="name" maxlength="120" required></label>
                 <label>Typ účtu<select id="accountTypeSelect" class="account-input" name="accountType"><option value="personal">Osobní účet</option><option value="company">Firma</option></select></label>
                 <label id="accountIcoField" hidden>IČO<input id="accountIcoInput" class="account-input" name="ico" inputmode="numeric" maxlength="8" placeholder="8 číslic včetně kontrolní číslice"></label>
@@ -674,12 +673,30 @@
                 <div id="accountCloudKeyBlock" hidden>
                     <label for="accountCloudKey" class="account-note">Cloudový klíč</label>
                     <input id="accountCloudKey" class="account-input" readonly data-user-content>
-                    <p class="account-note">Klíč uložte na bezpečné místo. Plný klíč se zobrazí pouze po jeho vydání.</p>
-                    <div class="account-actions"><button id="btnAccountCopyKey" class="btn-cad" type="button">Zkopírovat klíč</button><button id="btnAccountRotateKey" class="btn-cad" type="button">Vygenerovat nový klíč</button><button id="btnAccountCloudProjects" class="btn-cad auth-primary" type="button">Cloudové projekty</button></div>
+                    <div class="account-actions"><button id="btnAccountCopyKey" class="btn-cad" type="button">Zkopírovat klíč</button><button id="btnAccountCloudProjects" class="btn-cad auth-primary" type="button">Cloudové projekty</button></div>
                 </div>
+            </div>
+            <div class="pro-card">
+                <h3>UPDATE PRO</h3>
+                <p id="accountProStatus" class="pro-status"></p>
+                <button id="btnUpdatePro" class="btn-cad auth-primary" type="button">UPDATE PRO</button>
             </div>
             <p id="accountFeedback" role="status" aria-live="polite" hidden></p>
             <div class="account-actions"><button id="btnAccountSignOut" class="btn-cad" type="button">Odhlásit se</button></div>
+        </section>
+    </div>
+
+    <div id="proUpgradeModal" class="modal" style="z-index: 460;">
+        <section class="modal-content account-card" role="dialog" aria-modal="true" aria-labelledby="proUpgradeTitle">
+            <div class="account-header"><h2 id="proUpgradeTitle">PZTS PRO</h2><button id="btnProClose" class="btn-cad" type="button">Zavřít</button></div>
+            <p class="account-note">Rozšiřte svůj účet o nástroje PRO.</p>
+            <ul class="pro-features"><li>Cloudové ukládání plánů</li><li>Editor nabídek a ikon</li><li>Tipy při plánování</li></ul>
+            <div class="pro-offers">
+                <label class="pro-offer"><input type="radio" name="proOffer" value="single" checked><span><strong>PZTS PRO — 39 €</strong><small>Jednorázová licence pro PZTS</small></span></label>
+                <label class="pro-offer"><input type="radio" name="proOffer" value="suite"><span><strong>PRO Suite — 99 €</strong><small>PZTS, EPS, CCTV a SK</small></span></label>
+            </div>
+            <p id="proPurchaseStatus" class="pro-status" role="status" aria-live="polite"></p>
+            <button id="btnProPurchase" class="btn-cad auth-primary" type="button">Koupit PRO</button>
         </section>
     </div>
 
@@ -753,10 +770,6 @@
                 <button id="btnMenuSave" class="btn-cad" style="width: 100%; justify-content: flex-start;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
                     Uložit / Export
-                </button>
-                <button id="btnMenuCloudProjects" class="btn-cad" type="button" data-open-account style="width: 100%; justify-content: flex-start;">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21v-2a8 8 0 0 1 16 0v2"></path></svg>
-                    <span id="menuAccountLabel">Uživatelský účet</span>
                 </button>
                 <button id="btnMenuPrint" class="btn-cad" style="width: 100%; justify-content: flex-start;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
@@ -941,6 +954,16 @@
             </div>
         </div>
     </div>
-    <script src="bootstrap.js?v=20261108-accounts-cs-en-3"></script>
+    <div id="tabletDeviceTools" class="tablet-device-tools" role="toolbar" aria-label="Ovládání detektoru" hidden>
+        <button type="button" data-tablet-action="select" aria-pressed="false">↖ <span>Výběr</span></button>
+        <button type="button" data-tablet-action="pan" aria-pressed="false">✋ <span>Posun</span></button>
+        <button type="button" data-tablet-action="rotate">↻ 90°</button>
+        <button type="button" data-tablet-action="duplicate">⧉</button>
+        <button type="button" data-tablet-action="note">T</button>
+        <button type="button" data-tablet-action="address">#</button>
+        <button type="button" data-tablet-action="delete" class="tool-danger">×</button>
+        <button type="button" data-tablet-action="undo">↶</button>
+    </div>
+    <script src="bootstrap.js?v=20261108-pro-ui-4"></script>
 </body>
 </html>

@@ -8,17 +8,13 @@ service cloud.firestore {
         + int(ico[4]) * 4 + int(ico[5]) * 3 + int(ico[6]) * 2;
       return ico.matches('[0-9]{8}') && int(ico[7]) == (11 - sum % 11) % 10;
     }
-    function company(uid) {
-      let profile = getAfter(/databases/$(database)/documents/users/$(uid)).data;
-      return owner(uid) && request.auth.token.email_verified == true
-        && profile.accountType == 'company' && validIco(profile.ico);
-    }
-    function licensed(uid) {
-      let profile = get(/databases/$(database)/documents/users/$(uid)).data;
+    function licensed(uid, application) {
       let license = get(/databases/$(database)/documents/cloudLicenses/$(uid)).data;
       return owner(uid) && request.auth.token.email_verified == true
-        && profile.accountType == 'company' && license.status == 'active'
-        && license.uid == uid && license.ico == profile.ico;
+        && license.status == 'active' && license.uid == uid && license.plan == 'pro'
+        && license.paymentStatus == 'paid' && license.source == 'stripe'
+        && application in license.applications
+        && (license.expiresAt == null || license.expiresAt > request.time);
     }
     function validProfile() {
       let p = request.resource.data;
@@ -29,16 +25,6 @@ service cloud.firestore {
         && ((p.accountType == 'personal' && p.ico == '') || (p.accountType == 'company' && validIco(p.ico)))
         && p.updatedAt == request.time;
     }
-    function validLicense(uid) {
-      let key = request.resource.data;
-      return key.keys().hasAll(['uid', 'ico', 'status', 'keyHash', 'keySuffix', 'issuedAt', 'updatedAt'])
-        && key.keys().hasOnly(['uid', 'ico', 'status', 'keyHash', 'keySuffix', 'issuedAt', 'updatedAt'])
-        && key.uid == uid && key.status == 'active'
-        && key.ico == getAfter(/databases/$(database)/documents/users/$(uid)).data.ico
-        && key.keyHash is string && key.keyHash.matches('[a-f0-9]{64}')
-        && key.keySuffix is string && key.keySuffix.matches('[A-F0-9]{8}')
-        && key.updatedAt == request.time;
-    }
     match /users/{uid} {
       allow get: if owner(uid);
       allow create: if owner(uid) && validProfile() && request.resource.data.createdAt == request.time;
@@ -46,13 +32,14 @@ service cloud.firestore {
     }
     match /cloudLicenses/{uid} {
       allow get: if owner(uid);
-      allow create: if company(uid) && validLicense(uid) && request.resource.data.issuedAt == request.time;
-      allow update: if company(uid) && validLicense(uid) && resource.data.status == 'active'
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['keyHash', 'keySuffix', 'updatedAt']);
-      allow delete: if owner(uid);
+      // Only the trusted billing backend writes paid entitlements via the Admin SDK.
+      allow write: if false;
     }
     match /users/{userId}/projects/{projectId} {
-      allow read, write: if licensed(userId);
+      allow read, write: if licensed(userId, 'PZTS');
+    }
+    match /users/{uid}/apps/{application}/projects/{projectId} {
+      allow read, write: if application in ['PZTS', 'EPS', 'CCTV', 'SK'] && licensed(uid, application);
     }
   }
 }

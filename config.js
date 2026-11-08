@@ -31,6 +31,7 @@ const ICONS = {
 const DB_NAME = 'ExirtaZS_DB_V5'; 
 const STORE_NAME = 'autosave_store';
 const MAX_HISTORY = 20;
+const APP_PRODUCT = 'PZTS';
 
 const FIREBASE_CONFIG = {
     apiKey: "AIzaSyBf39BTvRIPejOCuP-OCGJk9uvvTwNM4zM",

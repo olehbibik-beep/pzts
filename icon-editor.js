@@ -357,6 +357,7 @@ function selectIconEditorTarget(type) {
 }
 
 function openIconEditor(preferredType) {
+    if (!window.hasProAccess?.()) { window.requestProUpgrade?.(); return; }
     const selected = floors[currentFloorIndex]?.devices.find(device => activeDeviceIds.has(device.id));
     const selectedType = selected && iconEditorDeviceTypes.some(([type]) => type === selected.type) ? selected.type : selectedTool;
     const target = preferredType || (iconEditorDeviceTypes.some(([type]) => type === selectedType) ? selectedType : 'pir');

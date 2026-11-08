@@ -1,63 +1,65 @@
-# Firebase setup and deployment for GOOM
+# PZTS / GooM Special Edition — Firebase deployment
 
-The interface defaults to Czech and supports English. The selected language is saved in the browser. The application is a static website; cloud access is enforced by Firestore and Storage rules.
+Release: `20261108-pro-ui-4`. Czech is the default; English is available. Publish the website, rules, and billing functions together. GitHub uploads do not deploy Firebase rules or functions.
 
-## Enable registration
+## Authentication
 
-1. In Firebase Console → Authentication → Sign-in method, enable **Google** and **Email/Password**.
-2. Under Authentication → Settings → Authorized domains, include `pzts.five.surf` and any other domain used to serve this application.
-3. Keep the default Firestore database and the bucket from `config.js` enabled. Project metadata is stored in Firestore; project files are stored in Firebase Storage.
-4. Review the email verification and password reset templates in Authentication → Templates. GOOM selects the email language using the current Czech/English interface language.
+Enable Google and Email/Password sign-in. Add `pzts.five.surf` to Authentication → Settings → Authorized domains. Review verification/password reset email templates. Keep the default Firestore database and Storage bucket configured in `config.js`.
 
-Official references: [email/password authentication](https://firebase.google.com/docs/auth/web/password-auth), [user management and email verification](https://firebase.google.com/docs/auth/web/manage-users).
+Registration creates a free personal or company account. IČO validation checks eight digits and the checksum; it does not verify company representation or query ARES. Neither IČO nor email confirmation grants PRO. Confirmed email is required for purchasing PRO and accessing cloud projects.
 
-## Publish the rules and website together
+References: [password authentication](https://firebase.google.com/docs/auth/web/password-auth), [email verification](https://firebase.google.com/docs/auth/web/manage-users).
 
-From the extracted update directory, publish the included rules:
+## Paid access
+
+| Purchase | One-time price | Applications |
+| --- | --- | --- |
+| PZTS PRO | 39 EUR | PZTS |
+| PRO Suite | 99 EUR | PZTS, EPS, CCTV, SK |
+
+UPDATE PRO in the account panel enables cloud plan storage, menu/icon editing and planning hints. Personal and company accounts can purchase. The suite entitlement supports four applications; this release contains PZTS only.
+
+The server creates Stripe Checkout sessions using configured prices. A signed webhook or server confirmation retrieves and validates the payment, then writes the entitlement via Firebase Admin. Redirect parameters cannot activate PRO. Full refunds revoke the affected purchase while preserving other paid purchases. License IDs are account-bound references, not transferable login credentials.
+
+See [STRIPE_SETUP_RU.md](STRIPE_SETUP_RU.md). Real payments have not been configured or deployed in this workspace.
+
+## Data and rules
+
+| Path | Purpose |
+| --- | --- |
+| `users/{uid}` | Owner profile, IČO, language |
+| `cloudLicenses/{uid}` | Owner-readable, server-written paid entitlement |
+| `proPurchases/{checkoutSessionId}` | Server-only receipts |
+| `users/{uid}/projects/{projectId}` | Existing PZTS cloud metadata |
+| Storage: `users/{uid}/projects/{projectId}/{fileName}` | Existing PZTS files |
+| `users/{uid}/apps/{application}/projects/{projectId}` | Metadata namespace for each application |
+| Storage: `users/{uid}/apps/{application}/projects/{projectId}/{fileName}` | Files for each application |
+
+Rules check ownership, verified email, paid server entitlement, application and expiry. All browser writes to licenses are denied. Old free company keys do not satisfy the new rules; existing project files are not deleted.
 
 ```powershell
 firebase deploy --project pztsepscctv --only "firestore:rules,storage"
 ```
 
-Publish all `.html`, `.js`, and `.png` files from the update archive to the website repository root in one commit. Include the new `i18n.js`, `account-profile.js`, and the updated transparent `Hi.png`. Refresh the deployed site once with Ctrl+F5.
+Storage rules read Firestore licenses; initial deployment may ask to grant [cross-service access](https://firebase.google.com/docs/reference/security/storage#firestoreget).
 
-This release uses version `20261108-accounts-cs-en-3`. Future releases must update the version in `bootstrap.js` and the script references in `index.html`. The image URL is versioned as well.
+## Website publishing
 
-Publishing files to GitHub does not publish Firebase rules. Both deployment steps are needed for this release. Storage rules read Firestore profile and license documents; the Firebase deployment flow may request permission for this cross-service access. See [Storage rules and Firestore access](https://firebase.google.com/docs/reference/security/storage#firestoreget).
+Upload all root HTML, JS, CSS and PNG together, including `ui-theme.css`, `select-controls.js`, `tablet-tools.js`, `pro-billing.js`, `account-profile.js`, `i18n.js` and `Hi.png`. `BAZE` is not the current application. Exclude dependencies, `.qa*`, local environment files and secrets. Functions run in Firebase, not on the static host.
 
-## Account and key flow
-
-- Google sign-in and email/password sign-in are available. Existing Google users initially receive a personal profile; they can select **Firma** and enter IČO in account settings.
-- Personal accounts can create, import, export, and resume local projects. Their account button opens user information and settings, and makes no cloud-project requests.
-- A company account provides an eight-digit Czech IČO. Both the application and Firestore rules check the format and check digit. Registration is self-service; it does not perform an ARES lookup or verify representation of the company.
-- A company must confirm its email address. The account screen has **E-mail jsem ověřil(a)** / **I have verified my email** to refresh verification and issue the key automatically. A subsequent verified sign-in also completes issuance.
-- The browser generates a 192-bit random key using Web Crypto. A Firestore transaction records the entitlement only if the server rules accept the authenticated, email-verified company profile. No Cloud Functions deployment is required.
-- Firestore stores only the key's SHA-256 hash and final eight characters. The complete key is shown in memory after issuance and can be copied. It is not put in localStorage or the project file. After a reload, the user sees a masked key and can generate a replacement.
-- Cloud access is bound to that authenticated Firebase user, the company profile, and the issued license document. A key is an account entitlement identifier, not a transferable login credential or a Firebase API key. Company users can access only their own project namespace.
-
-Collections:
-
-| Path | Purpose |
-| --- | --- |
-| `users/{uid}` | Name, email, account type, IČO, language, timestamps |
-| `cloudLicenses/{uid}` | Issued company entitlement and key hash |
-| `users/{uid}/projects/{projectId}` | Cloud project metadata |
-| Storage: `users/{uid}/projects/{projectId}/{fileName}` | Cloud project files |
-
-The included rules deny cloud project/file access without the verified company entitlement. A personal profile cannot grant access by adding client-controlled authorization fields. The old unrestricted owner-only project rules must be replaced by these rules.
+Keep the version in `bootstrap.js` and references in `index.html` consistent. Refresh with Ctrl+F5 after publishing.
 
 ## Verification
 
-The workspace includes repeatable tests:
-
 ```powershell
 npm ci
+npm --prefix functions ci
+$env:TEST_FIREBASE_SDK_DIR=Join-Path (Get-Location).Path 'node_modules/firebase'
 npm test
+npm run test:billing
 npm run test:firebase
 ```
 
-The Firebase tests use the `demo-goom` project in local Authentication, Firestore, and Storage emulators, with Java 21 and the Firebase CLI. The UI tests use installed Microsoft Edge in headless mode. Set `TEST_FIREBASE_SDK_DIR` to `node_modules/firebase` to include the real SDK startup smoke test.
+UI tests use headless Microsoft Edge. Firebase tests require Java 21+ and Firebase CLI and run against local `demo-goom` Authentication, Firestore and Storage emulators. Billing tests use simulated Stripe responses and signature validation. The real-SDK flow uses Admin against emulators for trusted paid fulfillment. Tests do not modify production data or charge real cards.
 
-Validation completed for this release: 19 UI/startup tests and 10 real Firebase emulator tests, including email registration, confirmation, automatic key issuance, cloud save/open, sign-out and email sign-in, plus unauthorized-access cases.
-
-The public Firebase web configuration remains in `config.js`. Do not add service-account credentials or OAuth client secrets to the website.
+Never put Stripe secret keys or service-account credentials in frontend files or the release archive.

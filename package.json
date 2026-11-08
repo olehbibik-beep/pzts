@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "test": "node --test tests/startup-flow.test.cjs",
+    "test:billing": "npm --prefix functions test",
     "test:rules": "firebase emulators:exec --config firebase.test.json --project demo-goom --only firestore,storage \"node --test tests/access-rules.test.cjs\"",
     "test:firebase": "firebase emulators:exec --config firebase.test.json --project demo-goom --only auth,firestore,storage \"node --test --test-concurrency=1 tests/access-rules.test.cjs tests/firebase-flow.test.cjs\""
   },

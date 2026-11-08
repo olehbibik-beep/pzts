@@ -207,6 +207,7 @@ function requestRedraw() {
         redrawRequested = true;
         requestAnimationFrame(() => {
             redraw();
+            window.updateTabletTools?.();
             redrawRequested = false;
         });
     }

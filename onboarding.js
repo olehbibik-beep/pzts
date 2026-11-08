@@ -82,6 +82,7 @@ function finishOnboarding() {
 }
 
 window.startGoomOnboarding = () => {
+    if (!window.hasProAccess?.()) return;
     onboardingIndex = 0;
     renderOnboardingStep();
 };
@@ -93,3 +94,6 @@ document.getElementById('onboardingNext').addEventListener('click', () => {
 });
 document.getElementById('onboardingSkip').addEventListener('click', finishOnboarding);
 window.addEventListener('resize', positionOnboarding);
+document.addEventListener('goom-account-changed', () => {
+    if (!window.hasProAccess?.() && !document.getElementById('onboardingBackdrop').hidden) finishOnboarding();
+});

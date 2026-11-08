@@ -386,7 +386,7 @@ document.addEventListener('goom-auth-state-changed', event => {
         setCloudSyncStatus(tr('Войдите через Google для синхронизации'), 'signed-out');
         return;
     }
-    setCloudSyncStatus(tr`Аккаунт: ${cloudUser.displayName || cloudUser.email || tr('подключён')}`, 'idle');
+    setCloudSyncStatus(tr(window.hasCloudAccess?.() ? 'Synchronizace je připravena' : 'Místní ukládání'), 'idle');
 });
 
 document.addEventListener('goom-account-changed', event => {
@@ -396,13 +396,12 @@ document.addEventListener('goom-account-changed', event => {
         cloudProjectId = null;
         cloudProjectRevision = 0;
         cloudProjectsModal.style.display = 'none';
-        const user = event.detail.user;
-        setCloudSyncStatus(user ? tr`Аккаунт: ${user.displayName || user.email || tr('подключён')}` : tr('Přihlaste se ke svému účtu.'), 'idle');
+        setCloudSyncStatus(tr('Místní ukládání'), 'idle');
         return;
     }
     cloudUser = event.detail.user;
     loadCloudPointer(cloudUser);
-    setCloudSyncStatus(tr`Аккаунт: ${cloudUser.displayName || cloudUser.email || tr('подключён')}`, 'idle');
+    setCloudSyncStatus(tr('Synchronizace je připravena'), 'idle');
     scheduleCloudSync();
 });
 

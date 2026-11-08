@@ -2,7 +2,8 @@ const firebaseSdkUrls = [
     'https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js',
     'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js',
     'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js',
-    'https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js'
+    'https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js',
+    'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions-compat.js'
 ];
 
 let firebaseSdkPromise;
@@ -173,6 +174,13 @@ window.getFirebaseDatabase = async () => {
     await getFirebaseAuth();
     if (!window.firebase.firestore) await loadFirebaseScript(firebaseSdkUrls[2]);
     return window.firebase.firestore();
+};
+
+window.callProBilling = async (name, data = {}) => {
+    if (!await window.ensureFirebaseSession()) throw new Error(tr('Přihlaste se ke svému účtu.'));
+    if (!window.firebase.functions) await loadFirebaseScript(firebaseSdkUrls[4]);
+    const result = await window.firebase.functions('europe-west1').httpsCallable(name)({ ...data, language: getGoomLanguage() });
+    return result.data;
 };
 
 window.getFirebaseServices = getFirebaseServices;

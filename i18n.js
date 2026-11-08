@@ -171,7 +171,21 @@
         ['Vygenerovat nový klíč? Předchozí klíč bude nahrazen.', 'Generate a new key? The previous key will be replaced.'],
         ['Přihlaste se ke svému účtu.', 'Sign in to your account.'], ['Ukládání…', 'Saving…'], ['Registrace se nezdařila', 'Registration failed'],
         ['Přihlášení se nezdařilo', 'Sign-in failed'], ['Účet je založen, ale údaje se nepodařilo uložit. Doplňte je v nastavení účtu.', 'Your account was created, but its details could not be saved. Complete them in account settings.'],
-        ['Ověření e-mailu se nepodařilo odeslat. Zkuste to z nastavení účtu.', 'Could not send the verification email. Try again from account settings.']
+        ['Ověření e-mailu se nepodařilo odeslat. Zkuste to z nastavení účtu.', 'Could not send the verification email. Try again from account settings.'],
+        ['PRO je aktivní.', 'PRO is active.'], ['Váš účet používá bezplatnou verzi.', 'Your account is on the free plan.'],
+        ['PRO je aktivní. Cloudové úložiště je připraveno.', 'PRO is active. Cloud storage is ready.'], ['Cloudové úložiště je součástí PRO.', 'Cloud storage is included in PRO.'],
+        ['Cena a podmínky se zobrazí na zabezpečené platební stránce.', 'The price and terms are shown on the secure payment page.'],
+        ['Před nákupem potvrďte svou e-mailovou adresu v nastavení účtu.', 'Before purchasing, confirm your email in account settings.'],
+        ['Připravujeme zabezpečenou platbu…', 'Preparing secure checkout…'], ['Platbu nyní nelze otevřít. Zkuste to později.', 'Checkout is unavailable. Please try again later.'],
+        ['Ověřujeme platbu. PRO se aktivuje po potvrzení úhrady.', 'Verifying payment. PRO activates after payment is confirmed.'],
+        ['Platba byla zrušena. Váš účet zůstává beze změny.', 'Payment was cancelled. Your account is unchanged.'],
+        ['Rozšiřte svůj účet o nástroje PRO.', 'Upgrade your account with PRO tools.'], ['Cloudové ukládání plánů', 'Cloud plan storage'],
+        ['Editor nabídek a ikon', 'Menu and icon editor'], ['Tipy při plánování', 'Planning hints'], ['Koupit PRO', 'Buy PRO'],
+        ['Jednorázová licence pro PZTS', 'One-time PZTS license'], ['PZTS, EPS, CCTV a SK', 'PZTS, EPS, CCTV and SK'],
+        ['Firemní údaje můžete upravit později. PRO je dostupné v uživatelském účtu.', 'You can edit company details later. PRO is available in your account.'],
+        ['Ovládání detektoru', 'Detector controls'], ['Výběr', 'Select'], ['Posun', 'Pan'], ['Výběr detektoru', 'Select detector'],
+        ['Posun plánu', 'Pan plan'], ['Otočit o 90°', 'Rotate 90°'], ['Duplikovat', 'Duplicate'], ['Odstranit vybrané', 'Delete selected'],
+        ['Synchronizace je připravena', 'Sync is ready'], ['Místní ukládání', 'Local saving']
     ];
 
     const catalog = new Map();

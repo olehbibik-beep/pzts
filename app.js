@@ -15,6 +15,8 @@ appTooltip.setAttribute('role', 'tooltip');
 document.body.appendChild(appTooltip);
 
 let activeTooltipTarget = null;
+let suppressedTooltipTarget = null;
+let suppressedDeviceTooltipPoint = null;
 function moveAppTooltip(target) {
     const rect = target.getBoundingClientRect();
     const left = Math.max(8, Math.min(
@@ -30,7 +32,7 @@ function moveAppTooltip(target) {
 
 function showAppTooltip(target) {
     const text = target.getAttribute('data-tooltip');
-    if (!text || activeTooltipTarget === target) return;
+    if (!text || activeTooltipTarget === target || suppressedTooltipTarget === target) return;
     activeTooltipTarget = target;
     appTooltip.textContent = text;
     appTooltip.style.display = 'block';
@@ -42,6 +44,24 @@ function hideAppTooltip(target) {
     activeTooltipTarget = null;
     appTooltip.style.display = 'none';
 }
+
+window.clearGoomTooltips = event => {
+    suppressedTooltipTarget = activeTooltipTarget || (event?.target instanceof Element ? event.target.closest('[data-tooltip]') : null);
+    activeTooltipTarget = null;
+    appTooltip.style.display = 'none';
+    const tooltip = document.getElementById('deviceTooltip');
+    if (tooltip) tooltip.style.opacity = '0';
+    const previouslyHovered = window.hoveredDeviceId;
+    window.hoveredDeviceId = null;
+    if (previouslyHovered != null) requestRedraw();
+    if (Number.isFinite(event?.clientX)) suppressedDeviceTooltipPoint = { x: event.clientX, y: event.clientY };
+};
+document.addEventListener('pointerdown', window.clearGoomTooltips, true);
+document.addEventListener('change', window.clearGoomTooltips, true);
+document.addEventListener('click', window.clearGoomTooltips, true);
+document.addEventListener('keydown', event => { if (['Enter', ' ', 'Escape'].includes(event.key)) window.clearGoomTooltips(event); }, true);
+document.addEventListener('scroll', window.clearGoomTooltips, true);
+window.addEventListener('blur', window.clearGoomTooltips);
 
 function registerTooltips(root) {
     if (root.nodeType === Node.ELEMENT_NODE && root.hasAttribute('title')) {
@@ -72,6 +92,7 @@ document.addEventListener('pointerover', e => {
     showAppTooltip(target);
 });
 document.addEventListener('pointerout', e => {
+    if (suppressedTooltipTarget && e.target instanceof Element && suppressedTooltipTarget.contains(e.target) && !suppressedTooltipTarget.contains(e.relatedTarget)) suppressedTooltipTarget = null;
     if (!activeTooltipTarget || !(e.target instanceof Element) || !activeTooltipTarget.contains(e.target)) return;
     if (e.relatedTarget instanceof Node && activeTooltipTarget.contains(e.relatedTarget)) return;
     hideAppTooltip(activeTooltipTarget);
@@ -186,6 +207,7 @@ document.getElementById('deviceSelector').addEventListener('click', (e) => {
     document.querySelectorAll('.device-btn').forEach(b => b.classList.remove('active')); 
     btn.classList.add('active');
     selectedTool = btn.dataset.type;
+    window.tabletPanMode = false;
 
     if (currentFloorIndex !== -1 && activeDeviceIds.size > 0 && !isOverviewMode) {
         let changed = false;
@@ -544,6 +566,7 @@ container.addEventListener('pointerdown', (e) => {
         if (canvasTouchGesture) return;
     }
     if (!e.isPrimary) return;
+    if (e.pointerType === 'pen') container.setPointerCapture(e.pointerId);
     let rect = container.getBoundingClientRect();
     let mX = e.clientX - rect.left; let mY = e.clientY - rect.top;
 
@@ -551,6 +574,11 @@ container.addEventListener('pointerdown', (e) => {
 
     const canvasX = (mX - offsetX) / scale; const canvasY = (mY - offsetY) / scale;
     clickStartX = e.clientX; clickStartY = e.clientY;
+
+    if (window.tabletPanMode && ['touch', 'pen'].includes(e.pointerType)) {
+        isPanning = true; startPanX = e.clientX - offsetX; startPanY = e.clientY - offsetY;
+        return;
+    }
 
     if (e.button === 1 || e.button === 2) { 
         isPanning = true; startPanX = e.clientX - offsetX; startPanY = e.clientY - offsetY;
@@ -685,7 +713,8 @@ container.addEventListener('pointermove', (e) => {
     // ===============================================
     const tooltip = document.getElementById('deviceTooltip');
     if (tooltip) {
-        if (isPanning || isDragging || isSelecting) {
+        if (suppressedDeviceTooltipPoint && Math.hypot(e.clientX - suppressedDeviceTooltipPoint.x, e.clientY - suppressedDeviceTooltipPoint.y) > 4) suppressedDeviceTooltipPoint = null;
+        if (isPanning || isDragging || isSelecting || e.pointerType !== 'mouse' || suppressedDeviceTooltipPoint || !window.hasProAccess?.()) {
             tooltip.style.opacity = "0";
             container.style.cursor = isPanning ? 'grabbing' : 'crosshair';
             if (window.hoveredDeviceId !== null) { window.hoveredDeviceId = null; requestRedraw(); }

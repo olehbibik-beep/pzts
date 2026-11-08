@@ -278,6 +278,7 @@ async function selectToolbarMenuForEditing(id, focusName = false) {
 }
 
 function openToolbarMenuEditor() {
+    if (!window.hasProAccess?.()) { window.requestProUpgrade?.(); return; }
     editingToolbarMenu = JSON.parse(JSON.stringify(getActiveToolbarMenu()));
     editingToolbarMenuIsNew = false;
     toolbarMenuEditorOriginal = JSON.stringify(editingToolbarMenu);

@@ -1,6 +1,6 @@
 (() => {
     // Change this version whenever publishing application files together.
-    const version = '20261108-accounts-cs-en-3';
+    const version = '20261108-pro-ui-4';
     let started = false;
     function loadScript(src) {
         return new Promise((resolve, reject) => {
@@ -28,7 +28,7 @@
                 loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'),
                 loadScript('https://cdn.jsdelivr.net/npm/dxf-parser@1.1.2/dist/dxf-parser.min.js')
             ].map(promise => promise.catch(error => console.warn('Библиотека импорта/экспорта недоступна:', error)));
-            for (const name of ['config', 'state', 'engine', 'storage', 'dialogs', 'render', 'app', 'onboarding', 'firebase-auth', 'account-profile', 'firebase-sync', 'icon-editor', 'toolbar-menus']) {
+            for (const name of ['config', 'state', 'engine', 'storage', 'dialogs', 'render', 'app', 'onboarding', 'firebase-auth', 'account-profile', 'pro-billing', 'firebase-sync', 'icon-editor', 'toolbar-menus', 'select-controls', 'tablet-tools']) {
                 await loadScript(`${name}.js?v=${version}`);
             }
             await Promise.all(libraries);

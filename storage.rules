@@ -2,15 +2,19 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    function licensed(uid) {
-      let profile = firestore.get(/databases/(default)/documents/users/$(uid)).data;
+    function licensed(uid, application) {
       let license = firestore.get(/databases/(default)/documents/cloudLicenses/$(uid)).data;
       return request.auth != null && request.auth.uid == uid && request.auth.token.email_verified == true
-        && profile.accountType == 'company' && license.status == 'active'
-        && license.uid == uid && license.ico == profile.ico;
+        && license.status == 'active' && license.uid == uid && license.plan == 'pro'
+        && license.paymentStatus == 'paid' && license.source == 'stripe'
+        && application in license.applications
+        && (license.expiresAt == null || license.expiresAt > request.time);
     }
     match /users/{userId}/projects/{projectId}/{fileName} {
-      allow read, write: if licensed(userId);
+      allow read, write: if licensed(userId, 'PZTS');
+    }
+    match /users/{uid}/apps/{application}/projects/{projectId}/{fileName} {
+      allow read, write: if application in ['PZTS', 'EPS', 'CCTV', 'SK'] && licensed(uid, application);
     }
   }
 }

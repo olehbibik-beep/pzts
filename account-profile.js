@@ -4,12 +4,9 @@
     let uid = null;
     let generation = 0;
     let ready = Promise.resolve();
-    let issuing = null;
-    let issuedKey = null;
     let unsubscribe = [];
     const byId = id => document.getElementById(id);
     const userIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21v-2a8 8 0 0 1 16 0v2"></path></svg>';
-    const cloudIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18a4.6 4.6 0 0 1-.2-9.2A6 6 0 0 1 18 10a4 4 0 0 1-.5 8H7Z"></path></svg>';
 
     function normalizeIco(value) { return String(value || '').replace(/\s/g, ''); }
     function validIco(value) {
@@ -19,9 +16,16 @@
         return Number(ico[7]) === (11 - sum % 11) % 10;
     }
     window.isValidCompanyIco = validIco;
-    window.hasCloudAccess = () => Boolean(window.getFirebaseUser()?.emailVerified && uid === window.getFirebaseUser()?.uid
-        && profile?.accountType === 'company' && validIco(profile.ico)
-        && license?.status === 'active' && license.uid === uid && license.ico === profile.ico);
+    function licenseIsCurrent() {
+        if (!license?.expiresAt) return true;
+        const expiresAt = license.expiresAt.toMillis?.() ?? license.expiresAt.seconds * 1000;
+        return Number.isFinite(expiresAt) && expiresAt > Date.now();
+    }
+    window.hasProAccess = () => Boolean(window.getFirebaseUser()?.emailVerified && uid === window.getFirebaseUser()?.uid
+        && license?.status === 'active' && license.uid === uid && license.plan === 'pro'
+        && license.paymentStatus === 'paid' && license.source === 'stripe'
+        && license.applications?.includes(APP_PRODUCT) && licenseIsCurrent());
+    window.hasCloudAccess = window.hasProAccess;
 
     function feedback(message = '', error = false) {
         byId('accountFeedback').textContent = message;
@@ -41,24 +45,19 @@
         byId('accountEmailStatus').textContent = tr(user?.emailVerified ? 'E-mail je ověřen' : 'E-mail zatím není ověřen');
         byId('btnAccountVerifyEmail').hidden = Boolean(user?.emailVerified);
         byId('btnAccountRefresh').textContent = tr(user?.emailVerified ? 'Obnovit údaje' : 'E-mail jsem ověřil(a)');
-        byId('accountCloudInfo').textContent = tr(entitled
-            ? 'Klíč je vydán pro tento firemní účet. Cloudové projekty jsou dostupné.'
-            : company && !user?.emailVerified ? 'Pro automatické vydání klíče ověřte svůj e-mail.'
-                : 'Cloudové úložiště je dostupné firemním účtům s vydaným klíčem.');
+        byId('accountCloudInfo').textContent = tr(entitled ? 'PRO je aktivní. Cloudové úložiště je připraveno.' : 'Cloudové úložiště je součástí PRO.');
         byId('accountCloudKeyBlock').hidden = !entitled;
-        byId('accountCloudKey').value = entitled ? issuedKey || `GOOM-••••••••-${license.keySuffix}` : '';
-        byId('btnAccountCopyKey').hidden = !issuedKey;
-        const label = tr(entitled ? 'Облачные проекты' : 'Uživatelský účet');
-        byId('menuAccountLabel').textContent = label;
+        byId('accountCloudKey').value = entitled ? license.licenseId || `PZTS-PRO-${license.keySuffix}` : '';
+        byId('btnAccountCopyKey').hidden = !entitled;
+        const label = tr('Uživatelský účet');
         const toolbarButton = byId('btnOpenCloudProjectsToolbar');
         toolbarButton.setAttribute('aria-label', label);
         toolbarButton.setAttribute('data-tooltip', label);
-        const icon = entitled ? 'cloud' : 'user';
-        if (toolbarButton.dataset.icon !== icon) {
-            toolbarButton.dataset.icon = icon;
-            toolbarButton.innerHTML = entitled ? cloudIcon : userIcon;
-            byId('btnMenuCloudProjects').querySelector('svg').outerHTML = entitled ? cloudIcon : userIcon;
+        if (toolbarButton.dataset.icon !== 'user') {
+            toolbarButton.dataset.icon = 'user';
+            toolbarButton.innerHTML = userIcon;
         }
+        document.documentElement.dataset.plan = entitled ? 'pro' : 'free';
     }
     function announce() {
         render();
@@ -70,43 +69,7 @@
         byId('accountTypeSelect').value = profile?.accountType || 'personal';
         byId('accountIcoInput').value = profile?.ico || '';
         byId('accountIcoField').hidden = byId('accountTypeSelect').value !== 'company';
-    }
-
-    async function createKey() {
-        const bytes = crypto.getRandomValues(new Uint8Array(24));
-        const key = 'GOOM-' + [...bytes].map(byte => byte.toString(16).padStart(2, '0')).join('').toUpperCase();
-        const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(key));
-        return { key, keyHash: [...new Uint8Array(hash)].map(byte => byte.toString(16).padStart(2, '0')).join(''), keySuffix: key.slice(-8) };
-    }
-    async function issueCompanyKey(rotate = false) {
-        if (issuing) return issuing;
-        const user = window.getFirebaseUser();
-        if (!user?.emailVerified || profile?.accountType !== 'company' || !validIco(profile.ico)) return null;
-        const operationGeneration = generation;
-        const operation = (async () => {
-            const db = await window.getFirebaseDatabase();
-            const material = await createKey();
-            const result = await db.runTransaction(async transaction => {
-                const profileRef = db.collection('users').doc(user.uid);
-                const licenseRef = db.collection('cloudLicenses').doc(user.uid);
-                const storedProfile = await transaction.get(profileRef);
-                const existing = await transaction.get(licenseRef);
-                const company = storedProfile.data();
-                if (company?.accountType !== 'company' || !validIco(company.ico)) throw new Error(tr('Zadejte platné osmimístné IČO.'));
-                if (existing.exists && !rotate) return { license: existing.data(), key: null };
-                const timestamp = window.firebase.firestore.FieldValue.serverTimestamp();
-                const data = { uid: user.uid, ico: company.ico, status: 'active', keyHash: material.keyHash, keySuffix: material.keySuffix, issuedAt: existing.exists ? existing.data().issuedAt : timestamp, updatedAt: timestamp };
-                transaction.set(licenseRef, data);
-                return { license: data, key: material.key };
-            });
-            if (operationGeneration !== generation || uid !== user.uid) return null;
-            license = result.license;
-            if (result.key) issuedKey = result.key;
-            announce();
-            return result;
-        })();
-        issuing = operation;
-        try { return await operation; } finally { if (issuing === operation) issuing = null; }
+        window.refreshGoomSelects?.();
     }
 
     function profileData(user, data, createdAt) {
@@ -139,7 +102,6 @@
         license = storedLicense.exists ? storedLicense.data() : null;
         announce();
         fillForm();
-        await issueCompanyKey();
         if (sessionGeneration !== generation) return;
         if (!unsubscribe.length) {
             const watch = (ref, callback) => ref.onSnapshot(snapshot => {
@@ -152,10 +114,7 @@
                 announce();
                 feedback(tr('Údaje účtu nelze načíst. Zkuste to znovu.'), true);
             });
-            unsubscribe = [watch(profileRef, value => { profile = value; }), watch(licenseRef, value => {
-                if (issuedKey && value?.keySuffix !== issuedKey.slice(-8)) issuedKey = null;
-                license = value;
-            })];
+            unsubscribe = [watch(profileRef, value => { profile = value; }), watch(licenseRef, value => { license = value; })];
         }
     }
     window.refreshUserAccount = async () => {
@@ -181,18 +140,13 @@
         const db = await window.getFirebaseDatabase();
         const result = await db.runTransaction(async transaction => {
             const profileRef = db.collection('users').doc(user.uid);
-            const licenseRef = db.collection('cloudLicenses').doc(user.uid);
             const oldProfile = await transaction.get(profileRef);
-            const oldLicense = await transaction.get(licenseRef);
             const updated = profileData(user, data, oldProfile.exists ? oldProfile.data().createdAt : null);
             transaction.set(profileRef, updated);
-            if (oldLicense.exists && (updated.accountType !== 'company' || oldLicense.data().ico !== updated.ico)) transaction.delete(licenseRef);
             return updated;
         });
         if (generation !== operationGeneration) return;
-        if (profile?.ico !== result.ico || result.accountType !== 'company') { license = null; issuedKey = null; }
         profile = result;
-        await issueCompanyKey();
         announce();
         fillForm();
     };
@@ -202,7 +156,9 @@
     };
     window.openAccountPanel = async () => {
         if (!window.getFirebaseUser()) { showWelcomeScreen(); return; }
+        const wasOpen = byId('userAccountModal').style.display === 'flex';
         byId('userAccountModal').style.display = 'flex';
+        if (!wasOpen) byId('userAccountModal').querySelector('.account-card').scrollTop = 0;
         render(); fillForm();
         await ready;
         render(); fillForm();
@@ -215,7 +171,7 @@
         const sessionGeneration = generation;
         unsubscribe.forEach(stop => stop()); unsubscribe = [];
         uid = user?.uid || null;
-        profile = null; license = null; issuedKey = null; issuing = null;
+        profile = null; license = null;
         feedback();
         if (!user) byId('userAccountModal').style.display = 'none';
         announce();
@@ -228,8 +184,7 @@
     });
     document.querySelectorAll('[data-open-account]').forEach(button => button.addEventListener('click', async () => {
         await ready;
-        if (window.hasCloudAccess()) await window.openCloudProjects();
-        else await window.openAccountPanel();
+        await window.openAccountPanel();
     }));
     byId('btnWelcomeProfile').addEventListener('click', window.openAccountPanel);
     byId('btnAccountClose').addEventListener('click', () => { byId('userAccountModal').style.display = 'none'; });
@@ -257,15 +212,9 @@
         finally { byId('btnAccountRefresh').disabled = false; }
     });
     byId('btnAccountCopyKey').addEventListener('click', async () => {
-        if (!issuedKey) return;
-        try { await navigator.clipboard.writeText(issuedKey); feedback(tr('Klíč byl zkopírován.')); }
+        if (!window.hasProAccess()) return;
+        try { await navigator.clipboard.writeText(byId('accountCloudKey').value); feedback(tr('Klíč byl zkopírován.')); }
         catch { byId('accountCloudKey').focus(); byId('accountCloudKey').select(); }
-    });
-    byId('btnAccountRotateKey').addEventListener('click', async () => {
-        if (!await showAppConfirm(tr('Vygenerovat nový klíč? Předchozí klíč bude nahrazen.'))) return;
-        byId('btnAccountRotateKey').disabled = true;
-        try { await issueCompanyKey(true); } catch { feedback(tr('Cloudový klíč nelze vydat. Zkuste to znovu.'), true); }
-        finally { byId('btnAccountRotateKey').disabled = false; }
     });
     byId('btnAccountCloudProjects').addEventListener('click', async () => {
         if (await window.ensureCloudAccess()) { byId('userAccountModal').style.display = 'none'; await window.openCloudProjects(); }

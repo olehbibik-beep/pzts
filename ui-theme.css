@@ -1,0 +1,120 @@
+/* PZTS: fixed welcome composition and one control language across the editor. */
+:root { --menu-bg: #292b2e; --menu-line: #515459; --menu-highlight: #fff; }
+#welcomeModal { padding: 24px; }
+#welcomeModal .welcome-card {
+    width: min(1040px, calc(100vw - 48px)); max-width: 1040px;
+    height: min(740px, calc(100dvh - 48px)); max-height: none;
+    border-radius: 10px; background: #dcddd9; color: #202225;
+    overflow: hidden; box-shadow: 0 26px 70px rgba(0,0,0,.4);
+}
+#welcomeModal .welcome-card::before { display: none; }
+#welcomeModal .welcome-art-space {
+    position: absolute; inset: 0; z-index: -1; display: flex;
+    align-items: center; justify-content: flex-end; pointer-events: none;
+}
+.welcome-art-space img {
+    display: block; width: 100%; height: 100%; max-width: 100%; max-height: 100%;
+    object-fit: cover; object-position: right center; opacity: .85;
+    /* The supplied PNG includes a border. Keep its right edge and projecting whale. */
+    clip-path: inset(1.3% 0 1.3% 1.3%);
+}
+#welcomeModal .welcome-panel, #welcomeModal[data-step="email"] .welcome-panel {
+    flex: 0 0 350px; min-width: 0; display: grid;
+    grid-template-rows: 44px minmax(0,1fr) 54px;
+    justify-content: initial; padding: 78px 24px 18px 30px;
+    background: transparent; overflow: hidden;
+}
+#welcomeModal .welcome-brand, #welcomeModal[data-step="email"] .welcome-brand {
+    align-self: start; font-size: 34px; line-height: 1; margin: 0;
+    color: #202225; letter-spacing: 2px; text-shadow: none;
+}
+.welcome-step-content { min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; padding: 0 4px 10px 0; overflow-anchor: none; }
+#welcomeModal .welcome-heading { font-size: 21px; line-height: 1.25; color: #202225; }
+#welcomeModal .welcome-actions { gap: 11px; }
+#welcomeModal .welcome-description, #welcomeModal .email-auth-form label { color: #36393c; }
+#welcomeModal .welcome-actions .btn-cad { min-height: 42px; padding: 10px 13px; font-size: 13px; border: 0; box-shadow: none; }
+#welcomeModal .welcome-auth-button { background: #292b2e; color: #fff; border: 0; }
+#welcomeModal .welcome-auth-status { padding: 12px; background: rgba(255,255,255,.72); color: #202225; }
+#welcomeModal .welcome-signout, #welcomeModal .auth-link { color: #202225; }
+#welcomeModal .welcome-actions .welcome-signout { min-height: 30px; padding: 6px 0; width: auto; }
+#welcomeModal .welcome-name-buttons .btn-cad { min-width: 0; }
+#welcomeModal .welcome-copyright, #welcomeModal[data-step="email"] .welcome-copyright {
+    display: flex; flex-direction: column; align-self: end; gap: 3px;
+    margin: 0; color: #41464a; font-family: inherit; font-size: 11px;
+}
+.welcome-copyright strong { color: #25282b; font-size: 17px; letter-spacing: .3px; }
+.welcome-copyright small { font-size: 10px; }
+.welcome-controls { inset: 0 0 auto; height: 56px; padding: 12px 16px; justify-content: flex-start; gap: 8px; }
+.welcome-back { position: absolute; top: 14px; left: 13px; width: 28px; height: 30px; padding: 4px; border-radius: 0; background: transparent; color: #202225; }
+.welcome-back:hover { background: rgba(255,255,255,.35); }
+.welcome-controls .ui-select { margin-left: 30px; width: 122px; }
+.welcome-controls .language-picker { margin: 0 0 0 30px; }
+.language-picker { margin-left: 0; }
+.toolbar-row { flex-wrap: nowrap; gap: 12px; }
+#cloudSyncIndicator { flex: 0 1 210px; min-width: 80px; max-width: 210px; }
+.toolbar-section { flex-shrink: 0; }
+.ui-select { display: inline-block; position: relative; min-width: 0; vertical-align: middle; }
+.ui-select.full-width { width: 100%; }
+.ui-select.language-select { width: 122px; flex-shrink: 0; }
+.select-native { position: absolute !important; width: 1px !important; height: 1px !important; min-height: 0 !important; padding: 0 !important; margin: 0 !important; opacity: 0; pointer-events: none; clip-path: inset(50%); }
+.ui-select-trigger {
+    display: flex; width: 100%; min-height: 38px; align-items: center; justify-content: space-between;
+    gap: 12px; box-sizing: border-box; padding: 9px 12px; border: 1px solid var(--menu-line);
+    border-radius: 6px; background: var(--menu-bg); color: #fff; cursor: pointer; font: inherit; font-size: 12px;
+    text-align: left;
+}
+.ui-select-trigger::after { content: ''; width: 6px; height: 6px; flex-shrink: 0; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg) translateY(-2px); }
+.ui-select-trigger:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.ui-select-trigger[aria-expanded="true"] { border-radius: 6px 6px 0 0; }
+.ui-select-trigger:disabled { opacity: .5; cursor: default; }
+.ui-select-popup { position: fixed; z-index: 2000000; overflow: auto; box-sizing: border-box; border: 1px solid var(--menu-line); border-top: 0; border-radius: 0 0 10px 10px; background: var(--menu-bg); color: #fff; padding: 0; box-shadow: 0 10px 22px rgba(0,0,0,.3); scrollbar-width: thin; }
+.ui-select-option { min-height: 36px; display: flex; align-items: center; padding: 9px 12px; box-sizing: border-box; font-size: 12px; cursor: pointer; }
+.ui-select-option + .ui-select-option { border-top: 1px solid var(--menu-line); }
+.ui-select-option:hover, .ui-select-option.active, .ui-select-option[aria-selected="true"] { background: #fff; color: #202225; }
+.ui-select-option[aria-disabled="true"] { opacity: .4; pointer-events: none; }
+#loopSelect + .ui-select-trigger { min-width: 135px; }
+.app-tooltip { background: #fff; color: #25282b; }
+.tablet-device-tools {
+    position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%); z-index: 210;
+    display: flex; align-items: center; gap: 3px; width: max-content; max-width: calc(100vw - 24px); overflow-x: auto;
+    padding: 6px; border: 1px solid #56595d; border-radius: 10px; background: rgba(38,40,43,.97);
+    box-shadow: 0 8px 24px rgba(0,0,0,.3);
+}
+.tablet-device-tools button { min-width: 44px; min-height: 44px; padding: 6px 9px; border: 0; border-radius: 6px; background: transparent; color: #fff; cursor: pointer; font: inherit; font-size: 12px; flex-shrink: 0; }
+.tablet-device-tools button:hover, .tablet-device-tools button[aria-pressed="true"] { background: #fff; color: #202225; }
+.tablet-device-tools button:disabled { opacity: .28; cursor: default; }
+.tablet-device-tools .tool-danger:not(:disabled) { color: #fca5a5; }
+.pro-card { margin-top: 22px; border-top: 1px solid #45484d; padding-top: 18px; }
+.pro-card h3 { margin: 0 0 10px; font-size: 16px; }
+.pro-features { padding-left: 18px; color: #d4d4d8; font-size: 13px; line-height: 1.8; }
+.pro-status { color: #c4c4cc; font-size: 13px; line-height: 1.5; }
+.pro-status.active { color: #a3e6af; }
+.account-card { overflow-anchor: none; scrollbar-gutter: stable; }
+.account-card > .account-header { position: sticky; top: -30px; z-index: 2; padding: 12px 0; background: #1c1c1f; }
+.pro-lock { opacity: .55; }
+.pro-offers { display: flex; flex-direction: column; gap: 10px; margin: 18px 0; }
+.pro-offer { display: flex; align-items: center; gap: 12px; padding: 14px; background: #292b2e; border: 1px solid #515459; border-radius: 8px; cursor: pointer; }
+.pro-offer:has(input:checked) { border-color: #fff; background: #36393d; }
+.pro-offer span { display: flex; flex-direction: column; gap: 5px; }
+.pro-offer strong { color: #fff; font-size: 14px; }
+.pro-offer small { color: #c4c4cc; font-size: 12px; }
+@media (max-width: 1100px) and (min-width: 600px) {
+    .toolbar-row { flex-wrap: wrap; gap: 8px 12px; }
+    .toolbar-row > .toolbar-section { flex: 1 0 100%; justify-content: flex-end; }
+    #welcomeModal .welcome-panel { flex-basis: 330px; padding: 78px 18px 18px 26px; }
+    #cloudSyncIndicator { max-width: 170px; }
+}
+@media (max-width: 740px) and (min-width: 600px) {
+    #welcomeModal { padding: 16px; }
+    #welcomeModal .welcome-card { width: calc(100vw - 32px); height: min(740px, calc(100dvh - 32px)); }
+    #welcomeModal .welcome-panel { flex-basis: 310px; }
+    #projectNameInput { max-width: 220px; }
+}
+@media (pointer: coarse) {
+    .ui-select-trigger, .ui-select-option { min-height: 44px; }
+    .welcome-controls .welcome-back { min-height: 30px; min-width: 28px; }
+}
+@media (max-height: 650px) {
+    #welcomeModal .welcome-card { height: calc(100dvh - 32px); }
+    #welcomeModal .welcome-panel { grid-template-rows: 50px minmax(0,1fr) 54px; padding-top: 64px; }
+}
