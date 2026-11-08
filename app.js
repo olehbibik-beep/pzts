@@ -1109,12 +1109,10 @@ function closeBuildingOverview(index = currentFloorIndex) {
     document.getElementById('overviewScreen').style.display = 'none';
     isOverviewMode = false;
     window.clearGoomTooltips?.();
-    requestAnimationFrame(() => {
-        window.dispatchEvent(new Event('resize'));
-        if (changed) changeFloor();
-        else requestRedraw();
-        document.getElementById('btnOverview').focus({ preventScroll: true });
-    });
+    window.dispatchEvent(new Event('resize'));
+    if (changed) changeFloor();
+    else requestRedraw();
+    document.getElementById('btnOverview').focus({ preventScroll: true });
 }
 
 document.getElementById('btnOverview').addEventListener('click', event => {
@@ -1125,10 +1123,8 @@ document.getElementById('btnOverview').addEventListener('click', event => {
     isOverviewMode = true;
     document.getElementById('overviewScreen').style.display = 'flex';
     requestRedraw();
-    requestAnimationFrame(() => {
-        drawBuildingOverview();
-        document.querySelector('.overview-floor[aria-current="true"]')?.focus({ preventScroll: true });
-    });
+    drawBuildingOverview();
+    document.querySelector('.overview-floor[aria-current="true"]')?.focus({ preventScroll: true });
 });
 document.getElementById('btnCloseOverviewScreen').addEventListener('click', () => closeBuildingOverview());
 document.getElementById('overviewFloors').addEventListener('click', event => {

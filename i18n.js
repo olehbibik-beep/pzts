@@ -193,7 +193,7 @@
         ['Automatické obnovení je vypnuto.', 'Automatic renewal is off.'], ['Měsíční předplatné.', 'Monthly subscription.'],
         ['Správu předplatného nyní nelze otevřít. Zkuste to později.', 'Subscription management is unavailable. Please try again later.'], ['Adresa', 'Address'],
         ['Máte již předplatné. Spravujte je v uživatelském účtu.', 'You already have a subscription. Manage it in your account.'],
-        ['Vyberte podlaží', 'Select a floor'], ['Zpět na půdorys', 'Back to plan'], ['Počet prvků: {0}', 'Device count: {0}']
+        ['Vyberte podlaží', 'Select a floor'], ['Zpět na půdorys', 'Back to plan'], ['Počet prvků: {0}', 'Device count: {0}'], ['ZPĚT', 'BACK']
     ];
 
     const catalog = new Map();

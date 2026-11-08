@@ -574,7 +574,7 @@ function drawBuildingOverview() {
     context.fill();
 
     const buildingWidth = Math.min(440, width - 184);
-    const roofHeight = Math.min(84, buildingWidth * .2);
+    const roofHeight = 24;
     const rowHeight = Math.max(44, Math.min(88, (height - roofHeight - 48) / 5));
     const totalHeight = roofHeight + 5 * rowHeight;
     const x = (width - buildingWidth) / 2;
@@ -588,21 +588,68 @@ function drawBuildingOverview() {
     context.fillStyle = '#aaaab0'; context.font = '12px sans-serif'; context.textAlign = 'left';
     context.fillText(tr('Terén'), 24, groundY - 10);
 
-    context.fillStyle = 'rgba(255,255,255,.025)'; context.strokeStyle = '#99999f'; context.lineWidth = 2;
-    context.beginPath(); context.moveTo(x - 24,y); context.lineTo(x + buildingWidth / 2,roofTop); context.lineTo(x + buildingWidth + 24,y); context.closePath(); context.fill(); context.stroke();
-    context.fillRect(x,y,buildingWidth,5 * rowHeight); context.strokeRect(x,y,buildingWidth,5 * rowHeight);
-    context.fillStyle = 'rgba(0,0,0,.1)'; context.fillRect(x,groundY,buildingWidth,2 * rowHeight);
-    for (let row = 0; row < 5; row++) {
+    // Flat roofs, projecting volumes and glazing, with two gray basement levels.
+    const unit = buildingWidth / 440;
+    const frontWidth = buildingWidth * .92;
+    const sideDepth = buildingWidth - frontWidth;
+    const mainX = x + buildingWidth * .34;
+    const mainWidth = frontWidth - buildingWidth * .34;
+    const frame = Math.max(4, 7 * unit);
+    const line = (x1,y1,x2,y2,color = '#414d4f', thickness = 1) => {
+        context.strokeStyle = color; context.lineWidth = thickness;
+        context.beginPath(); context.moveTo(x1,y1); context.lineTo(x2,y2); context.stroke();
+    };
+    const polygon = (points, color) => {
+        context.fillStyle = color; context.beginPath();
+        points.forEach(([px,py],index) => index ? context.lineTo(px,py) : context.moveTo(px,py));
+        context.closePath(); context.fill();
+    };
+    // Quiet gray foundation distinguishes the underground floors from the facade.
+    for (let row = 3; row < 5; row++) {
         const top = y + row * rowHeight;
-        if (row) { context.strokeStyle = '#77777f'; context.lineWidth = 1; context.beginPath(); context.moveTo(x,top); context.lineTo(x + buildingWidth,top); context.stroke(); }
-        context.strokeStyle = '#88888f'; context.lineWidth = 1.5;
-        const windowWidth = buildingWidth * .115, windowHeight = rowHeight * (row > 2 ? .2 : .32);
-        const centers = row > 2 ? [.25,.75] : row === 2 ? [.2,.8] : [.2,.5,.8];
-        for (const center of centers) context.strokeRect(x + buildingWidth * center - windowWidth / 2, top + (rowHeight - windowHeight) / 2, windowWidth,windowHeight);
-        if (row === 2) {
-            const doorWidth = buildingWidth * .11, doorHeight = rowHeight * .68;
-            context.strokeRect(x + buildingWidth / 2 - doorWidth / 2,top + rowHeight - doorHeight,doorWidth,doorHeight);
-            context.beginPath(); context.arc(x + buildingWidth / 2 + doorWidth * .28,top + rowHeight - doorHeight / 2,1.7,0,Math.PI * 2); context.stroke();
+        context.fillStyle = row === 3 ? '#414147' : '#38383e';
+        context.fillRect(x,top,buildingWidth,rowHeight);
+        context.strokeStyle = '#828288'; context.lineWidth = 1;
+        context.strokeRect(x,top,buildingWidth,rowHeight);
+        for (const fraction of [.25,.75]) {
+            const ww = buildingWidth * .13, wh = rowHeight * .17;
+            context.fillStyle = '#29292f'; context.fillRect(x + buildingWidth * fraction - ww / 2,top + rowHeight * .42,ww,wh);
+            context.strokeStyle = '#707078'; context.strokeRect(x + buildingWidth * fraction - ww / 2,top + rowHeight * .42,ww,wh);
         }
     }
+    // Recessed ground-floor wing with closely spaced vertical facade fins.
+    context.fillStyle = '#627476'; context.fillRect(x,y + 2 * rowHeight,frontWidth, rowHeight);
+    for (let px = x + 6 * unit; px < mainX; px += 5 * unit) line(px,y + 2 * rowHeight,px,groundY,'#43585a',.65);
+    // Warm, shallow cantilever on the left, matching the reference's timber volume.
+    context.fillStyle = '#a49a87'; context.fillRect(x - 10 * unit,y + rowHeight,mainX - x + 10 * unit,rowHeight * .86);
+    for (let px = x - 6 * unit; px < mainX; px += 4 * unit) line(px,y + rowHeight + 3 * unit,px,y + rowHeight * 1.86 - 3 * unit,'#8b8274',.55);
+    line(x - 10 * unit,y + rowHeight * 1.86,mainX,y + rowHeight * 1.86,'#303f42',5 * unit);
+    // Dark side plane and pale front frame give the house a modest sense of depth.
+    polygon([[x + frontWidth,y - 5 * unit],[x + buildingWidth,y + sideDepth * .65],
+        [x + buildingWidth,groundY],[x + frontWidth,groundY]],'#384e51');
+    context.fillStyle = '#bdbbb1'; context.fillRect(mainX,y,mainWidth,3 * rowHeight);
+    for (let row = 0; row < 3; row++) {
+        const top = y + row * rowHeight;
+        const glassX = mainX + frame, glassY = top + frame;
+        const glassWidth = mainWidth - 2 * frame, glassHeight = rowHeight - frame * 1.7;
+        context.fillStyle = row === 1 ? '#637b7d' : '#71888a';
+        context.fillRect(glassX,glassY,glassWidth,glassHeight);
+        // Muted interior panels, fine mullions and vertical blinds.
+        context.fillStyle = row === 0 ? '#b2ada0' : '#87958f';
+        context.fillRect(glassX + glassWidth * .48,glassY,glassWidth * .17,glassHeight);
+        for (let px = glassX + 3 * unit; px < glassX + glassWidth * .3; px += 3 * unit) line(px,glassY,px,glassY + glassHeight,'rgba(44,67,69,.4)',.55);
+        for (const fraction of [0,.31,.67,1]) line(glassX + glassWidth * fraction,glassY,glassX + glassWidth * fraction,glassY + glassHeight,'#273b3f',fraction === .31 ? 2 * unit : 1);
+        context.strokeStyle = '#2e4043'; context.lineWidth = 1.5;
+        context.strokeRect(glassX,glassY,glassWidth,glassHeight);
+        line(mainX,top + rowHeight - 1,mainX + mainWidth,top + rowHeight - 1,'#a6a69e',1);
+    }
+    // A slim glazed entrance and a few architectural planting strokes at ground level.
+    context.strokeStyle = '#354b4e'; context.lineWidth = 1.3;
+    context.strokeRect(x + buildingWidth * .2,y + rowHeight * 2.25,buildingWidth * .09,rowHeight * .75);
+    for (const fraction of [.05,.08,.11]) {
+        const plantX = x + buildingWidth * fraction;
+        line(plantX,groundY,plantX - 7 * unit,groundY - 15 * unit,'#777f7d',1);
+        line(plantX,groundY,plantX + 6 * unit,groundY - 12 * unit,'#777f7d',1);
+    }
+    line(x - 16 * unit,groundY,x + buildingWidth + 12 * unit,groundY,'#9c9ca1',1.5);
 }

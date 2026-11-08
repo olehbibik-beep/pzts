@@ -1,6 +1,6 @@
 (() => {
     // Change this version whenever publishing application files together.
-    const version = '20261108-overview-9';
+    const version = '20261108-modern-house-10';
     let started = false;
     function loadScript(src) {
         return new Promise((resolve, reject) => {

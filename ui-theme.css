@@ -39,13 +39,15 @@ body::after {
 .overview-floor:disabled { color: #626268; cursor: default; }
 .overview-floor:disabled .overview-floor-body { background: none; }
 .overview-floor-count { justify-self: start; min-width: 26px; padding: 4px; border-radius: 5px; font-size: 12px; background: #37373d; color: #d4d4d8; }
-.overview-footer { flex: 0 0 56px; display: flex; align-items: center; justify-content: center; box-sizing: border-box; padding: 6px 12px; border-top: 1px solid #45454b; background: #1c1c1f; }
-.overview-footer .overview-return { min-height: 44px; padding: 10px 20px; justify-content: center; }
-.overview-return svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.overview-footer { flex: 0 0 24px; height: 24px; display: flex; align-items: center; justify-content: center; box-sizing: border-box; padding: 0; border-top: 1px solid #313135; background: #1c1c1f; }
+.overview-footer .overview-return { position: relative; height: 24px; min-height: 24px; padding: 0 8px; gap: 6px; justify-content: center; border: 0; border-radius: 0; background: transparent; color: #8d8d99; font-size: 11px; font-weight: 700; letter-spacing: .5px; }
+.overview-footer .overview-return::before { content: ''; position: absolute; inset: -20px 0 0; }
+.overview-footer .overview-return:hover, .overview-footer .overview-return:focus-visible { background: transparent; color: #e1e1e6; }
+.overview-return svg { width: 14px !important; height: 14px !important; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 #welcomeModal { padding: 24px; background: transparent; }
 #welcomeModal .welcome-card {
     width: min(1040px, 100%); max-width: 1040px;
-    height: min(660px, calc(100dvh - 64px)); max-height: none;
+    height: min(580px, calc(100dvh - 64px)); max-height: none;
     border-radius: 16px; background: transparent; color: #eee;
     border: 0;
     overflow: hidden; box-shadow: none;
@@ -67,8 +69,8 @@ body::after {
 #welcomeModal .welcome-panel, #welcomeModal[data-step="email"] .welcome-panel {
     flex: 0 0 350px; min-width: 0; display: grid;
     grid-template-columns: minmax(0,1fr);
-    grid-template-rows: 44px minmax(0,1fr) 54px;
-    justify-content: initial; padding: 78px 24px 18px 30px;
+    grid-template-rows: 44px minmax(0,1fr) 46px;
+    justify-content: initial; padding: 64px 24px 14px 30px;
     background: transparent; overflow: hidden;
 }
 #welcomeModal .welcome-brand, #welcomeModal[data-step="email"] .welcome-brand {
@@ -80,6 +82,10 @@ body::after {
 #emailAuthForm input, #emailAuthForm .ui-select { min-width: 0; max-width: 100%; }
 #emailAuthForm .ui-select-trigger { min-width: 0; }
 #welcomeEmailBlock .welcome-description { overflow-wrap: anywhere; }
+#welcomeModal #welcomeEmailBlock { gap: 8px; }
+#welcomeEmailBlock .welcome-description { margin: 0; }
+#emailAuthForm[data-mode="register"] { gap: 6px 12px; }
+#emailAuthForm label { gap: 3px; }
 #welcomeModal .welcome-heading { font-size: 21px; line-height: 1.25; color: #f4f4f5; }
 #welcomeModal .welcome-actions { gap: 11px; }
 #welcomeModal .welcome-description, #welcomeModal .email-auth-form label { color: #c0c0c5; }
@@ -185,12 +191,12 @@ body::after {
 @media (max-width: 1100px) and (min-width: 600px) {
     .toolbar-row { flex-wrap: wrap; gap: 8px 12px; }
     .toolbar-row > .toolbar-section { flex: 1 0 100%; justify-content: flex-end; }
-    #welcomeModal .welcome-panel { flex-basis: 330px; padding: 78px 18px 18px 26px; }
+    #welcomeModal .welcome-panel { flex-basis: 330px; padding: 64px 18px 14px 26px; }
     #cloudSyncIndicator { max-width: 170px; }
 }
 @media (max-width: 740px) and (min-width: 600px) {
     #welcomeModal { padding: 16px; }
-    #welcomeModal .welcome-card { width: 100%; height: min(660px, calc(100dvh - 48px)); }
+    #welcomeModal .welcome-card { width: 100%; height: min(580px, calc(100dvh - 48px)); }
     #welcomeModal .welcome-panel { flex-basis: 310px; }
     #projectNameInput { max-width: 220px; }
 }
@@ -205,7 +211,7 @@ body::after {
     .account-details { grid-template-columns: 65px minmax(0,1fr); }
 }
 @media (max-height: 650px) {
-    #welcomeModal .welcome-card { height: calc(100dvh - 64px); }
+    #welcomeModal .welcome-card { height: min(580px, calc(100dvh - 64px)); }
     #welcomeModal .welcome-panel { grid-template-rows: 50px minmax(0,1fr) 54px; padding-top: 64px; }
 }
 @media print {
