@@ -48,7 +48,7 @@ function sanitizeFloors(floorDataArray) {
 async function loadFloorsImages(floorDataArray) {
     const sanitized = sanitizeFloors(floorDataArray);
     const promises = sanitized.map(f => {
-        return new Promise(resolve => {
+        return new Promise((resolve, reject) => {
             if (f.imgData) {
                 const img = new Image();
                 img.onload = () => {
@@ -163,37 +163,35 @@ function saveToDB(options = {}) {
     }
 }
 
-async function loadFromDB() {
-    if (!db) return false;
-    return new Promise((resolve) => {
+function getSavedProjectData() {
+    if (!db) return Promise.resolve(null);
+    return new Promise((resolve, reject) => {
         let tx = db.transaction(STORE_NAME, 'readonly');
         let store = tx.objectStore(STORE_NAME);
         let req = store.get('latest_save');
-        req.onsuccess = async e => {
-            let data = e.target.result;
-            if (data && data.floors) {
-                if (data.currentMaxLines) currentMaxLines = data.currentMaxLines;
-                customDeviceIcons = data.customDeviceIcons && typeof data.customDeviceIcons === 'object' ? data.customDeviceIcons : {};
-                let slider = document.getElementById('deviceSizeSlider');
-                if (data.deviceSize && slider) slider.value = data.deviceSize;
-                updateLoopSelect();
-                floors = await loadFloorsImages(data.floors);
-                currentFloorIndex = data.currentFloorIndex !== undefined ? data.currentFloorIndex : 0;
-                
-                if (data.projectName) {
-                    projectName = data.projectName;
-                } else {
-                    projectName = "Nový projekt";
-                }
-                let pInput = document.getElementById('projectNameInput');
-                if (pInput) pInput.value = projectName;
-                if (typeof refreshCustomDeviceIcons === 'function') refreshCustomDeviceIcons();
-                
-                resolve(true);
-            } else { resolve(false); }
-        };
-        req.onerror = () => resolve(false);
+        req.onsuccess = e => resolve(e.target.result || null);
+        req.onerror = () => reject(req.error);
+        tx.onabort = () => reject(tx.error || new Error('Не удалось прочитать локальное сохранение.'));
     });
+}
+
+async function loadFromDB() {
+    const data = await getSavedProjectData();
+    if (!Array.isArray(data?.floors) || !data.floors.length) return false;
+    const loadedFloors = await loadFloorsImages(data.floors);
+    if (data.currentMaxLines) currentMaxLines = data.currentMaxLines;
+    customDeviceIcons = data.customDeviceIcons && typeof data.customDeviceIcons === 'object' ? data.customDeviceIcons : {};
+    const slider = document.getElementById('deviceSizeSlider');
+    if (data.deviceSize && slider) slider.value = data.deviceSize;
+    updateLoopSelect();
+    floors = loadedFloors;
+    currentFloorIndex = Number.isInteger(data.currentFloorIndex) && data.currentFloorIndex >= 0 && data.currentFloorIndex < floors.length
+        ? data.currentFloorIndex : 0;
+    projectName = data.projectName || 'Nový projekt';
+    const pInput = document.getElementById('projectNameInput');
+    if (pInput) pInput.value = projectName;
+    if (typeof refreshCustomDeviceIcons === 'function') refreshCustomDeviceIcons();
+    return true;
 }
 
 function exportToBIPS() {

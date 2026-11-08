@@ -145,11 +145,14 @@
         }
         #welcomeModal .welcome-panel {
             box-sizing: border-box; z-index: 1; display: flex; flex: 0 0 390px;
-            flex-direction: column; justify-content: center; padding: 38px 42px;
+            flex-direction: column; justify-content: safe center; padding: 38px 42px; overflow-y: auto;
         }
         #welcomeModal .welcome-brand { font-size: 34px; font-weight: 800; color: #fff; letter-spacing: 0.5px; margin-bottom: 4px; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
         #welcomeModal .welcome-edition { font-size: 11px; color: #22c55e; font-weight: bold; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 26px; }
         #welcomeModal .welcome-actions { display: flex; flex-direction: column; gap: 12px; width: 100%; }
+        #welcomeModal [hidden] { display: none !important; }
+        #welcomeModal .welcome-heading { margin: 0; font-size: 20px; }
+        #welcomeModal .welcome-description { margin: 0 0 8px; color: #c4c4cc; font-size: 13px; line-height: 1.5; }
         #welcomeModal .welcome-actions .btn-cad { width: 100%; min-height: 48px; box-sizing: border-box; padding: 12px 16px; justify-content: flex-start; border-radius: 6px; font-size: 14px; }
         #welcomeModal .welcome-actions svg { width: 18px; height: 18px; margin-right: 10px; flex: 0 0 auto; }
         #welcomeModal .welcome-auth-status { display: none; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: 6px; background: rgba(15,23,42,0.72); color: #d4d4d8; font-size: 12px; overflow-wrap: anywhere; }
@@ -166,6 +169,7 @@
         #cloudSyncIndicator[data-state="syncing"] { color: #7dd3fc; }
         #cloudSyncIndicator[data-state="error"], #cloudSyncIndicator[data-state="conflict"] { color: #fca5a5; }
         .cloud-projects-content { box-sizing: border-box; max-width: 720px; max-height: min(720px, calc(100vh - 40px)); overflow: auto; }
+        #cloudProjectsModal { z-index: 400; }
         .cloud-projects-header, .cloud-projects-toolbar, .cloud-project-row, .cloud-project-actions { display: flex; align-items: center; gap: 12px; }
         .cloud-projects-header, .cloud-projects-toolbar { justify-content: space-between; }
         .cloud-projects-header { margin-bottom: 12px; }
@@ -398,26 +402,6 @@
                 <span class="app-brand-name">GooM</span>
             </div>
 
-            <div id="cloudProjectsModal" class="modal">
-                <div class="modal-content cloud-projects-content">
-                                        <div class="cloud-projects-header">
-                        <div>
-                            <div class="modal-title">Облачные проекты</div>
-                            <div id="cloudProjectsUser"></div>
-                        </div>
-                    </div>
-                    <p id="cloudProjectsStatus" role="status" aria-live="polite"></p>
-                    <div class="cloud-projects-toolbar">
-                        <button id="btnCloudSaveCurrent" class="btn-cad" type="button" style="background:#22c55e;color:#121214;font-weight:bold;">Сохранить текущий проект</button>
-                        <div style="display:flex;gap:8px;">
-                            <button id="btnCloudRefresh" class="btn-cad" type="button">Обновить</button>
-                            <button id="btnCloudSignOut" class="btn-cad" type="button">Выйти</button>
-                        </div>
-                    </div>
-                    <div id="cloudProjectsList"></div>
-                </div>
-            </div>
-
             <div class="menu-divider" style="height: 20px;"></div>
             <input type="text" id="projectNameInput" value="Nový projekt" placeholder="Název projektu..." style="background: transparent; border: none; color: #ffffff; font-size: 15px; font-weight: 600; width: 250px; outline: none; border-bottom: 1px dashed rgba(255,255,255,0.3); padding: 2px 5px;" title="Přejmenovat projekt">
             <button id="btnOpenCloudProjectsToolbar" class="toolbar-icon-button" type="button" data-open-cloud-projects title="Облачные проекты" aria-label="Облачные проекты">
@@ -524,14 +508,29 @@
         </div>
     </div>
 
-    <div id="welcomeModal" class="modal" style="display: none;">
-        <div class="modal-content welcome-card">
+    <div id="welcomeModal" class="modal" style="display: flex;" data-step="auth">
+        <div class="modal-content welcome-card" role="dialog" aria-modal="true" aria-label="Добро пожаловать в GOOM">
             <div class="welcome-panel">
                 
                 <div class="welcome-brand">GOOM</div>
                 <div class="welcome-edition">SPECIAL Edition</div>
                 
-                <div id="welcomeButtonsBlock" class="welcome-actions">
+                <div id="welcomeAuthBlock" class="welcome-actions">
+                    <h1 class="welcome-heading">Добро пожаловать!</h1>
+                    <p class="welcome-description">Войдите в аккаунт Google, чтобы перейти к своим проектам.</p>
+                    <button id="btnGoogleSignIn" class="btn-cad welcome-auth-button" type="button" aria-label="Войти или зарегистрироваться через Google">
+                        Войти или зарегистрироваться с Google
+                    </button>
+                    <div id="googleAuthStatus" class="welcome-auth-status" aria-live="polite">
+                        <span id="googleAuthUser"></span>
+                        <button id="btnGoogleSignOut" class="btn-cad welcome-signout" type="button">Выйти</button>
+                    </div>
+                    <button id="btnWelcomeContinue" class="btn-cad" type="button" hidden style="background: #0ea5e9; color: #fff;">Перейти к проектам</button>
+                </div>
+
+                <div id="welcomeButtonsBlock" class="welcome-actions" hidden>
+                    <h2 class="welcome-heading">Выберите проект</h2>
+                    <button id="btnWelcomeResume" class="btn-cad welcome-auth-button" type="button" hidden>Продолжить последний проект</button>
                     <button id="btnWelcomeNew" class="btn-cad" style="background: #ef4444; color: #ffffff; font-weight: bold; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3); border: none;">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px; height:18px; margin-right:10px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
                         Nový projekt
@@ -540,21 +539,14 @@
                         <svg viewBox="0 0 24 24" fill="none" stroke="#0f0f11" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:18px; height:18px; margin-right:10px;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
                         Otevřít projekt (.BIPS)
                     </button>
-                    <button id="btnGoogleSignIn" class="btn-cad welcome-auth-button" type="button" aria-label="Войти или зарегистрироваться через Google">
-                        <svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#4285F4" d="M43.6 24.5c0-1.4-.1-2.8-.4-4.1H24v7.8h11c-.5 2.5-1.9 4.6-4 6v5h6.5c3.8-3.5 6.1-8.6 6.1-14.7z"/><path fill="#34A853" d="M24 44c5.5 0 10.1-1.8 13.5-4.8l-6.5-5c-1.8 1.2-4.1 2-7 2-5.3 0-9.8-3.6-11.4-8.4H5.9v5.2C9.3 39.5 16 44 24 44z"/><path fill="#FBBC05" d="M12.6 27.8a12 12 0 0 1 0-7.6V15H5.9a20 20 0 0 0 0 18l6.7-5.2z"/><path fill="#EA4335" d="M24 11.8c3 0 5.7 1 7.8 3.1l5.8-5.8C34.1 5.8 29.5 4 24 4 16 4 9.3 8.5 5.9 15l6.7 5.2c1.6-4.8 6.1-8.4 11.4-8.4z"/></svg>
-                        Войти или зарегистрироваться с Google
-                    </button>
                     <button id="btnWelcomeCloudProjects" class="btn-cad welcome-auth-button" type="button" data-open-cloud-projects>
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18a4.6 4.6 0 0 1-.2-9.2A6 6 0 0 1 18 10a4 4 0 0 1-.5 8H7Z"></path><path d="m9 13 3-3 3 3M12 10v8"></path></svg>
                         Облачные проекты
                     </button>
-                    <div id="googleAuthStatus" class="welcome-auth-status" aria-live="polite">
-                        <span id="googleAuthUser"></span>
-                        <button id="btnGoogleSignOut" class="btn-cad welcome-signout" type="button">Выйти</button>
-                    </div>
+                    <button id="btnWelcomeAccount" class="btn-cad welcome-auth-button" type="button">Назад к аккаунту</button>
                 </div>
 
-                <div id="welcomeNamingBlock" class="welcome-naming">
+                <div id="welcomeNamingBlock" class="welcome-naming" hidden>
                     <div style="font-size: 13px; color: #a1a1aa; margin-bottom: -6px;">Zadejte název projektu:</div>
                     <input type="text" id="welcomeProjectNameInput" class="welcome-project-name" value="Nový projekt" placeholder="Např. Rodinný dom Praha..." style="background: #1c1c1f; border: 1px solid #313135; color: #ffffff; font-size: 14px; font-weight: 600; outline: none; transition: border-color 0.2s;" onfocus="this.style.borderColor='#0ea5e9'" onblur="this.style.borderColor='#313135'">
                     <div class="welcome-name-buttons">
@@ -570,6 +562,27 @@
             
             <div class="welcome-art-space"></div>
 
+        </div>
+    </div>
+
+    <div id="cloudProjectsModal" class="modal">
+        <div class="modal-content cloud-projects-content">
+            <div class="cloud-projects-header">
+                <div>
+                    <div class="modal-title">Облачные проекты</div>
+                    <div id="cloudProjectsUser"></div>
+                </div>
+                <button id="btnCloudProjectsClose" class="btn-cad" type="button" aria-label="Закрыть облачные проекты">Закрыть</button>
+            </div>
+            <p id="cloudProjectsStatus" role="status" aria-live="polite"></p>
+            <div class="cloud-projects-toolbar">
+                <button id="btnCloudSaveCurrent" class="btn-cad" type="button" style="background:#22c55e;color:#121214;font-weight:bold;">Сохранить текущий проект</button>
+                <div style="display:flex;gap:8px;">
+                    <button id="btnCloudRefresh" class="btn-cad" type="button">Обновить</button>
+                    <button id="btnCloudSignOut" class="btn-cad" type="button">Выйти</button>
+                </div>
+            </div>
+            <div id="cloudProjectsList"></div>
         </div>
     </div>
 

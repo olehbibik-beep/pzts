@@ -209,7 +209,7 @@ if(bToggleConnections) {
 }
 
 const modals = document.querySelectorAll('.modal');
-modals.forEach(modal => { modal.addEventListener('click', (e) => { if (e.target === modal) { modal.style.display = 'none'; if(modal.id === 'textModal') editingDevice = null; } }); });
+modals.forEach(modal => { modal.addEventListener('click', (e) => { if (e.target === modal) { if (modal.id === 'welcomeModal' && !isSystemReady) return; modal.style.display = 'none'; if(modal.id === 'textModal') editingDevice = null; } }); });
 
 document.getElementById('btnLogo').addEventListener('click', () => document.getElementById('mainMenuModal').style.display = 'flex');
 
@@ -224,8 +224,7 @@ if (btnMenuNew) {
     btnMenuNew.addEventListener('click', async () => {
         if (await showAppConfirm("Opravdu chcete začít nový projekt? Neuložené změny budou ztraceny.")) {
             document.getElementById('mainMenuModal').style.display = 'none';
-            let welcomeScreen = document.getElementById('welcomeModal');
-            if (welcomeScreen) welcomeScreen.style.display = 'flex';
+            showWelcomeScreen('projects');
         }
     });
 }
@@ -236,7 +235,7 @@ if (btnCancelNewProject) {
         document.getElementById('newProjectModal').style.display = 'none';
         let totalDevs = 0;
         if (typeof floors !== 'undefined') floors.forEach(f => { if(f && f.devices) totalDevs += f.devices.length; });
-        if (totalDevs === 0) document.getElementById('welcomeModal').style.display = 'flex';
+        if (totalDevs === 0) showWelcomeScreen('projects');
     });
 }
 
@@ -417,6 +416,10 @@ devTextInput.addEventListener('keypress', function (e) { if (e.key === 'Enter') 
 
 window.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (!isSystemReady) {
+        if (e.key === 'Escape') document.getElementById('cloudProjectsModal').style.display = 'none';
+        return;
+    }
 
     if (e.key === 'Escape') { 
         let modalClosed = false;
@@ -872,13 +875,24 @@ function loadDefaultFloors(showWelcome = false, newProjectName = "Nový projekt"
     if (pInput) pInput.value = projectName;
 
     if(showWelcome) {
-        let wModal = document.getElementById('welcomeModal');
-        if(wModal) wModal.style.display = 'flex';
+        showWelcomeScreen();
     }
     
     changeFloor(); saveStateToHistory(); requestRedraw(); triggerAutoSave();
 }
     
+function showWelcomeScreen(step = 'auth') {
+    if (step !== 'auth' && !window.getFirebaseUser?.()) step = 'auth';
+    const modal = document.getElementById('welcomeModal');
+    modal.dataset.step = step;
+    modal.style.display = 'flex';
+    document.getElementById('welcomeAuthBlock').hidden = step !== 'auth';
+    document.getElementById('welcomeButtonsBlock').hidden = step !== 'projects';
+    const naming = document.getElementById('welcomeNamingBlock');
+    naming.hidden = step !== 'naming';
+    naming.style.display = step === 'naming' ? 'flex' : 'none';
+}
+
 async function initProject() { 
     try {
         canvas.width = container.clientWidth; canvas.height = container.clientHeight;
@@ -892,8 +906,7 @@ async function initProject() {
         const btnWelcomeNew = document.getElementById('btnWelcomeNew');
         if(btnWelcomeNew) {
             btnWelcomeNew.onclick = () => {
-                document.getElementById('welcomeButtonsBlock').style.display = 'none';
-                document.getElementById('welcomeNamingBlock').style.display = 'flex';
+                showWelcomeScreen('naming');
                 let inp = document.getElementById('welcomeProjectNameInput');
                 if (inp) {
                     inp.value = "Nový projekt";
@@ -905,20 +918,18 @@ async function initProject() {
         const btnWelcomeCancelNaming = document.getElementById('btnWelcomeCancelNaming');
         if(btnWelcomeCancelNaming) {
             btnWelcomeCancelNaming.onclick = () => {
-                document.getElementById('welcomeNamingBlock').style.display = 'none';
-                document.getElementById('welcomeButtonsBlock').style.display = 'flex';
+                showWelcomeScreen('projects');
             };
         }
 
         const btnWelcomeConfirmNaming = document.getElementById('btnWelcomeConfirmNaming');
         if(btnWelcomeConfirmNaming) {
             btnWelcomeConfirmNaming.onclick = () => {
+                if (!window.getFirebaseUser?.()) { showWelcomeScreen(); return; }
                 let inp = document.getElementById('welcomeProjectNameInput');
                 let finalName = inp ? inp.value.trim() : "Nový projekt";
                 if (finalName === "") finalName = "Nový projekt";
                 
-                document.getElementById('welcomeNamingBlock').style.display = 'none';
-                document.getElementById('welcomeButtonsBlock').style.display = 'flex';
                 document.getElementById('welcomeModal').style.display = 'none';
                 
                 loadDefaultFloors(false, finalName);
@@ -931,7 +942,7 @@ async function initProject() {
             welcomeProjectNameInput.onkeydown = (e) => {
                 if(e.key === 'Enter') {
                     e.preventDefault();
-                    let confirmBtn = document.getElementById('btnConfirmNewProject');
+                    let confirmBtn = document.getElementById('btnWelcomeConfirmNaming');
                     if(confirmBtn) confirmBtn.click();
                 }
             };
@@ -940,41 +951,48 @@ async function initProject() {
         const btnWelcomeOpenBIPS = document.getElementById('btnWelcomeOpenBIPS');
         if(btnWelcomeOpenBIPS) {
             btnWelcomeOpenBIPS.onclick = async () => {
+                if (!window.getFirebaseUser?.()) { showWelcomeScreen(); return; }
                 if (window.showOpenFilePicker) {
                     try {
                         const [handle] = await window.showOpenFilePicker({ types: [{ description: 'BIPS Projekt', accept: {'application/json': ['.bips']} }] });
-                        currentFileHandle = handle; const file = await handle.getFile(); 
-                        document.getElementById('welcomeModal').style.display = 'none';
-                        importFileContent(file);
-                    } catch (e) {} 
+                        const file = await handle.getFile();
+                        if (await importFileContent(file)) currentFileHandle = handle;
+                    } catch (error) {
+                        if (error.name !== 'AbortError') showAppAlert(error.message, 'Ошибка открытия проекта');
+                    }
                 } else { 
-                    document.getElementById('welcomeModal').style.display = 'none';
                     document.getElementById('bipsLoader').click(); 
                 }
             };
         }
 
-        isSystemReady = false; requestRedraw(); 
+        document.getElementById('btnWelcomeContinue').onclick = () => showWelcomeScreen('projects');
+        document.getElementById('btnWelcomeAccount').onclick = () => showWelcomeScreen();
+        const resumeButton = document.getElementById('btnWelcomeResume');
+        resumeButton.onclick = async () => {
+            if (!window.getFirebaseUser?.()) { showWelcomeScreen(); return; }
+            resumeButton.disabled = true;
+            try {
+                if (!await loadFromDB()) throw new Error('Локальное сохранение недоступно. Создайте или откройте другой проект.');
+                isSystemReady = true;
+                changeFloor(); saveStateToHistory(); requestRedraw();
+                document.getElementById('welcomeModal').style.display = 'none';
+            } catch (error) {
+                showAppAlert(error.message, 'Не удалось продолжить проект');
+            } finally {
+                resumeButton.disabled = false;
+            }
+        };
 
+        isSystemReady = false; requestRedraw();
+        showWelcomeScreen();
         await initDB();
-        let loaded = await loadFromDB();
-
-        let totalDevices = 0;
-        if (typeof floors !== 'undefined' && Array.isArray(floors)) {
-            floors.forEach(f => {
-                if (f && f.devices) totalDevices += f.devices.length;
-            });
-        }
-
-        if (!loaded || totalDevices === 0) {
-            loadDefaultFloors(true); 
-        } else {
-            isSystemReady = true; changeFloor(); saveStateToHistory(); requestRedraw();
-        }
+        const savedProject = await getSavedProjectData();
+        resumeButton.hidden = !savedProject?.floors?.length;
 
     } catch(e) {
         console.error("Critical error during init:", e);
-        loadDefaultFloors(true);
+        showWelcomeScreen();
     }
 }
 
@@ -1225,6 +1243,7 @@ document.getElementById('imageLoader').addEventListener('change', async function
 });
 
 function importFileContent(file, options = {}) {
+    const wasSystemReady = isSystemReady;
     return new Promise(resolve => {
     const reader = new FileReader();
     reader.onload = async function(e) {
@@ -1277,12 +1296,13 @@ function importFileContent(file, options = {}) {
             changeFloor(); 
             saveStateToHistory(); 
             triggerAutoSave(options);
+            document.getElementById('welcomeModal').style.display = 'none';
             resolve(true);
 
         } catch (err) { 
             console.error("Chyba importu:", err);
             showAppAlert("Chyba při načítání souboru .BIPS!\n\nDetail chyby: " + err.message, 'Ошибка открытия проекта'); 
-            isSystemReady = true; 
+            isSystemReady = wasSystemReady;
             requestRedraw(); 
             resolve(false);
         }
