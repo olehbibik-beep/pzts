@@ -518,7 +518,32 @@ container.addEventListener('wheel', (e) => {
     requestRedraw();
 });
 
-container.addEventListener('mousedown', (e) => {
+const canvasTouchPoints = new Map();
+let canvasTouchGesture = null;
+
+function clearCanvasDrag() {
+    if (isDragging) { saveStateToHistory(); triggerAutoSave(); }
+    isSelecting = false; isDragging = false; isPanning = false;
+    draggedDevice = null; draggedHandle = null; clickedCableId = null; isClickingText = false;
+    snapGuideX = null; snapGuideY = null;
+}
+
+container.addEventListener('pointerdown', (e) => {
+    if (!isSystemReady) return;
+    if (e.pointerType === 'touch') {
+        container.setPointerCapture(e.pointerId);
+        canvasTouchPoints.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        if (canvasTouchPoints.size === 2) {
+            clearCanvasDrag();
+            const [a, b] = [...canvasTouchPoints.values()];
+            const rect = container.getBoundingClientRect();
+            const x = (a.x + b.x) / 2 - rect.left;
+            const y = (a.y + b.y) / 2 - rect.top;
+            canvasTouchGesture = { distance: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)), scale, x: (x - offsetX) / scale, y: (y - offsetY) / scale };
+        }
+        if (canvasTouchGesture) return;
+    }
+    if (!e.isPrimary) return;
     let rect = container.getBoundingClientRect();
     let mX = e.clientX - rect.left; let mY = e.clientY - rect.top;
 
@@ -581,7 +606,22 @@ container.addEventListener('mousedown', (e) => {
     }
 });
 
-container.addEventListener('mousemove', (e) => {
+container.addEventListener('pointermove', (e) => {
+    if (e.pointerType === 'touch' && canvasTouchPoints.has(e.pointerId)) {
+        canvasTouchPoints.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        if (canvasTouchGesture) {
+            if (canvasTouchPoints.size === 2) {
+                const [a, b] = [...canvasTouchPoints.values()];
+                const rect = container.getBoundingClientRect();
+                scale = Math.max(0.05, Math.min(20, canvasTouchGesture.scale * Math.hypot(a.x - b.x, a.y - b.y) / canvasTouchGesture.distance));
+                offsetX = (a.x + b.x) / 2 - rect.left - canvasTouchGesture.x * scale;
+                offsetY = (a.y + b.y) / 2 - rect.top - canvasTouchGesture.y * scale;
+                requestRedraw();
+            }
+            return;
+        }
+    }
+    if (!e.isPrimary || !isSystemReady) return;
     let rect = container.getBoundingClientRect();
     let mX = e.clientX - rect.left; let mY = e.clientY - rect.top;
 
@@ -731,7 +771,7 @@ container.addEventListener('mousemove', (e) => {
 });
 
 // Страховка при уходе мыши с холста
-container.addEventListener('mouseleave', () => {
+container.addEventListener('pointerleave', () => {
     container.style.cursor = 'default';
     pointerCanvasX = null; pointerCanvasY = null;
     requestRedraw();
@@ -740,7 +780,15 @@ container.addEventListener('mouseleave', () => {
     if (tooltip) { tooltip.style.opacity = "0"; }
 });
 
-window.addEventListener('mouseup', (e) => {
+window.addEventListener('pointerup', (e) => {
+    if (e.pointerType === 'touch') {
+        canvasTouchPoints.delete(e.pointerId);
+        if (canvasTouchGesture) {
+            if (!canvasTouchPoints.size) canvasTouchGesture = null;
+            return;
+        }
+    }
+    if (!e.isPrimary || !isSystemReady) return;
     const dist = Math.hypot(e.clientX - clickStartX, e.clientY - clickStartY);
     if (isOverviewMode) return;
 
@@ -847,6 +895,13 @@ window.addEventListener('mouseup', (e) => {
     if (isDragging) { saveStateToHistory(); triggerAutoSave(); }
 
     isDragging = false; draggedDevice = null; draggedHandle = null; isClickingText = false; clickedCableId = null; snapGuideX = null; snapGuideY = null;
+});
+
+container.addEventListener('pointercancel', () => {
+    canvasTouchPoints.clear();
+    canvasTouchGesture = null;
+    clearCanvasDrag();
+    requestRedraw();
 });
 
 function loadDefaultFloors(showWelcome = false, newProjectName = "Nový projekt") {
@@ -966,7 +1021,9 @@ async function initProject() {
             };
         }
 
-        document.getElementById('btnWelcomeContinue').onclick = () => showWelcomeScreen('projects');
+        document.getElementById('btnWelcomeContinue').onclick = async () => {
+            if (await window.ensureFirebaseSession()) showWelcomeScreen('projects');
+        };
         document.getElementById('btnWelcomeAccount').onclick = () => showWelcomeScreen();
         const resumeButton = document.getElementById('btnWelcomeResume');
         resumeButton.onclick = async () => {

@@ -86,14 +86,13 @@ async function syncProjectToCloud(manual = false) {
         if (manual) showAppAlert('Дождитесь загрузки проекта и повторите попытку.', 'Облачные проекты');
         return false;
     }
-        if (!manual && !cloudProjectId && !hasProjectContent()) return false;
+    if (!manual && !cloudProjectId && !hasProjectContent()) return false;
 
     // Автоматически называем проект, если он "Nový projekt" при ручном сохранении
-    if (manual && (!payload.projectName || payload.projectName === 'Nový projekt')) {
+    if (manual && (!projectName || projectName === 'Nový projekt')) {
         const newName = await showAppPrompt('Введите название для сохранения в облаке:', 'Сохранить проект');
         if (!newName) return false;
         projectName = newName;
-        payload.projectName = newName;
         const pInput = document.getElementById('projectNameInput');
         if (pInput) pInput.value = newName;
     }
@@ -288,8 +287,10 @@ async function openCloudProject(projectId, metadata) {
     setCloudSyncStatus('Загружаю проект…', 'syncing');
     try {
         const { storage } = await getCloudServices();
-        const bytes = await storage.ref(metadata.storagePath).getBytes();
-        const payload = JSON.parse(new TextDecoder().decode(bytes));
+        const downloadURL = await storage.ref(metadata.storagePath).getDownloadURL();
+        const response = await fetch(downloadURL);
+        if (!response.ok) throw new Error('Не удалось загрузить файл проекта из Firebase Storage.');
+        const payload = await response.json();
         const imported = await importFileContent(
             new File([JSON.stringify(payload)], `${metadata.name || 'project'}.bips`, { type: 'application/json' }),
             { skipCloudSync: true }
@@ -328,14 +329,13 @@ async function deleteCloudProject(projectId, metadata) {
 }
 
 async function openCloudProjects() {
-    if (!cloudUser && window.firebase?.auth) {
-        cloudUser = window.firebase.auth().currentUser;
-    }
+    cloudUser = await window.ensureFirebaseSession();
     if (!cloudUser) {
         showAppAlert('Войдите через Google, чтобы открыть облачные проекты.', 'Облачные проекты');
         return;
     }
     cloudProjectsModal.style.display = 'flex';
+    document.getElementById('btnCloudSaveCurrent').hidden = !isSystemReady;
     const userLabel = document.getElementById('cloudProjectsUser');
     if (userLabel) userLabel.textContent = cloudUser.displayName || cloudUser.email || 'Google-пользователь';
     await refreshCloudProjects();
@@ -354,7 +354,7 @@ document.getElementById('btnCloudSaveCurrent').addEventListener('click', async (
 });
 document.getElementById('btnCloudSignOut').addEventListener('click', async () => {
     try {
-        const { auth } = await getCloudServices();
+        const auth = await getFirebaseAuth();
         await auth.signOut();
     } catch (error) {
         console.error('Ошибка выхода из Google-аккаунта:', error);

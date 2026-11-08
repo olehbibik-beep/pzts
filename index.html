@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GOOM</title>
+    <script src="device-support.js?v=20261108-auth-device-2"></script>
     <style>
         :root {
             --bg-main: #121214; --bg-toolbar: #1c1c1f; --bg-input: #252529;
@@ -15,7 +16,15 @@
             --color-help-highlight: #22c55e; 
         }
 
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: var(--bg-main); color: var(--text-main); margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: var(--bg-main); color: var(--text-main); margin: 0; display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; }
+        [hidden] { display: none !important; }
+        #deviceSupportNotice { display: none; }
+        .device-blocked body > :not(#deviceSupportNotice) { display: none !important; }
+        .device-blocked #deviceSupportNotice { display: flex; position: fixed; inset: 0; box-sizing: border-box; align-items: center; justify-content: center; padding: 24px; background: #121214; z-index: 1000000; }
+        .device-support-card { width: min(480px, 100%); padding: clamp(24px, 5vw, 40px); box-sizing: border-box; border: 1px solid #35353d; border-radius: 16px; background: #1c1c1f; }
+        .device-support-brand { color: #38bdf8; font-size: 24px; font-weight: 800; letter-spacing: 1px; }
+        .device-support-card h1 { font-size: clamp(22px, 5vw, 28px); line-height: 1.25; }
+        .device-support-card p { margin-bottom: 0; color: #c4c4cc; line-height: 1.6; overflow-wrap: anywhere; }
         body::after {
             content: ''; position: fixed; inset: 0; z-index: 999998; pointer-events: none;
             border: 2px solid transparent; border-radius: 8px; box-sizing: border-box;
@@ -129,11 +138,11 @@
 
         .menu-divider { width: 2px; background: var(--bg-input); height: 24px; margin: 0 4px; border-radius: 2px; }
 
-        .canvas-container { flex: 1; background: #0f0f11; position: relative; overflow: hidden; cursor: crosshair; display: flex; }
+        .canvas-container { flex: 1; min-height: 0; background: #0f0f11; position: relative; overflow: hidden; cursor: crosshair; display: flex; touch-action: none; }
         canvas { display: block; position: absolute; top: 0; left: 0; }
 
         .modal { display: none; position: fixed; z-index: 300; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); align-items: center; justify-content: center; }
-        .modal-content { background: rgba(28, 28, 31, 0.95); border: none; padding: 30px; border-radius: 12px; max-width: 450px; width: 100%; color: var(--text-main); box-shadow: 0 20px 50px rgba(0,0,0,0.7); }
+        .modal-content { background: rgba(28, 28, 31, 0.95); border: none; padding: 30px; border-radius: 12px; max-width: 450px; width: 100%; max-height: calc(100dvh - 40px); overflow-y: auto; box-sizing: border-box; color: var(--text-main); box-shadow: 0 20px 50px rgba(0,0,0,0.7); }
         #welcomeModal { padding: 24px; box-sizing: border-box; }
         #welcomeModal .welcome-card {
             box-sizing: border-box; width: min(920px, calc(100vw - 48px)); max-width: 920px;
@@ -153,6 +162,8 @@
         #welcomeModal [hidden] { display: none !important; }
         #welcomeModal .welcome-heading { margin: 0; font-size: 20px; }
         #welcomeModal .welcome-description { margin: 0 0 8px; color: #c4c4cc; font-size: 13px; line-height: 1.5; }
+        #googleAuthMessage { margin: 0; color: #fca5a5; font-size: 13px; line-height: 1.5; }
+        #googleAuthMessage[data-state="checking"] { color: #c4c4cc; }
         #welcomeModal .welcome-actions .btn-cad { width: 100%; min-height: 48px; box-sizing: border-box; padding: 12px 16px; justify-content: flex-start; border-radius: 6px; font-size: 14px; }
         #welcomeModal .welcome-actions svg { width: 18px; height: 18px; margin-right: 10px; flex: 0 0 auto; }
         #welcomeModal .welcome-auth-status { display: none; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: 6px; background: rgba(15,23,42,0.72); color: #d4d4d8; font-size: 12px; overflow-wrap: anywhere; }
@@ -208,11 +219,29 @@
         .onboarding-actions { display: flex; justify-content: space-between; gap: 8px; }
         .onboarding-actions button { justify-content: center; }
         .onboarding-actions .onboarding-next { background: #0ea5e9; color: #fff; }
-        @media (max-width: 600px) {
-            #welcomeModal { padding: 12px; }
-            #welcomeModal .welcome-card { width: calc(100vw - 24px); height: min(560px, calc(100vh - 24px)); background-position: 58% center; }
-            #welcomeModal .welcome-panel { flex: 1 1 auto; padding: 30px clamp(22px, 8vw, 42px); background: rgba(18,18,20,0.4); }
-            #welcomeModal .welcome-art-space { display: none; }
+        @media (min-width: 600px) and (max-width: 1100px) {
+            .toolbar-row { flex-wrap: wrap; gap: 8px 12px; padding: 8px 14px; }
+            .toolbar-row > .toolbar-section { margin-left: auto !important; flex-wrap: wrap; }
+            #projectNameInput { flex: 1 1 160px; min-width: 120px; max-width: 250px; }
+            #cloudSyncIndicator { max-width: 160px; }
+            .sliding-row-container.open { max-height: min(260px, 45dvh); overflow-y: auto; }
+            .device-selector-group { max-width: 100%; flex-wrap: wrap; justify-content: center; }
+            .footer { flex-shrink: 0; overflow-x: auto; }
+            .cloud-projects-toolbar { flex-wrap: wrap; }
+            #welcomeModal .welcome-panel { flex-basis: min(390px, 58%); padding: 28px; }
+        }
+        @media (pointer: coarse) {
+            .btn-cad, .toolbar-icon-button, .device-btn, .footer-icon { min-height: 44px; min-width: 44px; }
+            .floor-btn { min-height: 44px; }
+            #appFooter { height: auto; min-height: 44px; }
+            .canvas-container { touch-action: none; }
+        }
+        @media (max-height: 650px) {
+            #welcomeModal { padding: 16px; }
+            #welcomeModal .welcome-card { height: calc(100dvh - 32px); }
+            #welcomeModal .welcome-panel { justify-content: flex-start; padding: 24px 32px; }
+            #welcomeModal .welcome-edition { margin-bottom: 18px; }
+            #welcomeModal .welcome-copyright { margin-top: 22px; }
         }
         #printPage { display: none; }
         @media print {
@@ -380,13 +409,15 @@
 
 
     </style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-    <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';</script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    
-    <script src="https://cdn.jsdelivr.net/npm/dxf-parser@1.1.2/dist/dxf-parser.min.js"></script>
 </head>
 <body>
+    <div id="deviceSupportNotice" role="alert">
+        <section class="device-support-card" aria-labelledby="deviceSupportTitle">
+            <div class="device-support-brand">GOOM</div>
+            <h1 id="deviceSupportTitle">Откройте GOOM на планшете или ПК</h1>
+            <p id="deviceSupportMessage">Для работы с проектами используйте планшет, ноутбук или компьютер.</p>
+        </section>
+    </div>
 
     <input type="file" id="bipsLoader" accept=".bips" style="display:none;">
     <input type="file" id="imageLoader" accept="image/*, application/pdf, .dxf" style="display:none;">
@@ -521,6 +552,7 @@
                     <button id="btnGoogleSignIn" class="btn-cad welcome-auth-button" type="button" aria-label="Войти или зарегистрироваться через Google">
                         Войти или зарегистрироваться с Google
                     </button>
+                    <p id="googleAuthMessage" role="status" aria-live="polite" hidden></p>
                     <div id="googleAuthStatus" class="welcome-auth-status" aria-live="polite">
                         <span id="googleAuthUser"></span>
                         <button id="btnGoogleSignOut" class="btn-cad welcome-signout" type="button">Выйти</button>
@@ -822,17 +854,6 @@
             </div>
         </div>
     </div>
-    <script src="config.js"></script>
-    <script src="state.js"></script>
-    <script src="engine.js"></script>
-    <script src="storage.js"></script>
-    <script src="dialogs.js"></script>
-    <script src="render.js?v=20261106-selection-style"></script>
-    <script src="app.js"></script>
-    <script src="onboarding.js"></script>
-    <script src="firebase-auth.js"></script>
-    <script src="firebase-sync.js?v=20261106-cloud-sync"></script>
-    <script src="icon-editor.js"></script>
-    <script src="toolbar-menus.js"></script>
+    <script src="bootstrap.js?v=20261108-auth-device-2"></script>
 </body>
 </html>
