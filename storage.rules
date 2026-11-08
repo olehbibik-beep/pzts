@@ -2,8 +2,15 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
+    function licensed(uid) {
+      let profile = firestore.get(/databases/(default)/documents/users/$(uid)).data;
+      let license = firestore.get(/databases/(default)/documents/cloudLicenses/$(uid)).data;
+      return request.auth != null && request.auth.uid == uid && request.auth.token.email_verified == true
+        && profile.accountType == 'company' && license.status == 'active'
+        && license.uid == uid && license.ico == profile.ico;
+    }
     match /users/{userId}/projects/{projectId}/{fileName} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if licensed(userId);
     }
   }
 }

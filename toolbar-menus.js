@@ -2,18 +2,18 @@ const toolbarMenuStorageKey = 'goom-toolbar-menus-v1';
 const toolbarMenuLimit = 7;
 const toolbarMenuDeviceButtons = [...document.querySelectorAll('#deviceSelector .device-btn[data-type]')];
 const toolbarMenuTypeLabels = {
-    panel: 'Центральный блок',
-    expander: 'Расширитель',
-    abax: 'Беспроводной модуль',
-    keypad: 'Клавиатура',
-    pir: 'PIR-датчик',
-    pir_wl: 'Беспроводной PIR',
-    magnet: 'Магнитный контакт',
-    magnet_wl: 'Беспроводной контакт',
-    glassbreak: 'Датчик разбития стекла',
-    panic: 'Тревожная кнопка',
-    siren: 'Сирена',
-    textNode: 'Текстовая заметка'
+    panel: tr('Центральный блок'),
+    expander: tr('Расширитель'),
+    abax: tr('Беспроводной модуль'),
+    keypad: tr('Клавиатура'),
+    pir: tr('PIR-датчик'),
+    pir_wl: tr('Беспроводной PIR'),
+    magnet: tr('Магнитный контакт'),
+    magnet_wl: tr('Беспроводной контакт'),
+    glassbreak: tr('Датчик разбития стекла'),
+    panic: tr('Тревожная кнопка'),
+    siren: tr('Сирена'),
+    textNode: tr('Текстовая заметка')
 };
 const toolbarMenuTypes = toolbarMenuDeviceButtons.map(button => ({
     type: button.dataset.type,
@@ -22,7 +22,7 @@ const toolbarMenuTypes = toolbarMenuDeviceButtons.map(button => ({
 const validToolbarMenuTypes = new Set(toolbarMenuTypes.map(item => item.type));
 const defaultToolbarMenu = {
     id: 'default',
-    name: 'Основное меню',
+    name: tr('Основное меню'),
     deviceTypes: toolbarMenuTypes.map(item => item.type)
 };
 
@@ -45,7 +45,7 @@ function sanitizeToolbarMenus(value) {
             : [];
         const sanitizedMenu = {
             id,
-            name: typeof menu.name === 'string' && menu.name.trim() ? menu.name.trim().slice(0, 32) : `Меню ${index + 1}`,
+            name: typeof menu.name === 'string' && menu.name.trim() ? menu.name.trim().slice(0, 32) : tr`Меню ${index + 1}`,
             deviceTypes
         };
         if (menu.icons && typeof menu.icons === 'object' && !Array.isArray(menu.icons)) {
@@ -86,7 +86,7 @@ function saveToolbarMenus() {
         return true;
     } catch (error) {
         console.error('Не удалось сохранить наборы меню:', error);
-        showAppAlert('Не удалось сохранить наборы меню в этом браузере.', 'Ошибка сохранения');
+        showAppAlert(tr('Не удалось сохранить наборы меню в этом браузере.'), tr('Ошибка сохранения'));
         return false;
     }
 }
@@ -123,8 +123,8 @@ function applyToolbarMenu(menu, persist = true) {
         document.querySelectorAll('#deviceSelector .device-btn').forEach(button => button.classList.remove('active'));
     }
     const cycleButton = document.getElementById('btnCycleToolbarMenu');
-    cycleButton.title = `Текущий набор: ${menu.name}. Нажмите, чтобы переключить`;
-    cycleButton.setAttribute('aria-label', `Текущий набор меню: ${menu.name}. Переключить набор`);
+    cycleButton.title = tr`Текущий набор: ${menu.name}. Нажмите, чтобы переключить`;
+    cycleButton.setAttribute('aria-label', tr`Текущий набор меню: ${menu.name}. Переключить набор`);
 
     if (persist) saveToolbarMenus();
     if (typeof requestRedraw === 'function') requestRedraw();
@@ -163,13 +163,13 @@ function renderToolbarMenuPresets() {
         card.dataset.menuId = menu.id;
         const indicator = document.createElement('span');
         indicator.className = `toolbar-menu-active-indicator${activeToolbarMenuId === menu.id ? ' active' : ''}`;
-        indicator.title = activeToolbarMenuId === menu.id ? 'Выбранное меню' : '';
+        indicator.title = activeToolbarMenuId === menu.id ? tr('Выбранное меню') : '';
         const name = document.createElement('input');
         name.type = 'text';
         name.maxLength = 32;
         name.className = 'toolbar-menu-preset-name';
         name.value = menu.name;
-        name.setAttribute('aria-label', `Название меню: ${menu.name}`);
+        name.setAttribute('aria-label', tr`Название меню: ${menu.name}`);
         name.addEventListener('focus', async () => { await selectToolbarMenuForEditing(menu.id, true); });
         name.addEventListener('input', () => {
             if (editingToolbarMenu?.id !== menu.id) return;
@@ -183,7 +183,7 @@ function renderToolbarMenuPresets() {
             iconButton.type = 'button';
             iconButton.dataset.type = type;
             const typeInfo = toolbarMenuTypes.find(item => item.type === type);
-            iconButton.title = `Выбрать значок: ${typeInfo?.title || type}`;
+            iconButton.title = tr`Выбрать значок: ${typeInfo?.title || type}`;
             iconButton.setAttribute('aria-label', iconButton.title);
             iconButton.classList.toggle('selected', activeToolbarMenuId === menu.id && iconEditorTarget.value === type);
             iconButton.innerHTML = toolbarMenuButtonContent(type, menu);
@@ -200,7 +200,7 @@ function renderToolbarMenuPresets() {
         removeMenu.type = 'button';
         removeMenu.className = 'toolbar-menu-remove';
         removeMenu.textContent = '×';
-        removeMenu.title = `Удалить меню «${menu.name}»`;
+        removeMenu.title = tr`Удалить меню «${menu.name}»`;
         removeMenu.setAttribute('aria-label', removeMenu.title);
         removeMenu.disabled = toolbarMenus.length < 2;
         removeMenu.addEventListener('click', () => deleteToolbarMenu(menu.id));
@@ -208,7 +208,7 @@ function renderToolbarMenuPresets() {
         container.append(card);
     });
     addMenuButton.disabled = toolbarMenus.length >= toolbarMenuLimit;
-    addMenuButton.title = addMenuButton.disabled ? 'Можно создать не более 7 меню' : 'Добавить меню';
+    addMenuButton.title = addMenuButton.disabled ? tr('Можно создать не более 7 меню') : tr('Добавить меню');
     toolbarMenuActions.prepend(addMenuButton);
     updateToolbarMenuRowHighlights();
 }
@@ -234,10 +234,10 @@ function updateToolbarMenuEditorStatus() {
     const changed = editingToolbarMenuIsNew
         || JSON.stringify(editingToolbarMenu) !== toolbarMenuEditorOriginal;
     document.getElementById('toolbarMenuEditorStatus').textContent = changed
-        ? 'Есть несохранённые изменения'
-        : (activeToolbarMenuId === editingToolbarMenu.id ? 'Этот набор используется на панели' : 'Выберите набор, измените его и сохраните');
+        ? tr('Есть несохранённые изменения')
+        : (activeToolbarMenuId === editingToolbarMenu.id ? tr('Этот набор используется на панели') : tr('Выберите набор, измените его и сохраните'));
     saveButton.disabled = !changed;
-    saveButton.textContent = changed ? 'Сохранить меню' : 'Сохранено';
+    saveButton.textContent = changed ? tr('Сохранить меню') : tr('Сохранено');
     saveButton.style.opacity = changed ? '1' : '.48';
 }
 
@@ -261,7 +261,7 @@ function discardUnsavedNewMenu() {
 
 async function selectToolbarMenuForEditing(id, focusName = false) {
     if (editingToolbarMenu?.id === id) return true;
-    if (editorHasUnsavedChanges() && !await showAppConfirm('Отбросить несохранённые изменения?')) return false;
+    if (editorHasUnsavedChanges() && !await showAppConfirm(tr('Отбросить несохранённые изменения?'))) return false;
     discardUnsavedNewMenu();
     const menu = toolbarMenus.find(item => item.id === id);
     if (!menu) return false;
@@ -297,23 +297,23 @@ document.getElementById('iconEditorModal').addEventListener('click', event => {
 document.getElementById('btnIconEditorClose').addEventListener('click', async event => {
     event.preventDefault();
     event.stopImmediatePropagation();
-    if (editorHasUnsavedChanges() && !await showAppConfirm('Закрыть редактор меню без сохранения изменений?')) return;
+    if (editorHasUnsavedChanges() && !await showAppConfirm(tr('Закрыть редактор меню без сохранения изменений?'))) return;
     discardUnsavedNewMenu();
     saveToolbarMenus();
     document.getElementById('iconEditorModal').style.display = 'none';
 }, true);
 document.getElementById('btnToolbarMenuNew').addEventListener('click', async () => {
     if (toolbarMenus.length >= toolbarMenuLimit) {
-        showAppAlert('Достигнут лимит в 7 меню.', 'Лимит меню');
+        showAppAlert(tr('Достигнут лимит в 7 меню.'), tr('Лимит меню'));
         return;
     }
-    if (editorHasUnsavedChanges() && !await showAppConfirm('Сохранить текущие изменения перед созданием меню?')) return;
+    if (editorHasUnsavedChanges() && !await showAppConfirm(tr('Сохранить текущие изменения перед созданием меню?'))) return;
     if (editorHasUnsavedChanges()) document.getElementById('btnToolbarMenuSave').click();
     const source = getActiveToolbarMenu();
     toolbarMenuPreviousActiveId = activeToolbarMenuId;
     editingToolbarMenu = {
         id: `menu-${Date.now()}`,
-        name: `Меню ${toolbarMenus.length + 1}`,
+        name: tr`Меню ${toolbarMenus.length + 1}`,
         deviceTypes: [...source.deviceTypes],
         icons: JSON.parse(JSON.stringify(source.icons || customDeviceIcons))
     };
@@ -329,7 +329,7 @@ document.getElementById('btnToolbarMenuNew').addEventListener('click', async () 
 });
 async function deleteToolbarMenu(id) {
     const menu = toolbarMenus.find(item => item.id === id);
-    if (!menu || toolbarMenus.length < 2 || !await showAppConfirm(`Удалить меню «${menu.name}»?`)) return;
+    if (!menu || toolbarMenus.length < 2 || !await showAppConfirm(tr`Удалить меню «${menu.name}»?`)) return;
     toolbarMenus = toolbarMenus.filter(item => item.id !== id);
     if (!toolbarMenus.length) toolbarMenus = [{ ...defaultToolbarMenu }];
     const activeMenuWasDeleted = activeToolbarMenuId === id;
@@ -345,12 +345,12 @@ document.getElementById('btnToolbarMenuSave').addEventListener('click', () => {
     if (!editingToolbarMenu) return;
     const name = editingToolbarMenu.name.trim();
     if (!name) {
-        showAppAlert('Укажите название набора меню.', 'Название меню');
+        showAppAlert(tr('Укажите название набора меню.'), tr('Название меню'));
         document.querySelector(`.toolbar-menu-preset[data-menu-id="${editingToolbarMenu.id}"] .toolbar-menu-preset-name`)?.focus();
         return;
     }
     if (!editingToolbarMenu.deviceTypes.length) {
-        showAppAlert('Выберите хотя бы один датчик или инструмент для набора меню.', 'Пустое меню');
+        showAppAlert(tr('Выберите хотя бы один датчик или инструмент для набора меню.'), tr('Пустое меню'));
         return;
     }
     editingToolbarMenu.name = name.slice(0, 32);
@@ -371,7 +371,7 @@ let isToolbarMenuCycling = false;
 document.getElementById('btnCycleToolbarMenu').addEventListener('click', () => {
     if (isToolbarMenuCycling) return;
     if (toolbarMenus.length < 2) {
-        document.getElementById('btnCycleToolbarMenu').title = 'Создайте дополнительные наборы в редакторе меню';
+        document.getElementById('btnCycleToolbarMenu').title = tr('Создайте дополнительные наборы в редакторе меню');
         return;
     }
     const activeIndex = toolbarMenus.findIndex(menu => menu.id === activeToolbarMenuId);

@@ -1,26 +1,26 @@
 const onboardingSteps = [
     {
         target: '#btnLogo',
-        title: 'Откройте меню GOOM',
-        message: 'Чтобы загрузить план этажа, нажмите на значок GOOM в верхней панели.',
+        title: tr('Откройте меню GOOM'),
+        message: tr('Чтобы загрузить план этажа, нажмите на значок GOOM в верхней панели.'),
         modal: null
     },
     {
         target: '#btnMenuLoadImg',
-        title: 'Загрузите план',
-        message: 'Выберите изображение или PDF с планом. После загрузки можно будет размещать на нём датчики.',
+        title: tr('Загрузите план'),
+        message: tr('Выберите изображение или PDF с планом. После загрузки можно будет размещать на нём датчики.'),
         modal: '#mainMenuModal'
     },
     {
         target: '#arrowTabBtn',
-        title: 'Выберите датчик',
-        message: 'Разверните панель инструментов, выберите датчик, затем щёлкните по плану, чтобы его поставить.',
+        title: tr('Выберите датчик'),
+        message: tr('Разверните панель инструментов, выберите датчик, затем щёлкните по плану, чтобы его поставить.'),
         modal: null
     },
     {
         target: '#blueprintCanvas',
-        title: 'Работайте с планом',
-        message: 'Перетаскивайте датчики мышью. Чтобы выделить несколько, зажмите левую кнопку и протяните рамку.',
+        title: tr('Работайте с планом'),
+        message: tr('Перетаскивайте датчики мышью. Чтобы выделить несколько, зажмите левую кнопку и протяните рамку.'),
         modal: null
     }
 ];
@@ -67,10 +67,10 @@ function renderOnboardingStep() {
         return;
     }
 
-    document.getElementById('onboardingStep').textContent = `Шаг ${onboardingIndex + 1} из ${onboardingSteps.length}`;
+    document.getElementById('onboardingStep').textContent = tr`Шаг ${onboardingIndex + 1} из ${onboardingSteps.length}`;
     document.getElementById('onboardingTitle').textContent = step.title;
     document.getElementById('onboardingMessage').textContent = step.message;
-    document.getElementById('onboardingNext').textContent = onboardingIndex === onboardingSteps.length - 1 ? 'Готово' : 'Далее';
+    document.getElementById('onboardingNext').textContent = onboardingIndex === onboardingSteps.length - 1 ? tr('Готово') : tr('Далее');
     document.getElementById('onboardingBackdrop').hidden = false;
     requestAnimationFrame(positionOnboarding);
 }

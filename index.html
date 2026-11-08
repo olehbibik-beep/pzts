@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GOOM</title>
-    <script src="device-support.js?v=20261108-auth-device-2"></script>
+    <script src="i18n.js?v=20261108-accounts-cs-en-3"></script>
+    <script src="device-support.js?v=20261108-accounts-cs-en-3"></script>
     <style>
         :root {
             --bg-main: #121214; --bg-toolbar: #1c1c1f; --bg-input: #252529;
@@ -146,15 +147,20 @@
         #welcomeModal { padding: 24px; box-sizing: border-box; }
         #welcomeModal .welcome-card {
             box-sizing: border-box; width: min(920px, calc(100vw - 48px)); max-width: 920px;
-            height: min(600px, calc(100vh - 48px)); min-height: 0; padding: 0; overflow: hidden;
-            display: flex; flex-direction: row; position: relative; border-radius: 12px;
-            border: 1px solid rgba(255,255,255,0.16);
-            background: linear-gradient(90deg, rgba(18,18,20,0.96) 0%, rgba(18,18,20,0.88) 33%, rgba(18,18,20,0.22) 72%, rgba(18,18,20,0.18) 100%), url('Hi.png') center / cover no-repeat;
-            box-shadow: 0 30px 70px rgba(0,0,0,0.75);
+            height: min(720px, calc(100dvh - 48px)); min-height: 0; padding: 0; overflow: visible;
+            display: flex; flex-direction: row; position: relative; border-radius: 0;
+            border: 0; background: transparent; box-shadow: none; isolation: isolate;
         }
+        #welcomeModal .welcome-card::before { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: url('Hi.png?v=20261108-accounts-cs-en-3') center / contain no-repeat; }
+        .welcome-controls { position: absolute; top: 0; left: 0; right: 0; z-index: 3; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px; pointer-events: none; }
+        .welcome-controls > * { pointer-events: auto; }
+        .welcome-back { width: 42px; height: 42px; padding: 10px; border: 0; border-radius: 50%; background: rgba(18,18,20,0.8); color: #fff; cursor: pointer; }
+        .welcome-back svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; }
+        .language-picker { margin-left: auto; background: #252529; color: #f4f4f5; border: 1px solid #52525b; padding: 8px; font-size: 12px; border-radius: 6px; }
         #welcomeModal .welcome-panel {
-            box-sizing: border-box; z-index: 1; display: flex; flex: 0 0 390px;
-            flex-direction: column; justify-content: safe center; padding: 38px 42px; overflow-y: auto;
+            box-sizing: border-box; z-index: 1; display: flex; flex: 0 0 410px;
+            flex-direction: column; justify-content: safe center; padding: 64px 32px 28px; overflow-y: auto;
+            background: linear-gradient(90deg, rgba(12,13,17,0.94) 0%, rgba(12,13,17,0.88) 80%, rgba(12,13,17,0) 100%);
         }
         #welcomeModal .welcome-brand { font-size: 34px; font-weight: 800; color: #fff; letter-spacing: 0.5px; margin-bottom: 4px; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
         #welcomeModal .welcome-edition { font-size: 11px; color: #22c55e; font-weight: bold; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 26px; }
@@ -169,6 +175,32 @@
         #welcomeModal .welcome-auth-status { display: none; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: 6px; background: rgba(15,23,42,0.72); color: #d4d4d8; font-size: 12px; overflow-wrap: anywhere; }
         #welcomeModal .welcome-signout { align-self: flex-start; padding: 5px 8px; background: transparent; color: #c4c4cc; font-size: 12px; }
         #welcomeModal .welcome-naming { display: none; flex-direction: column; gap: 12px; width: 100%; }
+        .email-auth-form, .account-form { display: flex; flex-direction: column; gap: 12px; }
+        .email-auth-form label, .account-form label { display: flex; flex-direction: column; gap: 5px; color: #d4d4d8; font-size: 12px; }
+        .account-input { box-sizing: border-box; width: 100%; min-height: 40px; border: 1px solid #52525b; border-radius: 6px; padding: 9px 11px; background: rgba(18,18,20,0.9); color: #fff; font: inherit; }
+        .auth-link { border: 0; background: transparent; color: #a5d8fa; cursor: pointer; padding: 5px 0; text-align: left; font: inherit; font-size: 12px; }
+        .auth-primary { justify-content: center; background: #0ea5e9; color: #fff; }
+        #welcomeEmailBlock .welcome-description { font-size: 12px; }
+        #welcomeModal[data-step="email"] .welcome-panel { justify-content: flex-start; }
+        #welcomeModal[data-step="email"] .welcome-brand { font-size: 26px; }
+        #welcomeModal[data-step="email"] .welcome-edition { margin-bottom: 12px; }
+        #welcomeModal[data-step="email"] .welcome-copyright { display: none; }
+        #emailAuthForm[data-mode="register"] { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px 12px; }
+        #emailAuthForm[data-mode="register"] > * { grid-column: 1 / -1; }
+        #emailAuthForm[data-mode="register"] > :is(#emailPasswordField, #emailConfirmField, #emailTypeField, #emailIcoField) { grid-column: auto; }
+        #userAccountModal { z-index: 450; padding: 20px; box-sizing: border-box; }
+        .account-card { max-width: 520px; }
+        .account-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+        .account-header h2 { margin: 0; font-size: 20px; }
+        .account-details { display: grid; grid-template-columns: 110px minmax(0,1fr); gap: 8px 12px; margin: 0 0 18px; font-size: 13px; }
+        .account-details dt { color: #a1a1aa; }
+        .account-details dd { margin: 0; overflow-wrap: anywhere; }
+        .account-cloud { margin-top: 20px; padding-top: 16px; border-top: 1px solid #35353d; }
+        .account-cloud h3 { margin: 0 0 10px; font-size: 15px; }
+        .account-note, #accountFeedback { font-size: 12px; color: #c4c4cc; line-height: 1.5; }
+        #accountFeedback[data-error="true"] { color: #fca5a5; }
+        .account-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+        #accountCloudKey { font-family: ui-monospace, monospace; }
         #welcomeModal .welcome-project-name { width: 100%; box-sizing: border-box; padding: 12px 14px; border-radius: 6px; }
         #welcomeModal .welcome-name-buttons { display: flex; gap: 10px; margin-top: 4px; }
         #welcomeModal .welcome-name-buttons .btn-cad { flex: 1; justify-content: center; padding: 11px; }
@@ -228,7 +260,7 @@
             .device-selector-group { max-width: 100%; flex-wrap: wrap; justify-content: center; }
             .footer { flex-shrink: 0; overflow-x: auto; }
             .cloud-projects-toolbar { flex-wrap: wrap; }
-            #welcomeModal .welcome-panel { flex-basis: min(390px, 58%); padding: 28px; }
+            #welcomeModal .welcome-panel { flex-basis: min(410px, 66%); padding: 64px 24px 24px; }
         }
         @media (pointer: coarse) {
             .btn-cad, .toolbar-icon-button, .device-btn, .footer-icon { min-height: 44px; min-width: 44px; }
@@ -239,7 +271,7 @@
         @media (max-height: 650px) {
             #welcomeModal { padding: 16px; }
             #welcomeModal .welcome-card { height: calc(100dvh - 32px); }
-            #welcomeModal .welcome-panel { justify-content: flex-start; padding: 24px 32px; }
+            #welcomeModal .welcome-panel { justify-content: flex-start; padding: 58px 24px 24px; }
             #welcomeModal .welcome-edition { margin-bottom: 18px; }
             #welcomeModal .welcome-copyright { margin-top: 22px; }
         }
@@ -414,8 +446,8 @@
     <div id="deviceSupportNotice" role="alert">
         <section class="device-support-card" aria-labelledby="deviceSupportTitle">
             <div class="device-support-brand">GOOM</div>
-            <h1 id="deviceSupportTitle">Откройте GOOM на планшете или ПК</h1>
-            <p id="deviceSupportMessage">Для работы с проектами используйте планшет, ноутбук или компьютер.</p>
+            <h1 id="deviceSupportTitle">Otevřete GOOM na tabletu nebo počítači</h1>
+            <p id="deviceSupportMessage">Pro práci s projekty použijte tablet, notebook nebo počítač.</p>
         </section>
     </div>
 
@@ -426,7 +458,7 @@
         <div class="toolbar-row">
             
             <div class="app-title">
-                <button class="menu-logo-button" id="btnLogo" type="button" data-tooltip="Меню" aria-label="Меню">
+                <button class="menu-logo-button" id="btnLogo" type="button" data-tooltip="Меню" aria-label="Nabídka">
                     <img src="Link.png" class="menu-logo-default" alt="">
                     <img src="Link2.png" class="menu-logo-hover" alt="">
                 </button>
@@ -435,34 +467,35 @@
 
             <div class="menu-divider" style="height: 20px;"></div>
             <input type="text" id="projectNameInput" value="Nový projekt" placeholder="Název projektu..." style="background: transparent; border: none; color: #ffffff; font-size: 15px; font-weight: 600; width: 250px; outline: none; border-bottom: 1px dashed rgba(255,255,255,0.3); padding: 2px 5px;" title="Přejmenovat projekt">
-            <button id="btnOpenCloudProjectsToolbar" class="toolbar-icon-button" type="button" data-open-cloud-projects title="Облачные проекты" aria-label="Облачные проекты">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18a4.6 4.6 0 0 1-.2-9.2A6 6 0 0 1 18 10a4 4 0 0 1-.5 8H7Z"></path><path d="m9 13 3-3 3 3M12 10v8"></path></svg>
+            <button id="btnOpenCloudProjectsToolbar" class="toolbar-icon-button" type="button" data-open-account title="Uživatelský účet" aria-label="Uživatelský účet">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21v-2a8 8 0 0 1 16 0v2"></path></svg>
             </button>
+            <select class="language-picker" data-language-select aria-label="Jazyk"><option value="cs">Čeština</option><option value="en">English</option></select>
             <span id="cloudSyncIndicator" role="status" aria-live="polite"></span>
 
             <div class="toolbar-section" style="margin-left: auto; gap: 12px;">
                 <div class="setting-col">
-                    <svg viewBox="0 0 24 24" aria-hidden="true" style="width:18px;height:18px;fill:none;stroke:#8d8d99;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;" title="Размер значков датчиков">
+                    <svg viewBox="0 0 24 24" aria-hidden="true" style="width:18px;height:18px;fill:none;stroke:#8d8d99;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;" title="Velikost ikon detektorů">
                         <path d="M4 8V4h4M20 8V4h-4M4 16v4h4M20 16v4h-4M8 8l-4-4M16 8l4-4M8 16l-4 4M16 16l4 4"></path>
                     </svg>
                     <input type="range" id="deviceSizeSlider" min="8" max="70" value="16" style="width: 80px; cursor: pointer;" title="Změnit velikost všech značek">
                 </div>
                 <div class="setting-col">
-                    <button id="togglePirCoverage" class="toolbar-icon-button" type="button" aria-pressed="true" title="Скрыть зоны PIR" aria-label="Скрыть зоны PIR">
+                    <button id="togglePirCoverage" class="toolbar-icon-button" type="button" aria-pressed="true" title="Skrýt zóny PIR" aria-label="Skrýt zóny PIR">
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12s3.2-6 9-6 9 6 9 6-3.2 6-9 6-9-6-9-6Z"></path><circle cx="12" cy="12" r="2.3"></circle><path d="M12 9.7V4"></path></svg>
                     </button>
                 </div>
                 <div class="setting-col">
-                    <button id="togglePlanGrid" class="grid-toggle" type="button" aria-pressed="false" title="Показать сетку поверх чертежа" aria-label="Включить сетку">
+                    <button id="togglePlanGrid" class="grid-toggle" type="button" aria-pressed="false" title="Zobrazit mřížku nad výkresem" aria-label="Zapnout mřížku">
                         <svg viewBox="0 0 24 24" aria-hidden="true">
                             <path d="M4 4h16v16H4zM9.33 4v16M14.67 4v16M4 9.33h16M4 14.67h16"></path>
                         </svg>
                     </button>
                 </div>
-                <button id="btnDetectionSettings" class="toolbar-icon-button" type="button" title="Настроить стены и диапазон PIR" aria-label="Настроить стены и диапазон PIR">
+                <button id="btnDetectionSettings" class="toolbar-icon-button" type="button" title="Nastavit stěny a dosah PIR" aria-label="Nastavit stěny a dosah PIR">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20V5l6-2v15l6 2 6-2V3"></path><path d="M9 3l6 2M15 5v15M4 10l4-1M16 12l2-1M16 16l2-1"></path></svg>
                 </button>
-                <button id="btnOpenToolbarMenuEditor" class="toolbar-icon-button" type="button" title="Редактировать меню и значки" aria-label="Редактировать меню и значки">
+                <button id="btnOpenToolbarMenuEditor" class="toolbar-icon-button" type="button" title="Upravit nabídky a ikony" aria-label="Upravit nabídky a ikony">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h10M18 5h2M4 12h2M10 12h10M4 19h10M18 19h2"></path><circle cx="16" cy="5" r="2"></circle><circle cx="8" cy="12" r="2"></circle><circle cx="16" cy="19" r="2"></circle></svg>
                 </button>
             </div>
@@ -475,7 +508,7 @@
         <div class="sliding-row-container">
             <div class="toolbar-row" style="padding: 10px 20px; justify-content: center;">
                 <div class="device-selector-group" id="deviceSelector">
-                    <button id="btnCycleToolbarMenu" class="btn-cad toolbar-menu-cycle" type="button" title="Переключить набор меню" aria-label="Переключить набор меню">
+                    <button id="btnCycleToolbarMenu" class="btn-cad toolbar-menu-cycle" type="button" title="Přepnout sadu nabídek" aria-label="Přepnout sadu nabídek">
                         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="2"></circle><circle cx="12" cy="12" r="2"></circle><circle cx="12" cy="19" r="2"></circle></svg>
                     </button>
                     <select id="loopSelect" style="margin: 0 4px; width: 128px;" title="Vyberte Sběrnici"></select>
@@ -519,7 +552,7 @@
     <div class="help-container">
         <button id="helpBtn" class="help-btn" title="Klávesové zkratky (Nápověda)">?</button>
         <div id="helpPanel" class="help-panel">
-            <span class="help-item"><span class="help-key">S</span> Удерживать: вращение с паузой на 90°</span>
+            <span class="help-item"><span class="help-key">S</span> Podržet: otáčení se zastavením po 90°</span>
             <span class="help-item"><span class="help-key">Ctrl+Z</span> Zpět</span>
             <span class="help-item"><span class="help-key">Del</span> Smazat</span>
             <span class="help-item"><span class="help-key">Ctrl+C/V</span> Kopírovat/Vložit</span>
@@ -534,35 +567,61 @@
         <div class="floor-controls">
             <button id="btnOverview" class="footer-icon" title="Přehled celé budovy">
                 <svg viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 12 12 17 22 12"></polyline><polyline points="2 17 12 22 22 17"></polyline></svg>
-                <span style="font-family: sans-serif; font-size: 11px; margin-left: 6px; font-weight: bold; letter-spacing: 0.5px;">SŘEZ BUDOVY</span>
+                <span style="font-family: sans-serif; font-size: 11px; margin-left: 6px; font-weight: bold; letter-spacing: 0.5px;">ŘEZ BUDOVOU</span>
             </button>
         </div>
     </div>
 
     <div id="welcomeModal" class="modal" style="display: flex;" data-step="auth">
-        <div class="modal-content welcome-card" role="dialog" aria-modal="true" aria-label="Добро пожаловать в GOOM">
+        <div class="modal-content welcome-card" role="dialog" aria-modal="true" aria-label="Vítejte v GOOM">
+            <div class="welcome-controls">
+                <button id="btnWelcomeAccount" class="welcome-back" type="button" aria-label="Zpět" title="Zpět" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"></path></svg></button>
+                <select class="language-picker" data-language-select aria-label="Jazyk"><option value="cs">Čeština</option><option value="en">English</option></select>
+            </div>
             <div class="welcome-panel">
                 
                 <div class="welcome-brand">GOOM</div>
                 <div class="welcome-edition">SPECIAL Edition</div>
                 
                 <div id="welcomeAuthBlock" class="welcome-actions">
-                    <h1 class="welcome-heading">Добро пожаловать!</h1>
-                    <p class="welcome-description">Войдите в аккаунт Google, чтобы перейти к своим проектам.</p>
-                    <button id="btnGoogleSignIn" class="btn-cad welcome-auth-button" type="button" aria-label="Войти или зарегистрироваться через Google">
-                        Войти или зарегистрироваться с Google
+                    <h1 class="welcome-heading">Vítejte!</h1>
+                    <p class="welcome-description">Přihlaste se a pokračujte ke svým projektům.</p>
+                    <button id="btnGoogleSignIn" class="btn-cad welcome-auth-button" type="button" aria-label="Přihlásit se nebo registrovat přes Google">
+                        Pokračovat s Google
                     </button>
+                    <div id="welcomeEmailActions" class="welcome-actions">
+                        <button id="btnEmailSignIn" class="btn-cad welcome-auth-button" type="button">Přihlásit se e-mailem</button>
+                        <button id="btnEmailRegister" class="auth-link" type="button">Vytvořit účet</button>
+                    </div>
                     <p id="googleAuthMessage" role="status" aria-live="polite" hidden></p>
                     <div id="googleAuthStatus" class="welcome-auth-status" aria-live="polite">
                         <span id="googleAuthUser"></span>
-                        <button id="btnGoogleSignOut" class="btn-cad welcome-signout" type="button">Выйти</button>
+                        <button id="btnGoogleSignOut" class="btn-cad welcome-signout" type="button">Odhlásit se</button>
                     </div>
-                    <button id="btnWelcomeContinue" class="btn-cad" type="button" hidden style="background: #0ea5e9; color: #fff;">Перейти к проектам</button>
+                    <button id="btnWelcomeContinue" class="btn-cad" type="button" hidden style="background: #0ea5e9; color: #fff;">Přejít k projektům</button>
+                    <button id="btnWelcomeProfile" class="auth-link" type="button" hidden>Uživatelský účet</button>
+                </div>
+
+                <div id="welcomeEmailBlock" class="welcome-actions" hidden>
+                    <h2 id="emailAuthTitle" class="welcome-heading">Přihlášení</h2>
+                    <p id="emailRegistrationHelp" class="welcome-description" hidden>Použijte libovolnou e-mailovou adresu. Heslo musí mít alespoň 8 znaků.</p>
+                    <form id="emailAuthForm" class="email-auth-form">
+                        <label id="emailNameField" hidden>Jméno<input id="emailDisplayName" class="account-input" type="text" name="displayName" autocomplete="name" maxlength="120"></label>
+                        <label>E-mail<input id="emailAuthEmail" class="account-input" type="email" name="email" autocomplete="email" required maxlength="254"></label>
+                        <label id="emailPasswordField">Heslo<input id="emailAuthPassword" class="account-input" type="password" name="password" autocomplete="current-password" required minlength="8"></label>
+                        <label id="emailConfirmField" hidden>Potvrdit heslo<input id="emailAuthConfirm" class="account-input" type="password" name="passwordConfirm" autocomplete="new-password"></label>
+                        <label id="emailTypeField" hidden>Typ účtu<select id="emailAccountType" class="account-input" name="accountType"><option value="personal">Osobní účet</option><option value="company">Firma</option></select></label>
+                        <label id="emailIcoField" hidden>IČO<input id="emailCompanyIco" class="account-input" name="ico" inputmode="numeric" maxlength="8" placeholder="8 číslic včetně kontrolní číslice"></label>
+                        <p id="emailCompanyHelp" class="welcome-description" hidden>Po ověření e-mailu získá firemní účet automaticky klíč ke cloudovému úložišti.</p>
+                        <p id="emailAuthFeedback" class="account-note" role="status" aria-live="polite" hidden></p>
+                        <button id="btnEmailAuthSubmit" class="btn-cad auth-primary" type="submit">Přihlásit se</button>
+                        <button id="btnEmailResetPassword" class="auth-link" type="button">Zapomenuté heslo?</button>
+                    </form>
                 </div>
 
                 <div id="welcomeButtonsBlock" class="welcome-actions" hidden>
-                    <h2 class="welcome-heading">Выберите проект</h2>
-                    <button id="btnWelcomeResume" class="btn-cad welcome-auth-button" type="button" hidden>Продолжить последний проект</button>
+                    <h2 class="welcome-heading">Vyberte projekt</h2>
+                    <button id="btnWelcomeResume" class="btn-cad welcome-auth-button" type="button" hidden>Pokračovat v posledním projektu</button>
                     <button id="btnWelcomeNew" class="btn-cad" style="background: #ef4444; color: #ffffff; font-weight: bold; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3); border: none;">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px; height:18px; margin-right:10px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
                         Nový projekt
@@ -571,16 +630,11 @@
                         <svg viewBox="0 0 24 24" fill="none" stroke="#0f0f11" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:18px; height:18px; margin-right:10px;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
                         Otevřít projekt (.BIPS)
                     </button>
-                    <button id="btnWelcomeCloudProjects" class="btn-cad welcome-auth-button" type="button" data-open-cloud-projects>
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18a4.6 4.6 0 0 1-.2-9.2A6 6 0 0 1 18 10a4 4 0 0 1-.5 8H7Z"></path><path d="m9 13 3-3 3 3M12 10v8"></path></svg>
-                        Облачные проекты
-                    </button>
-                    <button id="btnWelcomeAccount" class="btn-cad welcome-auth-button" type="button">Назад к аккаунту</button>
                 </div>
 
                 <div id="welcomeNamingBlock" class="welcome-naming" hidden>
                     <div style="font-size: 13px; color: #a1a1aa; margin-bottom: -6px;">Zadejte název projektu:</div>
-                    <input type="text" id="welcomeProjectNameInput" class="welcome-project-name" value="Nový projekt" placeholder="Např. Rodinný dom Praha..." style="background: #1c1c1f; border: 1px solid #313135; color: #ffffff; font-size: 14px; font-weight: 600; outline: none; transition: border-color 0.2s;" onfocus="this.style.borderColor='#0ea5e9'" onblur="this.style.borderColor='#313135'">
+                    <input type="text" id="welcomeProjectNameInput" class="welcome-project-name" value="Nový projekt" placeholder="Např. Rodinný dům Praha…" style="background: #1c1c1f; border: 1px solid #313135; color: #ffffff; font-size: 14px; font-weight: 600; outline: none; transition: border-color 0.2s;" onfocus="this.style.borderColor='#0ea5e9'" onblur="this.style.borderColor='#313135'">
                     <div class="welcome-name-buttons">
                         <button id="btnWelcomeCancelNaming" class="btn-cad" style="background: #252529; color: #a1a1aa; font-weight: bold; border: none;">Zrušit</button>
                         <button id="btnWelcomeConfirmNaming" class="btn-cad" style="background: #ef4444; color: #ffffff; font-weight: bold; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2); border: none;">Vytvořit</button>
@@ -597,21 +651,54 @@
         </div>
     </div>
 
+    <div id="userAccountModal" class="modal">
+        <section class="modal-content account-card" role="dialog" aria-modal="true" aria-labelledby="userAccountTitle">
+            <div class="account-header"><h2 id="userAccountTitle">Uživatelský účet</h2><button id="btnAccountClose" class="btn-cad" type="button">Zavřít</button></div>
+            <dl class="account-details">
+                <dt>Jméno</dt><dd id="accountName" data-user-content></dd>
+                <dt>E-mail</dt><dd id="accountEmail" data-user-content></dd>
+                <dt>Typ účtu</dt><dd id="accountTypeLabel"></dd>
+                <dt id="accountIcoLabel" hidden>IČO</dt><dd id="accountIcoValue" data-user-content hidden></dd>
+            </dl>
+            <form id="accountProfileForm" class="account-form">
+                <label>Jméno<input id="accountDisplayName" class="account-input" name="displayName" autocomplete="name" maxlength="120" required></label>
+                <label>Typ účtu<select id="accountTypeSelect" class="account-input" name="accountType"><option value="personal">Osobní účet</option><option value="company">Firma</option></select></label>
+                <label id="accountIcoField" hidden>IČO<input id="accountIcoInput" class="account-input" name="ico" inputmode="numeric" maxlength="8" placeholder="8 číslic včetně kontrolní číslice"></label>
+                <button id="btnAccountSave" class="btn-cad auth-primary" type="submit">Uložit údaje</button>
+            </form>
+            <p id="accountEmailStatus" class="account-note"></p>
+            <div class="account-actions"><button id="btnAccountVerifyEmail" class="btn-cad" type="button">Ověřit e-mail</button><button id="btnAccountRefresh" class="btn-cad" type="button">E-mail jsem ověřil(a)</button></div>
+            <div class="account-cloud">
+                <h3>Cloudové úložiště</h3>
+                <p id="accountCloudInfo" class="account-note"></p>
+                <div id="accountCloudKeyBlock" hidden>
+                    <label for="accountCloudKey" class="account-note">Cloudový klíč</label>
+                    <input id="accountCloudKey" class="account-input" readonly data-user-content>
+                    <p class="account-note">Klíč uložte na bezpečné místo. Plný klíč se zobrazí pouze po jeho vydání.</p>
+                    <div class="account-actions"><button id="btnAccountCopyKey" class="btn-cad" type="button">Zkopírovat klíč</button><button id="btnAccountRotateKey" class="btn-cad" type="button">Vygenerovat nový klíč</button><button id="btnAccountCloudProjects" class="btn-cad auth-primary" type="button">Cloudové projekty</button></div>
+                </div>
+            </div>
+            <p id="accountFeedback" role="status" aria-live="polite" hidden></p>
+            <div class="account-actions"><button id="btnAccountSignOut" class="btn-cad" type="button">Odhlásit se</button></div>
+        </section>
+    </div>
+
     <div id="cloudProjectsModal" class="modal">
         <div class="modal-content cloud-projects-content">
             <div class="cloud-projects-header">
                 <div>
-                    <div class="modal-title">Облачные проекты</div>
+                    <div class="modal-title">Cloudové projekty</div>
                     <div id="cloudProjectsUser"></div>
                 </div>
-                <button id="btnCloudProjectsClose" class="btn-cad" type="button" aria-label="Закрыть облачные проекты">Закрыть</button>
+                <button id="btnCloudProjectsClose" class="btn-cad" type="button" aria-label="Zavřít cloudové projekty">Zavřít</button>
             </div>
             <p id="cloudProjectsStatus" role="status" aria-live="polite"></p>
             <div class="cloud-projects-toolbar">
-                <button id="btnCloudSaveCurrent" class="btn-cad" type="button" style="background:#22c55e;color:#121214;font-weight:bold;">Сохранить текущий проект</button>
+                <button id="btnCloudSaveCurrent" class="btn-cad" type="button" style="background:#22c55e;color:#121214;font-weight:bold;">Uložit aktuální projekt</button>
                 <div style="display:flex;gap:8px;">
-                    <button id="btnCloudRefresh" class="btn-cad" type="button">Обновить</button>
-                    <button id="btnCloudSignOut" class="btn-cad" type="button">Выйти</button>
+                    <button id="btnCloudAccount" class="btn-cad" type="button">Uživatelský účet</button>
+                    <button id="btnCloudRefresh" class="btn-cad" type="button">Obnovit</button>
+                    <button id="btnCloudSignOut" class="btn-cad" type="button">Odhlásit se</button>
                 </div>
             </div>
             <div id="cloudProjectsList"></div>
@@ -624,8 +711,8 @@
             <p class="app-dialog-message" id="appDialogMessage"></p>
             <input id="appDialogInput" class="app-dialog-input" type="text" hidden>
             <div class="app-dialog-actions">
-                <button id="appDialogCancel" class="btn-cad app-dialog-cancel" type="button">Отмена</button>
-                <button id="appDialogConfirm" class="btn-cad app-dialog-confirm" type="button">Подтвердить</button>
+                <button id="appDialogCancel" class="btn-cad app-dialog-cancel" type="button">Zrušit</button>
+                <button id="appDialogConfirm" class="btn-cad app-dialog-confirm" type="button">Potvrdit</button>
             </div>
         </section>
     </div>
@@ -637,8 +724,8 @@
             <h2 class="onboarding-title" id="onboardingTitle"></h2>
             <p class="onboarding-message" id="onboardingMessage"></p>
             <div class="onboarding-actions">
-                <button id="onboardingSkip" class="btn-cad" type="button">Пропустить</button>
-                <button id="onboardingNext" class="btn-cad onboarding-next" type="button">Далее</button>
+                <button id="onboardingSkip" class="btn-cad" type="button">Přeskočit</button>
+                <button id="onboardingNext" class="btn-cad onboarding-next" type="button">Dále</button>
             </div>
         </section>
     </div>
@@ -667,9 +754,9 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
                     Uložit / Export
                 </button>
-                <button id="btnMenuCloudProjects" class="btn-cad" type="button" data-open-cloud-projects style="width: 100%; justify-content: flex-start;">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18a4.6 4.6 0 0 1-.2-9.2A6 6 0 0 1 18 10a4 4 0 0 1-.5 8H7Z"></path><path d="m9 13 3-3 3 3M12 10v8"></path></svg>
-                    Облачные проекты
+                <button id="btnMenuCloudProjects" class="btn-cad" type="button" data-open-account style="width: 100%; justify-content: flex-start;">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21v-2a8 8 0 0 1 16 0v2"></path></svg>
+                    <span id="menuAccountLabel">Uživatelský účet</span>
                 </button>
                 <button id="btnMenuPrint" class="btn-cad" style="width: 100%; justify-content: flex-start;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
@@ -684,17 +771,17 @@
 
     <div id="detectionSettingsModal" class="modal">
         <div class="modal-content" style="max-width: 430px;">
-            <div class="modal-title">Распознавание стен и PIR</div>
-            <label class="setting-label" for="wallThresholdInput">Порог яркости стен (0–255)</label>
+            <div class="modal-title">Rozpoznání stěn a PIR</div>
+            <label class="setting-label" for="wallThresholdInput">Práh jasu stěn (0–255)</label>
             <input id="wallThresholdInput" type="number" min="0" max="255" step="1" value="100" class="clean-number-input" style="width: 100%; box-sizing: border-box; margin: 8px 0 16px;">
-            <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">Тёмные пиксели на плане становятся преградами для лучей PIR. Уменьшите порог, если текст или мебель ошибочно блокируют обзор.</div>
-            <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 14px;">Для выбранного датчика задаётся его радиус; если PIR не выбран — это радиус для новых датчиков. Угол обзора фиксированный: 90°.</div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">Tmavé pixely výkresu tvoří překážky pro paprsky PIR. Pokud text nebo nábytek nesprávně blokují výhled, snižte práh.</div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 14px;">Dosah platí pro vybraný detektor; bez výběru PIR se použije pro nové detektory. Zorný úhel je pevně 90°.</div>
 
-            <label class="setting-label" for="pirRangeInput">Условный радиус луча, px (10–2000)</label>
+            <label class="setting-label" for="pirRangeInput">Dosah paprsku, px (10–2000)</label>
             <input id="pirRangeInput" type="number" min="10" max="2000" step="10" value="180" class="clean-number-input" style="width: 100%; box-sizing: border-box; margin: 8px 0 16px;">
             <div class="modal-buttons">
-                <button id="btnCloseDetectionSettings" class="btn-cad" type="button">Закрыть</button>
-                <button id="btnSaveDetectionSettings" class="btn-cad" type="button" style="background: #22c55e; color: #121214; font-weight: bold;">Применить</button>
+                <button id="btnCloseDetectionSettings" class="btn-cad" type="button">Zavřít</button>
+                <button id="btnSaveDetectionSettings" class="btn-cad" type="button" style="background: #22c55e; color: #121214; font-weight: bold;">Použít</button>
             </div>
         </div>
     </div>
@@ -702,68 +789,68 @@
     <div id="iconEditorModal" class="modal">
         <div class="modal-content">
             <div class="modal-title">
-                <button id="btnIconEditorClose" class="btn-cad icon-editor-close" type="button" title="Закрыть редактор" aria-label="Закрыть редактор">×</button>
-                <span>Редактор меню и значков</span>
+                <button id="btnIconEditorClose" class="btn-cad icon-editor-close" type="button" title="Zavřít editor" aria-label="Zavřít editor">×</button>
+                <span>Editor nabídek a ikon</span>
             </div>
             <div class="toolbar-menu-list-shell">
-                <div class="toolbar-menu-presets" id="toolbarMenuPresets" aria-label="Меню и датчики для редактирования">
+                <div class="toolbar-menu-presets" id="toolbarMenuPresets" aria-label="Nabídky a detektory k úpravě">
                 </div>
             </div>
-            <select id="iconEditorTarget" aria-label="Тип устройства для значка" style="display:none;"></select>
+            <select id="iconEditorTarget" aria-label="Typ zařízení pro ikonu" style="display:none;"></select>
             <div class="toolbar-menu-editor-actions">
-                <button id="btnToolbarMenuNew" class="btn-cad toolbar-menu-add" type="button" title="Добавить меню" aria-label="Добавить меню">+</button>
+                <button id="btnToolbarMenuNew" class="btn-cad toolbar-menu-add" type="button" title="Přidat nabídku" aria-label="Přidat nabídku">+</button>
                 <span id="toolbarMenuEditorStatus" style="color:var(--text-muted);font-size:12px;"></span>
                 <div class="toolbar-menu-editor-actions-group">
-                    <button id="btnToolbarMenuSave" class="btn-cad" type="button" style="background:#22c55e;color:#121214;font-weight:bold;">Сохранить меню</button>
+                    <button id="btnToolbarMenuSave" class="btn-cad" type="button" style="background:#22c55e;color:#121214;font-weight:bold;">Uložit nabídku</button>
                 </div>
             </div>
-            <strong id="iconEditorCurrentType" style="display:block;color:#d4d4d8;font-size:12px;margin:0 0 6px;">Значок датчика</strong>
+            <strong id="iconEditorCurrentType" style="display:block;color:#d4d4d8;font-size:12px;margin:0 0 6px;">Ikona detektoru</strong>
             <div class="icon-editor-layout">
                 <div>
                     <div class="icon-editor-canvas-wrap">
-                        <canvas id="iconEditorCanvas" width="400" height="400" aria-label="Холст редактирования значка"></canvas>
+                        <canvas id="iconEditorCanvas" width="400" height="400" aria-label="Plátno editoru ikon"></canvas>
                     </div>
                     <div class="icon-editor-canvas-controls">
-                        <div class="icon-editor-tools" aria-label="Действия с холстом">
-                            <button class="btn-cad" type="button" id="btnIconEditorUndo" title="Отменить действие" aria-label="Отменить действие"><svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"></path><path d="M4 9h10a6 6 0 0 1 0 12h-2"></path></svg></button>
+                        <div class="icon-editor-tools" aria-label="Akce plátna">
+                            <button class="btn-cad" type="button" id="btnIconEditorUndo" title="Vrátit akci" aria-label="Vrátit akci"><svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"></path><path d="M4 9h10a6 6 0 0 1 0 12h-2"></path></svg></button>
                         </div>
                     </div>
                     <div class="icon-editor-selection" id="iconEditorSelection" aria-live="polite"></div>
                 </div>
                 <div class="icon-editor-shape-tools">
-                    <div class="icon-editor-tools" aria-label="Добавить фигуру">
-                        <button class="btn-cad" type="button" data-icon-shape="circle" title="Круг" aria-label="Круг"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle></svg></button>
-                        <button class="btn-cad" type="button" data-icon-shape="rect" title="Квадрат" aria-label="Квадрат"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16"></rect></svg></button>
-                        <button class="btn-cad" type="button" data-icon-shape="roundRect" title="Скруглённый квадрат" aria-label="Скруглённый квадрат"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"></rect></svg></button>
-                        <button class="btn-cad" type="button" data-icon-shape="triangle" title="Треугольник" aria-label="Треугольник"><svg viewBox="0 0 24 24"><path d="M12 4 21 20H3Z"></path></svg></button>
-                        <button class="btn-cad" type="button" data-icon-shape="diamond" title="Ромб" aria-label="Ромб"><svg viewBox="0 0 24 24"><path d="m12 3 9 9-9 9-9-9z"></path></svg></button>
-                        <button class="btn-cad" type="button" data-icon-shape="line" title="Линия" aria-label="Линия"><svg viewBox="0 0 24 24"><path d="M4 20 20 4"></path></svg></button>
-                        <button class="btn-cad" type="button" data-icon-shape="text" title="Текст" aria-label="Текст"><svg viewBox="0 0 24 24"><path d="M5 5h14M12 5v14M8 19h8"></path></svg></button>
+                    <div class="icon-editor-tools" aria-label="Přidat tvar">
+                        <button class="btn-cad" type="button" data-icon-shape="circle" title="Kruh" aria-label="Kruh"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle></svg></button>
+                        <button class="btn-cad" type="button" data-icon-shape="rect" title="Čtverec" aria-label="Čtverec"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16"></rect></svg></button>
+                        <button class="btn-cad" type="button" data-icon-shape="roundRect" title="Zaoblený čtverec" aria-label="Zaoblený čtverec"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"></rect></svg></button>
+                        <button class="btn-cad" type="button" data-icon-shape="triangle" title="Trojúhelník" aria-label="Trojúhelník"><svg viewBox="0 0 24 24"><path d="M12 4 21 20H3Z"></path></svg></button>
+                        <button class="btn-cad" type="button" data-icon-shape="diamond" title="Kosočtverec" aria-label="Kosočtverec"><svg viewBox="0 0 24 24"><path d="m12 3 9 9-9 9-9-9z"></path></svg></button>
+                        <button class="btn-cad" type="button" data-icon-shape="line" title="Čára" aria-label="Čára"><svg viewBox="0 0 24 24"><path d="M4 20 20 4"></path></svg></button>
+                        <button class="btn-cad" type="button" data-icon-shape="text" title="Text" aria-label="Text"><svg viewBox="0 0 24 24"><path d="M5 5h14M12 5v14M8 19h8"></path></svg></button>
                     </div>
                 </div>
                 <div>
-                    <span class="icon-editor-color-label">Цвет</span>
-                    <div id="iconEditorColorPalette" class="icon-editor-palette" aria-label="Палитра цветов"></div>
-                    <label class="icon-editor-custom-color">Другой цвет
-                        <input id="iconEditorColor" type="color" value="#22c55e" aria-label="Выбрать другой цвет">
+                    <span class="icon-editor-color-label">Barva</span>
+                    <div id="iconEditorColorPalette" class="icon-editor-palette" aria-label="Paleta barev"></div>
+                    <label class="icon-editor-custom-color">Vlastní barva
+                        <input id="iconEditorColor" type="color" value="#22c55e" aria-label="Vybrat vlastní barvu">
                     </label>
                     <label class="icon-editor-field" style="flex-direction:row;align-items:center;">
                         <input id="iconEditorFill" type="checkbox" checked>
-                        Заливка фигуры
+                        Výplň tvaru
                     </label>
-                    <label class="icon-editor-field">Размер
+                    <label class="icon-editor-field">Velikost
                         <input id="iconEditorSize" type="range" min="10" max="400" value="90">
                     </label>
-                    <label class="icon-editor-field">Толщина линии
+                    <label class="icon-editor-field">Tloušťka čáry
                         <input id="iconEditorStroke" type="range" min="1" max="24" value="6">
                     </label>
-                    <label class="icon-editor-field">Поворот
+                    <label class="icon-editor-field">Otočení
                         <input id="iconEditorRotation" type="range" min="-180" max="180" value="0">
                     </label>
                     <div class="icon-editor-actions">
-                        <button id="btnIconEditorDelete" class="btn-cad" type="button" title="Удалить фигуру">Удалить</button>
-                        <button id="btnIconEditorClear" class="btn-cad" type="button">Очистить</button>
-                        <button id="btnIconEditorReset" class="btn-cad" type="button" title="Сбросить значок">Сбросить</button>
+                        <button id="btnIconEditorDelete" class="btn-cad" type="button" title="Odstranit tvar">Odstranit</button>
+                        <button id="btnIconEditorClear" class="btn-cad" type="button">Vymazat</button>
+                        <button id="btnIconEditorReset" class="btn-cad" type="button" title="Obnovit výchozí ikonu">Obnovit výchozí</button>
                     </div>
                 </div>
             </div>
@@ -854,6 +941,6 @@
             </div>
         </div>
     </div>
-    <script src="bootstrap.js?v=20261108-auth-device-2"></script>
+    <script src="bootstrap.js?v=20261108-accounts-cs-en-3"></script>
 </body>
 </html>

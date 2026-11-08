@@ -1,15 +1,15 @@
 const iconEditorDeviceTypes = [
-    ['panel', 'Управляющая панель'],
-    ['expander', 'Расширитель'],
-    ['abax', 'Беспроводной модуль'],
-    ['keypad', 'Клавиатура'],
-    ['pir', 'PIR датчик'],
-    ['pir_wl', 'Беспроводной PIR'],
-    ['magnet', 'Магнитный контакт'],
-    ['magnet_wl', 'Беспроводной контакт'],
-    ['glassbreak', 'Датчик разбития стекла'],
-    ['panic', 'Тревожная кнопка'],
-    ['siren', 'Сирена']
+    ['panel', tr('Управляющая панель')],
+    ['expander', tr('Расширитель')],
+    ['abax', tr('Беспроводной модуль')],
+    ['keypad', tr('Клавиатура')],
+    ['pir', tr('PIR датчик')],
+    ['pir_wl', tr('Беспроводной PIR')],
+    ['magnet', tr('Магнитный контакт')],
+    ['magnet_wl', tr('Беспроводной контакт')],
+    ['glassbreak', tr('Датчик разбития стекла')],
+    ['panic', tr('Тревожная кнопка')],
+    ['siren', tr('Сирена')]
 ];
 
 const iconEditorCanvas = document.getElementById('iconEditorCanvas');
@@ -80,7 +80,7 @@ function buildIconEditorColorPalette() {
         swatch.dataset.color = color;
         swatch.style.backgroundColor = color;
         swatch.title = color;
-        swatch.setAttribute('aria-label', `Цвет ${color}`);
+        swatch.setAttribute('aria-label', tr`Цвет ${color}`);
         swatch.addEventListener('click', () => {
             document.getElementById('iconEditorColor').value = color;
             const shape = iconEditorShapes[iconEditorSelectedIndex];
@@ -229,8 +229,8 @@ function redrawIconEditor() {
         }
     });
     document.getElementById('iconEditorSelection').textContent = iconEditorSelectedIndex < 0
-        ? 'Выберите фигуру или добавьте новую.'
-        : `Выбрана фигура ${iconEditorSelectedIndex + 1} из ${iconEditorShapes.length}. Перетаскивайте её мышью.`;
+        ? tr('Выберите фигуру или добавьте новую.')
+        : tr`Выбрана фигура ${iconEditorSelectedIndex + 1} из ${iconEditorShapes.length}. Перетаскивайте её мышью.`;
     updateIconEditorControls();
     updateIconEditorColorPalette();
 }
@@ -290,7 +290,7 @@ function openIconEditorTextInput(shapeIndex) {
     input.maxLength = 8;
     input.className = 'icon-editor-text-input';
     input.value = shape.text;
-    input.setAttribute('aria-label', 'Текст фигуры');
+    input.setAttribute('aria-label', tr('Текст фигуры'));
     const wrap = document.querySelector('.icon-editor-canvas-wrap');
     input.style.left = `${Math.max(60, Math.min(wrap.clientWidth - 60, shape.x / 400 * iconEditorCanvas.clientWidth))}px`;
     input.style.top = `${Math.max(16, Math.min(iconEditorCanvas.clientHeight - 16, shape.y / 400 * iconEditorCanvas.clientHeight))}px`;

@@ -29,7 +29,7 @@ function showNextAppDialog() {
     input.hidden = type !== 'prompt';
     input.value = type === 'prompt' ? defaultValue : '';
     cancelButton.hidden = type === 'alert';
-    confirmButton.textContent = type === 'alert' ? 'Понятно' : type === 'prompt' ? 'Сохранить' : 'Подтвердить';
+    confirmButton.textContent = type === 'alert' ? tr('Понятно') : type === 'prompt' ? tr('Сохранить') : tr('Подтвердить');
     backdrop.hidden = false;
     backdrop.setAttribute('role', type === 'alert' ? 'alertdialog' : 'dialog');
 
@@ -64,11 +64,11 @@ function showAppDialog(options) {
     });
 }
 
-window.showAppAlert = (message, title = 'Сообщение') =>
+window.showAppAlert = (message, title = tr('Сообщение')) =>
     showAppDialog({ type: 'alert', title, message: String(message) });
 
-window.showAppConfirm = (message, title = 'Подтвердите действие') =>
+window.showAppConfirm = (message, title = tr('Подтвердите действие')) =>
     showAppDialog({ type: 'confirm', title, message: String(message) });
 
-window.showAppPrompt = (message, defaultValue = '', title = 'Введите значение') =>
+window.showAppPrompt = (message, defaultValue = '', title = tr('Введите значение')) =>
     showAppDialog({ type: 'prompt', title, message: String(message), defaultValue: String(defaultValue) });

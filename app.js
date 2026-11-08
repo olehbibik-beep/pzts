@@ -90,9 +90,9 @@ document.addEventListener('focusout', e => {
 function updateLoopSelect() {
     const currentVal = loopSelect.value; loopSelect.innerHTML = '';
     for(let i=1; i<=currentMaxLines; i++) {
-        let opt = document.createElement('option'); opt.value = i; opt.textContent = `Sběrnice ${i}`; loopSelect.appendChild(opt);
+        let opt = document.createElement('option'); opt.value = i; opt.textContent = tr`Sběrnice ${i}`; loopSelect.appendChild(opt);
     }
-    const addOpt = document.createElement('option'); addOpt.value = 'add'; addOpt.textContent = '+ Přidat'; loopSelect.appendChild(addOpt);
+    const addOpt = document.createElement('option'); addOpt.value = 'add'; addOpt.textContent = tr('+ Přidat'); loopSelect.appendChild(addOpt);
     if (currentVal && currentVal !== 'add' && currentVal <= currentMaxLines) loopSelect.value = currentVal; else loopSelect.value = 1;
 }
 
@@ -108,8 +108,8 @@ if (pirToggle) {
     pirToggle.addEventListener('click', () => {
         const enabled = pirToggle.getAttribute('aria-pressed') !== 'true';
         pirToggle.setAttribute('aria-pressed', String(enabled));
-        pirToggle.setAttribute('aria-label', enabled ? 'Скрыть зоны PIR' : 'Показать зоны PIR');
-        pirToggle.title = enabled ? 'Скрыть зоны PIR' : 'Показать зоны PIR';
+        pirToggle.setAttribute('aria-label', enabled ? tr('Скрыть зоны PIR') : tr('Показать зоны PIR'));
+        pirToggle.title = enabled ? tr('Скрыть зоны PIR') : tr('Показать зоны PIR');
         requestRedraw();
     });
 }
@@ -119,7 +119,7 @@ if (planGridToggle) {
     planGridToggle.addEventListener('click', () => {
         const enabled = planGridToggle.getAttribute('aria-pressed') !== 'true';
         planGridToggle.setAttribute('aria-pressed', String(enabled));
-        planGridToggle.setAttribute('aria-label', enabled ? 'Выключить сетку' : 'Включить сетку');
+        planGridToggle.setAttribute('aria-label', enabled ? tr('Выключить сетку') : tr('Включить сетку'));
         requestRedraw();
     });
 }
@@ -147,7 +147,7 @@ document.getElementById('btnSaveDetectionSettings').addEventListener('click', ()
     const pirRangePixels = Number(document.getElementById('pirRangeInput').value);
     if (!Number.isInteger(wallThreshold) || wallThreshold < 0 || wallThreshold > 255 ||
         !Number.isFinite(pirRangePixels) || pirRangePixels < 10 || pirRangePixels > 2000) {
-        showAppAlert('Укажите порог яркости от 0 до 255 и радиус PIR от 10 до 2000 пикселей.', 'Некорректные настройки');
+        showAppAlert(tr('Укажите порог яркости от 0 до 255 и радиус PIR от 10 до 2000 пикселей.'), tr('Некорректные настройки'));
         return;
     }
 
@@ -156,7 +156,7 @@ document.getElementById('btnSaveDetectionSettings').addEventListener('click', ()
         wallMask = createWallMask(floor, wallThreshold);
     } catch (error) {
         console.error('Ошибка распознавания стен:', error);
-        showAppAlert(`Не удалось распознать стены: ${error.message}`, 'Ошибка распознавания стен');
+        showAppAlert(tr`Не удалось распознать стены: ${error.message}`, tr('Ошибка распознавания стен'));
         return;
     }
 
@@ -216,13 +216,13 @@ document.getElementById('btnLogo').addEventListener('click', () => document.getE
 window.openNewProjectNamingModal = function() {
     let npModal = document.getElementById('newProjectModal');
     let npInput = document.getElementById('newProjectNameInput');
-    if (npModal && npInput) { npInput.value = "Nový projekt"; npModal.style.display = 'flex'; setTimeout(() => npInput.select(), 50); }
+    if (npModal && npInput) { npInput.value = tr("Nový projekt"); npModal.style.display = 'flex'; setTimeout(() => npInput.select(), 50); }
 };
 
 let btnMenuNew = document.getElementById('btnMenuNew');
 if (btnMenuNew) {
     btnMenuNew.addEventListener('click', async () => {
-        if (await showAppConfirm("Opravdu chcete začít nový projekt? Neuložené změny budou ztraceny.")) {
+        if (await showAppConfirm(tr("Opravdu chcete začít nový projekt? Neuložené změny budou ztraceny."))) {
             document.getElementById('mainMenuModal').style.display = 'none';
             showWelcomeScreen('projects');
         }
@@ -243,8 +243,8 @@ let btnConfirmNewProject = document.getElementById('btnConfirmNewProject');
 if (btnConfirmNewProject) {
     btnConfirmNewProject.addEventListener('click', () => {
         let npInput = document.getElementById('newProjectNameInput');
-        let finalName = npInput ? npInput.value.trim() : "Nový projekt";
-        if (finalName === "") finalName = "Nový projekt";
+        let finalName = npInput ? npInput.value.trim() : tr("Nový projekt");
+        if (finalName === "") finalName = tr("Nový projekt");
         document.getElementById('newProjectModal').style.display = 'none';
         if (typeof loadDefaultFloors === 'function') loadDefaultFloors(false, finalName);
     });
@@ -288,7 +288,7 @@ function exportToPDF() {
 
 function printCurrentFloor() {
     if (currentFloorIndex === -1 || (floors[currentFloorIndex].devices.length === 0 && !floors[currentFloorIndex].image)) {
-        showAppAlert("Žádná data k tisku.", 'Печать');
+        showAppAlert(tr("Žádná data k tisku."), tr('Печать'));
         return;
     }
 
@@ -305,17 +305,17 @@ function printCurrentFloor() {
     setTimeout(() => {
         try {
             const image = new Image();
-            image.alt = `Чертёж: ${floor.name}`;
+            image.alt = tr`Чертёж: ${floor.name}`;
             image.onload = () => window.print();
             image.onerror = () => {
                 console.error('Не удалось загрузить изображение чертежа для печати.');
-                showAppAlert('Не удалось подготовить чертёж к печати.', 'Ошибка печати');
+                showAppAlert(tr('Не удалось подготовить чертёж к печати.'), tr('Ошибка печати'));
             };
             document.getElementById('printPage').replaceChildren(image);
             image.src = canvas.toDataURL('image/png');
         } catch (error) {
             console.error('Не удалось подготовить чертёж к печати:', error);
-            showAppAlert(`Не удалось подготовить чертёж к печати: ${error.message}`, 'Ошибка печати');
+            showAppAlert(tr`Не удалось подготовить чертёж к печати: ${error.message}`, tr('Ошибка печати'));
         } finally {
             canvas.width = previousCanvas.width;
             canvas.height = previousCanvas.height;
@@ -586,7 +586,7 @@ container.addEventListener('pointerdown', (e) => {
             if (!showDeactivatedDevices && dev.type === 'deactivated') continue;
 
             if (dev.type === 'textNode') {
-                ctx.font = "bold " + (13 * labelScale) + "px sans-serif"; let w = ctx.measureText(dev.manualName || "Poznámka").width;
+                ctx.font = "bold " + (13 * labelScale) + "px sans-serif"; let w = ctx.measureText(dev.manualName || tr("Poznámka")).width;
                 inBody = canvasX >= dev.x - w/2 - 6*labelScale && canvasX <= dev.x + w/2 + 6*labelScale && canvasY >= dev.y - 11*labelScale && canvasY <= dev.y + 11*labelScale;
             } else {
                 inBody = Math.abs(dev.x - canvasX) < 22*sMult && Math.abs(dev.y - canvasY) < 22*sMult;
@@ -704,7 +704,7 @@ container.addEventListener('pointermove', (e) => {
             let inBody = false;
             if (dev.type === 'textNode') {
                 ctx.font = "bold " + (13 * labelScale) + "px sans-serif";
-                let w = ctx.measureText(dev.manualName || "Poznámka").width;
+                let w = ctx.measureText(dev.manualName || tr("Poznámka")).width;
                 inBody = canvasX >= dev.x - w/2 - 6*labelScale && canvasX <= dev.x + w/2 + 6*labelScale && canvasY >= dev.y - 11*labelScale && canvasY <= dev.y + 11*labelScale;
             } else {
                 inBody = Math.abs(dev.x - canvasX) < 22*sMult && Math.abs(dev.y - canvasY) < 22*sMult;
@@ -726,10 +726,10 @@ container.addEventListener('pointermove', (e) => {
 
             // 3. Заполняем и показываем подсказку
             const names = {
-                pir: "PIR Detektor", pir_wl: "Bezdrátový PIR", magnet: "Magnetický kontakt", magnet_wl: "Bezdrátový Magnet", 
-                glassbreak: "Tříštění skla", panic: "Tísňové tlačítko", siren: "Siréna", panel: "Ústředna EZS", 
-                expander: "Expandér (EXP)", abax: "Modul ABAX2", keypad: "Klávesnice", deactivated: "Deaktivováno", 
-                textNode: "Textová poznámka", ramen: "Tajný Ramen", cableTool: "Nástroj kabelu"
+                pir: "PIR Detektor", pir_wl: tr("Bezdrátový PIR"), magnet: tr("Magnetický kontakt"), magnet_wl: tr("Bezdrátový Magnet"), 
+                glassbreak: tr("Tříštění skla"), panic: tr("Tísňové tlačítko"), siren: tr("Siréna"), panel: tr("Ústředna EZS"), 
+                expander: tr("Expandér (EXP)"), abax: "Modul ABAX2", keypad: tr("Klávesnice"), deactivated: tr("Deaktivováno"), 
+                textNode: tr("Textová poznámka"), ramen: tr("Tajný Ramen"), cableTool: tr("Nástroj kabelu")
             };
 
             document.getElementById('ttType').textContent = names[foundHoverDevice.type] || foundHoverDevice.type.toUpperCase();
@@ -741,9 +741,9 @@ container.addEventListener('pointermove', (e) => {
                 document.getElementById('ttNumber').style.display = 'block';
                 document.getElementById('ttLoop').style.display = 'block';
                 
-                let isManual = foundHoverDevice.manualNumber ? " (Ručně)" : "";
+                let isManual = foundHoverDevice.manualNumber ? tr(" (Ručně)") : "";
                 document.getElementById('ttNumber').innerHTML = `Adresa: <strong>${foundHoverDevice.number || "Auto"}</strong><span>${isManual}</span>`;
-                document.getElementById('ttLoop').textContent = `Sběrnice: ${foundHoverDevice.loopId || 1}`;
+                document.getElementById('ttLoop').textContent = tr`Sběrnice: ${foundHoverDevice.loopId || 1}`;
             }
 
             if (foundHoverDevice.manualName && foundHoverDevice.type !== 'textNode') {
@@ -904,7 +904,7 @@ container.addEventListener('pointercancel', () => {
     requestRedraw();
 });
 
-function loadDefaultFloors(showWelcome = false, newProjectName = "Nový projekt") {
+function loadDefaultFloors(showWelcome = false, newProjectName = tr("Nový projekt")) {
     window.resetActiveCloudProject?.();
     customDeviceIcons = {};
     if (typeof refreshCustomDeviceIcons === 'function') refreshCustomDeviceIcons();
@@ -937,12 +937,14 @@ function loadDefaultFloors(showWelcome = false, newProjectName = "Nový projekt"
 }
     
 function showWelcomeScreen(step = 'auth') {
-    if (step !== 'auth' && !window.getFirebaseUser?.()) step = 'auth';
+    if (!['auth', 'email'].includes(step) && !window.getFirebaseUser?.()) step = 'auth';
     const modal = document.getElementById('welcomeModal');
     modal.dataset.step = step;
     modal.style.display = 'flex';
     document.getElementById('welcomeAuthBlock').hidden = step !== 'auth';
+    document.getElementById('welcomeEmailBlock').hidden = step !== 'email';
     document.getElementById('welcomeButtonsBlock').hidden = step !== 'projects';
+    document.getElementById('btnWelcomeAccount').hidden = step === 'auth';
     const naming = document.getElementById('welcomeNamingBlock');
     naming.hidden = step !== 'naming';
     naming.style.display = step === 'naming' ? 'flex' : 'none';
@@ -964,7 +966,7 @@ async function initProject() {
                 showWelcomeScreen('naming');
                 let inp = document.getElementById('welcomeProjectNameInput');
                 if (inp) {
-                    inp.value = "Nový projekt";
+                    inp.value = tr("Nový projekt");
                     setTimeout(() => inp.select(), 50);
                 }
             };
@@ -982,8 +984,8 @@ async function initProject() {
             btnWelcomeConfirmNaming.onclick = () => {
                 if (!window.getFirebaseUser?.()) { showWelcomeScreen(); return; }
                 let inp = document.getElementById('welcomeProjectNameInput');
-                let finalName = inp ? inp.value.trim() : "Nový projekt";
-                if (finalName === "") finalName = "Nový projekt";
+                let finalName = inp ? inp.value.trim() : tr("Nový projekt");
+                if (finalName === "") finalName = tr("Nový projekt");
                 
                 document.getElementById('welcomeModal').style.display = 'none';
                 
@@ -1013,7 +1015,7 @@ async function initProject() {
                         const file = await handle.getFile();
                         if (await importFileContent(file)) currentFileHandle = handle;
                     } catch (error) {
-                        if (error.name !== 'AbortError') showAppAlert(error.message, 'Ошибка открытия проекта');
+                        if (error.name !== 'AbortError') showAppAlert(error.message, tr('Ошибка открытия проекта'));
                     }
                 } else { 
                     document.getElementById('bipsLoader').click(); 
@@ -1024,18 +1026,21 @@ async function initProject() {
         document.getElementById('btnWelcomeContinue').onclick = async () => {
             if (await window.ensureFirebaseSession()) showWelcomeScreen('projects');
         };
-        document.getElementById('btnWelcomeAccount').onclick = () => showWelcomeScreen();
+        document.getElementById('btnWelcomeAccount').onclick = () => {
+            const step = document.getElementById('welcomeModal').dataset.step;
+            showWelcomeScreen(step === 'naming' ? 'projects' : 'auth');
+        };
         const resumeButton = document.getElementById('btnWelcomeResume');
         resumeButton.onclick = async () => {
             if (!window.getFirebaseUser?.()) { showWelcomeScreen(); return; }
             resumeButton.disabled = true;
             try {
-                if (!await loadFromDB()) throw new Error('Локальное сохранение недоступно. Создайте или откройте другой проект.');
+                if (!await loadFromDB()) throw new Error(tr('Локальное сохранение недоступно. Создайте или откройте другой проект.'));
                 isSystemReady = true;
                 changeFloor(); saveStateToHistory(); requestRedraw();
                 document.getElementById('welcomeModal').style.display = 'none';
             } catch (error) {
-                showAppAlert(error.message, 'Не удалось продолжить проект');
+                showAppAlert(error.message, tr('Не удалось продолжить проект'));
             } finally {
                 resumeButton.disabled = false;
             }
@@ -1164,7 +1169,7 @@ document.getElementById('imageLoader').addEventListener('change', async function
             wallMask = createWallMask({ ...floor, image }, floor.wallThreshold);
         } catch (error) {
             console.error('Ошибка распознавания стен:', error);
-            showAppAlert(`Изображение загружено, но стены распознать не удалось: ${error.message}`, 'План загружен с предупреждением');
+            showAppAlert(tr`Изображение загружено, но стены распознать не удалось: ${error.message}`, tr('План загружен с предупреждением'));
             return false;
         }
         floor.image = image;
@@ -1191,7 +1196,7 @@ document.getElementById('imageLoader').addEventListener('change', async function
                     } else { isSystemReady = true; requestRedraw(); }
                 }
                 img.src = dataUrl;
-            } catch (error) { showAppAlert("Chyba při načítání PDF.", 'Ошибка загрузки PDF'); console.error(error); isSystemReady = true; requestRedraw(); }
+            } catch (error) { showAppAlert(tr("Chyba při načítání PDF."), tr('Ошибка загрузки PDF')); console.error(error); isSystemReady = true; requestRedraw(); }
         };
         fileReader.readAsArrayBuffer(file);
     } else if (file.name.toLowerCase().endsWith('.dxf')) {
@@ -1277,7 +1282,7 @@ document.getElementById('imageLoader').addEventListener('change', async function
                 img.src = dataUrl;
 
             } catch (err) {
-                showAppAlert("Chyba při zpracování DXF souboru.", 'Ошибка загрузки DXF');
+                showAppAlert(tr("Chyba při zpracování DXF souboru."), tr('Ошибка загрузки DXF'));
                 console.error(err);
                 isSystemReady = true; requestRedraw();
             }
@@ -1306,7 +1311,7 @@ function importFileContent(file, options = {}) {
     reader.onload = async function(e) {
         try {
             const text = e.target.result;
-            if (!text || text.trim() === "") throw new Error("Soubor je prázdný.");
+            if (!text || text.trim() === "") throw new Error(tr("Soubor je prázdný."));
 
             const data = JSON.parse(text);
             window.resetActiveCloudProject?.();
@@ -1323,7 +1328,7 @@ function importFileContent(file, options = {}) {
                     loadedFloors = [data]; 
                 }
             } else {
-                throw new Error("Neznámá struktura dat v souboru.");
+                throw new Error(tr("Neznámá struktura dat v souboru."));
             }
             
             if (data && data.currentMaxLines) currentMaxLines = data.currentMaxLines;
@@ -1334,7 +1339,7 @@ function importFileContent(file, options = {}) {
             if (data && data.projectName) {
                 projectName = data.projectName;
             } else {
-                projectName = (file && file.name) ? file.name.replace(/\.bips$/i, '') : "Obnovený projekt";
+                projectName = (file && file.name) ? file.name.replace(/\.bips$/i, '') : tr("Obnovený projekt");
             }
             
             let pInput = document.getElementById('projectNameInput');
@@ -1358,16 +1363,16 @@ function importFileContent(file, options = {}) {
 
         } catch (err) { 
             console.error("Chyba importu:", err);
-            showAppAlert("Chyba při načítání souboru .BIPS!\n\nDetail chyby: " + err.message, 'Ошибка открытия проекта'); 
+            showAppAlert(tr("Chyba při načítání souboru .BIPS!\n\nDetail chyby: ") + err.message, tr('Ошибка открытия проекта')); 
             isSystemReady = wasSystemReady;
             requestRedraw(); 
             resolve(false);
         }
     };
     reader.onerror = () => {
-        const error = reader.error || new Error('Не удалось прочитать файл проекта.');
+        const error = reader.error || new Error(tr('Не удалось прочитать файл проекта.'));
         console.error('Ошибка чтения файла проекта:', error);
-        showAppAlert(error.message, 'Ошибка открытия проекта');
+        showAppAlert(error.message, tr('Ошибка открытия проекта'));
         resolve(false);
     };
     reader.readAsText(file);
@@ -1387,7 +1392,7 @@ if(btnOverviewNameSync) {
     btnOverviewNameSync.addEventListener('click', () => { 
         let pNameDisplay = document.getElementById('overviewProjectNameDisplay');
         if (pNameDisplay) {
-            pNameDisplay.textContent = projectName || "Bez názvu";
+            pNameDisplay.textContent = projectName || tr("Bez názvu");
         }
     }); 
 }

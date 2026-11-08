@@ -155,11 +155,11 @@ function saveToDB(options = {}) {
         };
         tx.onerror = () => {
             console.error('Ошибка локального автосохранения:', tx.error);
-            window.setCloudSyncStatus?.('Ошибка локального сохранения', 'error');
+            window.setCloudSyncStatus?.(tr('Ошибка локального сохранения'), 'error');
         };
     } catch (error) {
         console.error('Ошибка локального автосохранения:', error);
-        window.setCloudSyncStatus?.('Ошибка локального сохранения', 'error');
+        window.setCloudSyncStatus?.(tr('Ошибка локального сохранения'), 'error');
     }
 }
 
@@ -171,7 +171,7 @@ function getSavedProjectData() {
         let req = store.get('latest_save');
         req.onsuccess = e => resolve(e.target.result || null);
         req.onerror = () => reject(req.error);
-        tx.onabort = () => reject(tx.error || new Error('Не удалось прочитать локальное сохранение.'));
+        tx.onabort = () => reject(tx.error || new Error(tr('Не удалось прочитать локальное сохранение.')));
     });
 }
 
@@ -187,7 +187,7 @@ async function loadFromDB() {
     floors = loadedFloors;
     currentFloorIndex = Number.isInteger(data.currentFloorIndex) && data.currentFloorIndex >= 0 && data.currentFloorIndex < floors.length
         ? data.currentFloorIndex : 0;
-    projectName = data.projectName || 'Nový projekt';
+    projectName = data.projectName || tr('Nový projekt');
     const pInput = document.getElementById('projectNameInput');
     if (pInput) pInput.value = projectName;
     if (typeof refreshCustomDeviceIcons === 'function') refreshCustomDeviceIcons();
@@ -195,7 +195,7 @@ async function loadFromDB() {
 }
 
 function exportToBIPS() {
-    if (floors.length === 0) { showAppAlert("Žádná data k exportu.", 'Экспорт проекта'); return; }
+    if (floors.length === 0) { showAppAlert(tr("Žádná data k exportu."), tr('Экспорт проекта')); return; }
     try {
         const payload = getProjectDataPayload();
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload));
@@ -206,7 +206,7 @@ function exportToBIPS() {
         downloadAnchor.click();
         downloadAnchor.remove();
     } catch (err) {
-        showAppAlert("Chyba při generování exportu.", 'Ошибка экспорта');
+        showAppAlert(tr("Chyba při generování exportu."), tr('Ошибка экспорта'));
         console.error(err);
     }
 }

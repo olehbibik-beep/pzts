@@ -51,7 +51,7 @@ function createWallMask(floor, threshold = floor.wallThreshold) {
     maskCanvas.width = width;
     maskCanvas.height = height;
     const maskCtx = maskCanvas.getContext('2d', { willReadFrequently: true });
-    if (!maskCtx) throw new Error('Не удалось создать маску стен для чертежа.');
+    if (!maskCtx) throw new Error(tr('Не удалось создать маску стен для чертежа.'));
 
     maskCtx.drawImage(floor.image, 0, 0, width, height);
     const pixels = maskCtx.getImageData(0, 0, width, height).data;
@@ -239,7 +239,7 @@ function drawDevice(ctx, dev, skipSelection = false) {
 
     if (dev.type === 'textNode') {
         ctx.textAlign = "center"; ctx.textBaseline = "middle"; 
-        let text = dev.manualName || "Poznámka";
+        let text = dev.manualName || tr("Poznámka");
         ctx.save(); ctx.translate(dev.x, dev.y); ctx.rotate((dev.rotation || 0) * Math.PI / 180);
         ctx.font = "bold " + (13 * labelScale) + "px sans-serif"; 
         let w = ctx.measureText(text).width;
@@ -391,7 +391,7 @@ function drawFloorData(ctx, floor, skipSelection = false) {
     if (!floor) return;
     if (!isSystemReady) {
         ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = "#121214"; ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = "#22c55e"; ctx.font = "bold 24px sans-serif"; ctx.textAlign = "center"; ctx.fillText("Načítání projektu...", canvas.width / 2, canvas.height / 2); ctx.restore(); return;
+        ctx.fillStyle = "#22c55e"; ctx.font = "bold 24px sans-serif"; ctx.textAlign = "center"; ctx.fillText(tr("Načítání projektu..."), canvas.width / 2, canvas.height / 2); ctx.restore(); return;
     }
 
     if (floor.showConnections) {
@@ -543,7 +543,7 @@ function drawBuildingOverview() {
     const groundY = startY - 2 * fHeight; 
     ctx.strokeStyle = "#22c55e"; ctx.lineWidth = 2; ctx.setLineDash([10, 8]);
     ctx.beginPath(); ctx.moveTo(20, groundY); ctx.lineTo(width - 20, groundY); ctx.stroke(); ctx.setLineDash([]);
-    ctx.fillStyle = "#22c55e"; ctx.font = "bold 14px sans-serif"; ctx.fillText("Terén", 30, groundY - 10);
+    ctx.fillStyle = "#22c55e"; ctx.font = "bold 14px sans-serif"; ctx.fillText(tr("Terén"), 30, groundY - 10);
 
     ctx.strokeStyle = "#0ea5e9"; ctx.lineWidth = 3; ctx.beginPath();
     ctx.moveTo(bX, startY); ctx.lineTo(bX, startY - 5 * fHeight); ctx.lineTo(bX + bWidth, startY - 5 * fHeight); ctx.lineTo(bX + bWidth, startY);
