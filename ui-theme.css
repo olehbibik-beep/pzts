@@ -20,11 +20,11 @@ body::after {
 #overviewScreen { top: var(--app-edge) !important; left: var(--app-edge) !important; width: calc(100vw - 2 * var(--app-edge)) !important; height: calc(100dvh - 2 * var(--app-edge)) !important; border-radius: 10px; overflow: hidden; }
 #welcomeModal { padding: 24px; background: transparent; }
 #welcomeModal .welcome-card {
-    width: min(1040px, calc(100vw - 48px)); max-width: 1040px;
-    height: min(740px, calc(100dvh - 48px)); max-height: none;
-    border-radius: 0; background: transparent; color: #eee;
+    width: min(1040px, 100%); max-width: 1040px;
+    height: min(660px, calc(100dvh - 64px)); max-height: none;
+    border-radius: 16px; background: transparent; color: #eee;
     border: 0;
-    overflow: visible; box-shadow: none;
+    overflow: hidden; box-shadow: none;
 }
 #welcomeModal .welcome-card::before { display: none; }
 #welcomeModal .welcome-art-space {
@@ -42,6 +42,7 @@ body::after {
 }
 #welcomeModal .welcome-panel, #welcomeModal[data-step="email"] .welcome-panel {
     flex: 0 0 350px; min-width: 0; display: grid;
+    grid-template-columns: minmax(0,1fr);
     grid-template-rows: 44px minmax(0,1fr) 54px;
     justify-content: initial; padding: 78px 24px 18px 30px;
     background: transparent; overflow: hidden;
@@ -50,7 +51,11 @@ body::after {
     align-self: start; font-size: 34px; line-height: 1; margin: 0;
     color: #f4f4f5; letter-spacing: 2px; text-shadow: none;
 }
-.welcome-step-content { min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; padding: 0 4px 10px 0; overflow-anchor: none; }
+.welcome-step-content { min-width: 0; min-height: 0; width: 100%; box-sizing: border-box; overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; padding: 0 4px 10px 0; overflow-anchor: none; }
+#welcomeEmailBlock, #emailAuthForm, #emailAuthForm label { min-width: 0; max-width: 100%; box-sizing: border-box; }
+#emailAuthForm input, #emailAuthForm .ui-select { min-width: 0; max-width: 100%; }
+#emailAuthForm .ui-select-trigger { min-width: 0; }
+#welcomeEmailBlock .welcome-description { overflow-wrap: anywhere; }
 #welcomeModal .welcome-heading { font-size: 21px; line-height: 1.25; color: #f4f4f5; }
 #welcomeModal .welcome-actions { gap: 11px; }
 #welcomeModal .welcome-description, #welcomeModal .email-auth-form label { color: #c0c0c5; }
@@ -161,7 +166,7 @@ body::after {
 }
 @media (max-width: 740px) and (min-width: 600px) {
     #welcomeModal { padding: 16px; }
-    #welcomeModal .welcome-card { width: calc(100vw - 32px); height: min(740px, calc(100dvh - 32px)); }
+    #welcomeModal .welcome-card { width: 100%; height: min(660px, calc(100dvh - 48px)); }
     #welcomeModal .welcome-panel { flex-basis: 310px; }
     #projectNameInput { max-width: 220px; }
 }
@@ -176,7 +181,7 @@ body::after {
     .account-details { grid-template-columns: 65px minmax(0,1fr); }
 }
 @media (max-height: 650px) {
-    #welcomeModal .welcome-card { height: calc(100dvh - 32px); }
+    #welcomeModal .welcome-card { height: calc(100dvh - 64px); }
     #welcomeModal .welcome-panel { grid-template-rows: 50px minmax(0,1fr) 54px; padding-top: 64px; }
 }
 @media print {
