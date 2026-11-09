@@ -24,13 +24,14 @@
         const svg=document.createElementNS(svgNamespace,'svg');svg.classList.add('modal-blueprint','welcome-blueprint');
         svg.setAttribute('preserveAspectRatio','xMinYMid meet');svg.setAttribute('aria-hidden','true');svg.setAttribute('focusable','false');
         host.appendChild(svg);container.prepend(host);
-        const shapes=['flow','flow','line','line','box','box','triangle','arc','arc','circle','circle','circle'];
+        const variants=['flow','line','box','triangle','arc'];
+        const shapes=['circle',variants[Math.floor(Math.random()*variants.length)],variants[Math.floor(Math.random()*variants.length)]];
         shapes.forEach(shape=>{
             const element=document.createElementNS(svgNamespace,shape==='circle'?'circle':'path');
             element.dataset.shape=shape;element.setAttribute('pathLength','1');element.classList.add(shape==='circle'?'blueprint-circle':shape==='flow'?'blueprint-flow':'blueprint-trace');
             element.style.animationDuration=(13+Math.random()*19)+'s';element.style.animationDelay=(-Math.random()*28)+'s';
             svg.appendChild(element);
-            element.addEventListener('animationiteration',()=>{const box=svg.getBoundingClientRect();if(box.width&&box.height)drawRandomBlueprint(element,box.width,box.height);});
+            element.addEventListener('animationiteration',()=>{if(element.tagName.toLowerCase()!=='circle')element.dataset.shape=variants[Math.floor(Math.random()*variants.length)];const box=svg.getBoundingClientRect();if(box.width&&box.height)drawRandomBlueprint(element,box.width,box.height);});
         });
         const resize=()=>{
             const box=svg.getBoundingClientRect();if(!box.width||!box.height)return;

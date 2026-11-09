@@ -275,7 +275,7 @@ if(btnMenuOpenBIPS) {
         document.getElementById('mainMenuModal').style.display = 'none'; 
         if (window.showOpenFilePicker) {
             try {
-                const [handle] = await window.showOpenFilePicker({ types: [{ description: 'BIPS Projekt', accept: {'application/json': ['.bips']} }] });
+                const [handle] = await window.showOpenFilePicker({ types: [{ description: 'TECH Projekt', accept: {'application/json': ['.tech', '.bips']} }] });
                 currentFileHandle = handle; const file = await handle.getFile(); importFileContent(file);
             } catch (e) {} 
         } else { document.getElementById('bipsLoader').click(); }
@@ -293,7 +293,7 @@ document.getElementById('btnMenuPrint').addEventListener('click', () => {
  document.getElementById('mainMenuModal').style.display = 'none'; printCurrentFloor();
 });
 window.addEventListener('afterprint', () => document.getElementById('printPage').replaceChildren());
-document.getElementById('btnExportBIPS').addEventListener('click', () => { exportToBIPS(); saveModal.style.display='none'; });
+document.getElementById('btnExportBIPS').addEventListener('click', () => { exportToTECH(); saveModal.style.display='none'; });
 for (const [id,format] of [['btnExportPNG','png'],['btnExportPDF','pdf'],['btnExportSVG','svg'],['btnExportJPEG','jpeg']]) {
  document.getElementById(id).addEventListener('click', () => exportPlanFile(format));
 }
@@ -471,15 +471,12 @@ window.addEventListener('resize', () => {
     if (isOverviewMode && document.getElementById('overviewScreen').style.display === 'flex') { if(typeof drawBuildingOverview === 'function') drawBuildingOverview(); }
 });
 
-container.addEventListener('wheel', (e) => {
-    e.preventDefault(); 
-    if (isOverviewMode) return;
-    const nextScale = Math.max(0.005, Math.min(128, scale * Math.exp(-e.deltaY * 0.0015)));
-    const zoom = nextScale / scale;
-    const rect = container.getBoundingClientRect(); const mouseX = e.clientX - rect.left; const mouseY = e.clientY - rect.top;
-    offsetX = mouseX - (mouseX - offsetX) * zoom; offsetY = mouseY - (mouseY - offsetY) * zoom; scale *= zoom; 
-    requestRedraw();
-});
+container.addEventListener('wheel', e => {
+    e.preventDefault();
+    const rect=container.getBoundingClientRect();
+    const delta=e.deltaY*(e.deltaMode===1?16:e.deltaMode===2?container.clientHeight:1);
+    zoomPlanAt(e.clientX-rect.left,e.clientY-rect.top,delta);
+},{passive:false});
 
 const canvasTouchPoints = new Map();
 let canvasTouchGesture = null;
@@ -493,6 +490,7 @@ function clearCanvasDrag() {
 
 container.addEventListener('pointerdown', (e) => {
     if (!isSystemReady) return;
+    cancelWheelCamera();
     if (e.pointerType === 'touch') {
         container.setPointerCapture(e.pointerId);
         canvasTouchPoints.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -615,10 +613,10 @@ container.addEventListener('pointermove', (e) => {
             const deltaX = snap.x - draggedDevice.x;
             const deltaY = snap.y - draggedDevice.y;
             draggedDevice.x = snap.x; draggedDevice.y = snap.y;
+            const devicesById=new Map(floors[currentFloorIndex].devices.map(device=>[device.id,device]));
             floors[currentFloorIndex].cables.forEach(c => {
                 if (c.fromId === draggedDevice.id || c.toId === draggedDevice.id) {
-                    let d1 = floors[currentFloorIndex].devices.find(d => d.id === c.fromId);
-                    let d2 = floors[currentFloorIndex].devices.find(d => d.id === c.toId);
+                    const d1=devicesById.get(c.fromId),d2=devicesById.get(c.toId);
                     if (!d1 || !d2 || d1.type === 'textNode' || d2.type === 'textNode') return;
                     if (c.h1x === undefined || !Number.isFinite(c.h1x)) {
                         recalcCableHandles(c, d1, d2);
@@ -880,13 +878,7 @@ function loadDefaultFloors(showWelcome = false, newProjectName = tr("Nový proje
     window.resetActiveCloudProject?.();
     customDeviceIcons = {};
     if (typeof refreshCustomDeviceIcons === 'function') refreshCustomDeviceIcons();
-    floors = [
-        { name: "2PP", image: null, imgData: null, devices: [], cables: [], showConnections: true, wallThreshold: 100, pirRangePixels: 300, wallMask: null },
-        { name: "1PP", image: null, imgData: null, devices: [], cables: [], showConnections: true, wallThreshold: 100, pirRangePixels: 300, wallMask: null },
-        { name: "1NP", image: null, imgData: null, devices: [], cables: [], showConnections: true, wallThreshold: 100, pirRangePixels: 300, wallMask: null },
-        { name: "2NP", image: null, imgData: null, devices: [], cables: [], showConnections: true, wallThreshold: 100, pirRangePixels: 300, wallMask: null },
-        { name: "3NP", image: null, imgData: null, devices: [], cables: [], showConnections: true, wallThreshold: 100, pirRangePixels: 300, wallMask: null }
-    ];
+    floors = STANDARD_FLOOR_NAMES.map(createEmptyProjectFloor);
     let np1Index = floors.findIndex(f => f.name === "1NP");
     currentFloorIndex = np1Index !== -1 ? np1Index : 0;
     
@@ -993,7 +985,7 @@ async function initProject() {
                 if (!window.getFirebaseUser?.()) { showWelcomeScreen(); return; }
                 if (window.showOpenFilePicker) {
                     try {
-                        const [handle] = await window.showOpenFilePicker({ types: [{ description: 'BIPS Projekt', accept: {'application/json': ['.bips']} }] });
+                        const [handle] = await window.showOpenFilePicker({ types: [{ description: 'TECH Projekt', accept: {'application/json': ['.tech', '.bips']} }] });
                         const file = await handle.getFile();
                         if (await importFileContent(file)) currentFileHandle = handle;
                     } catch (error) {
@@ -1085,6 +1077,7 @@ new ResizeObserver(() => { if (isOverviewMode) drawBuildingOverview(); }).observ
 window.addEventListener('goom-language-changed', () => { if (isOverviewMode) drawBuildingOverview(); });
 
  function centerCurrentFloor() {
+    cancelWheelCamera();
     const floor = floors[currentFloorIndex];
     if (!floor || !floor.image) { scale = 1; offsetX = 0; offsetY = 0; return; }
     const bounds=getPlanSourceBounds(floor);
@@ -1155,7 +1148,7 @@ function importFileContent(file, options = {}) {
             if (data && data.projectName) {
                 projectName = data.projectName;
             } else {
-                projectName = (file && file.name) ? file.name.replace(/\.bips$/i, '') : tr("Obnovený projekt");
+                projectName = (file && file.name) ? file.name.replace(/\.(tech|bips)$/i, '') : tr("Obnovený projekt");
             }
             
             let pInput = document.getElementById('projectNameInput');
@@ -1179,7 +1172,7 @@ function importFileContent(file, options = {}) {
 
         } catch (err) { 
             console.error("Chyba importu:", err);
-            showAppAlert(tr("Chyba při načítání souboru .BIPS!\n\nDetail chyby: ") + err.message, tr('Ошибка открытия проекта')); 
+            showAppAlert(tr("Chyba při načítání souboru .TECH!\n\nDetail chyby: ") + err.message, tr('Ошибка открытия проекта')); 
             isSystemReady = wasSystemReady;
             requestRedraw(); 
             resolve(false);

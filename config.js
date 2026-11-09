@@ -32,6 +32,10 @@ const DB_NAME = 'ExirtaZS_DB_V5';
 const STORE_NAME = 'autosave_store';
 const MAX_HISTORY = 20;
 const APP_PRODUCT = 'PZTS';
+const STANDARD_FLOOR_NAMES=['3PP','2PP','1PP','1NP','2NP','3NP','4NP','5NP','6NP'];
+function createEmptyProjectFloor(name){
+    return {name,image:null,imgData:null,devices:[],cables:[],showConnections:true,wallThreshold:100,pirRangePixels:300,wallMask:null};
+}
 
 const FIREBASE_CONFIG = {
     apiKey: "AIzaSyBf39BTvRIPejOCuP-OCGJk9uvvTwNM4zM",

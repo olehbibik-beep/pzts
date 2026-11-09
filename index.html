@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GOOM</title>
-    <script src="i18n.js?v=20261109-plan-refine-15"></script>
-    <script src="device-support.js?v=20261109-plan-refine-15"></script>
+    <script src="i18n.js?v=20261109-floors-17"></script>
+    <script src="device-support.js?v=20261109-floors-17"></script>
     <style>
         :root {
             --bg-main: #121214; --bg-toolbar: #1c1c1f; --bg-input: #252529;
@@ -441,7 +441,7 @@
 
 
     </style>
-    <link rel="stylesheet" href="ui-theme.css?v=20261109-plan-refine-15">
+    <link rel="stylesheet" href="ui-theme.css?v=20261109-floors-17">
 </head>
 <body>
     <div id="deviceSupportNotice" role="alert">
@@ -452,7 +452,7 @@
         </section>
     </div>
 
-    <input type="file" id="bipsLoader" accept=".bips" style="display:none;">
+    <input type="file" id="bipsLoader" accept=".tech,.bips" style="display:none;">
     <input type="file" id="imageLoader" accept="image/*, application/pdf, .dxf" style="display:none;">
 
     <div class="toolbar">
@@ -561,6 +561,7 @@
 
     <div class="canvas-container" id="canvasContainer">
         <canvas id="blueprintCanvas"></canvas>
+        <div id="planLoading" class="plan-loading" role="status" aria-label="Načítání projektu..." hidden><img src="Logo.png" alt="" aria-hidden="true"></div>
     </div>
 
     <div class="footer" id="appFooter">
@@ -627,7 +628,7 @@
                     </button>
                     <button id="btnWelcomeOpenBIPS" class="btn-cad" style="background: #cbd5e1; color: #0f0f11; font-weight: bold; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); border: none;">
                         <svg viewBox="0 0 24 24" fill="none" stroke="#0f0f11" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:18px; height:18px; margin-right:10px;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
-                        Otevřít projekt (.BIPS)
+                        Otevřít projekt (.TECH)
                     </button>
                 </div>
 
@@ -645,7 +646,7 @@
             </div>
             
             <div class="welcome-art-space">
-                <img src="Hi.png?v=20261109-plan-refine-15" fetchpriority="high" decoding="async" alt="" aria-hidden="true">
+                <img src="Hi.png?v=20261109-floors-17" fetchpriority="high" decoding="async" alt="" aria-hidden="true">
             </div>
 
         </div>
@@ -763,7 +764,7 @@
                 </button>
                 <button id="btnMenuOpenBIPS" class="btn-cad" style="width: 100%; justify-content: flex-start; background: #cbd5e1; color: #0f0f11; font-weight: bold;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="#0f0f11" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
-                    Otevřít projekt (.BIPS)
+                    Otevřít projekt (.TECH)
                 </button>
                 <button id="btnMenuLoadImg" class="btn-cad" style="width: 100%; justify-content: flex-start;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
@@ -891,7 +892,7 @@
                         <button id="btnExportSVG" class="btn-cad" type="button">SVG</button>
                         <button id="btnExportPDF" class="btn-cad" type="button">PDF</button>
                         <button id="btnPrintPlan" class="btn-cad" type="button">Tisk</button>
-                        <button id="btnExportBIPS" class="btn-cad" type="button">Uložit Projekt (.BIPS)</button>
+                        <button id="btnExportBIPS" class="btn-cad" type="button">Uložit Projekt (.TECH)</button>
                     </div>
                     <p class="plan-output-note">SVG zachová vektorové čáry DXF, detektory a kabely. Fotografie a rastrové plány zůstanou rastrové.</p>
                     <p id="outputStatus" role="status" aria-live="polite"></p>
@@ -947,7 +948,12 @@
         <div id="overviewCanvasContainer">
             <div id="overviewStage">
                 <canvas id="overviewCanvas" aria-hidden="true"></canvas>
-                <div id="overviewFloors" role="group" aria-label="Vyberte podlaží"></div>
+                <section class="overview-scene">
+                    <header class="overview-heading"><span class="overview-eyebrow">PŘEHLED BUDOVY</span><h2 id="overviewProjectTitle" data-user-content></h2><div id="overviewProjectStats" class="overview-project-stats"></div></header>
+                    <div class="overview-artwork"><img id="overviewArtwork" src="NP.png?v=20261109-floors-17" alt="Dům, průmyslová budova a věž" loading="lazy" decoding="async"></div>
+                    <section id="overviewFloorDetails" class="overview-floor-details" aria-live="polite"><div class="overview-detail-heading"><strong id="overviewDetailFloor"></strong><span id="overviewDetailPanel"></span></div><div id="overviewDetailCounts"></div><div class="overview-detail-zones-label">Adresy zón</div><div id="overviewDetailZones" class="overview-detail-zones"></div></section>
+                </section>
+                <section class="overview-floor-panel"><header class="overview-floor-heading"><h3>Podlaží</h3><span>6 NP · 3 PP</span></header><div id="overviewFloors" role="group" aria-label="Vyberte podlaží"></div></section>
             </div>
         </div>
         <div class="overview-footer">
@@ -967,6 +973,6 @@
         <button type="button" data-tablet-action="delete" class="tool-danger">×</button>
         <button type="button" data-tablet-action="undo">↶</button>
     </div>
-    <script src="bootstrap.js?v=20261109-plan-refine-15"></script>
+    <script src="bootstrap.js?v=20261109-floors-17"></script>
 </body>
 </html>

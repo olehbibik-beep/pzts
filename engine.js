@@ -44,8 +44,9 @@ function distToSegment(p, v, w) { return Math.sqrt(distToSegmentSquared(p, v, w)
 
 function hitTestCables(canvasX, canvasY, floor, showDeac) {
     const p = {x: canvasX, y: canvasY};
+    const devicesById=new Map(floor.devices.map(device=>[device.id,device]));
     for (let i = floor.cables.length - 1; i >= 0; i--) {
-        let c = floor.cables[i]; let d1 = floor.devices.find(d => d.id === c.fromId); let d2 = floor.devices.find(d => d.id === c.toId);
+        let c = floor.cables[i]; const d1=devicesById.get(c.fromId),d2=devicesById.get(c.toId);
         if (!d1 || !d2) continue;
         if (!showDeac && (d1.type === 'deactivated' || d2.type === 'deactivated')) continue; 
         if (d1.type === 'textNode' || d2.type === 'textNode') {
@@ -149,9 +150,9 @@ function getProjectBounds(floor, showDeac) {
         maxX = Math.max(maxX, d.x + 50); maxY = Math.max(maxY, d.y + 50);
     });
 
+    const devicesById=new Map(floor.devices.map(device=>[device.id,device]));
     floor.cables.forEach(c => {
-        let d1 = floor.devices.find(d => d.id === c.fromId);
-        let d2 = floor.devices.find(d => d.id === c.toId);
+        const d1=devicesById.get(c.fromId),d2=devicesById.get(c.toId);
         if (d1 && d2 && d1.type !== 'textNode' && d2.type !== 'textNode') {
             if (!showDeac && (d1.type === 'deactivated' || d2.type === 'deactivated')) return;
             for(let i=1; i<=3; i++) {

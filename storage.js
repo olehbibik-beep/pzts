@@ -5,7 +5,10 @@
 function sanitizeFloors(floorDataArray) {
     if (!Array.isArray(floorDataArray)) return []; 
     
-    return floorDataArray.map(f => {
+    const existing=[...floorDataArray];
+    const names=new Set(existing.map(f=>String(f.name||'').replace(/\s/g,'').toUpperCase()));
+    for(const name of STANDARD_FLOOR_NAMES)if(!names.has(name))existing.push(createEmptyProjectFloor(name));
+    return existing.map(f => {
         const newFloor = { 
             name: f.name || "NP", 
             image: null, 
@@ -69,11 +72,12 @@ async function loadFloorsImages(floorDataArray) {
             } else { resolve(f); }
         });
     });
-    return Promise.all(promises);
+    const loaded=await Promise.all(promises);calculateDynamicNumbersGlobal(loaded);return loaded;
 }
 
 function saveStateToHistory() {
     if (!isSystemReady) return;
+    calculateDynamicNumbersGlobal(floors);
     if (historyIndex < historyStack.length - 1) {
         historyStack = historyStack.slice(0, historyIndex + 1);
     }
@@ -135,7 +139,8 @@ function getProjectDataPayload() {
     let slider = document.getElementById('deviceSizeSlider');
     let dSize = (slider && slider.value) ? parseInt(slider.value) : 16;
     return { 
-        version: "1.0", 
+        version: "1.0",
+        format: "TECH", 
         projectName: projectName,
         currentFloorIndex: currentFloorIndex, 
         currentMaxLines: currentMaxLines,
@@ -200,19 +205,11 @@ async function loadFromDB() {
     return true;
 }
 
-function exportToBIPS() {
-    if (floors.length === 0) { showAppAlert(tr("Žádná data k exportu."), tr('Экспорт проекта')); return; }
-    try {
-        const payload = getProjectDataPayload();
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload));
-        const downloadAnchor = document.createElement('a');
-        downloadAnchor.setAttribute("href", dataStr);
-        downloadAnchor.setAttribute("download", (projectName || "projekt") + ".bips");
-        document.body.appendChild(downloadAnchor);
-        downloadAnchor.click();
-        downloadAnchor.remove();
-    } catch (err) {
-        showAppAlert(tr("Chyba při generování exportu."), tr('Ошибка экспорта'));
-        console.error(err);
-    }
+function exportToTECH() {
+    if(!floors.length){showAppAlert(tr('Žádná data k exportu.'),tr('Экспорт проекта'));return;}
+    try{
+        const blob=new Blob([JSON.stringify(getProjectDataPayload())],{type:'application/json;charset=utf-8'});
+        const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;
+        link.download=(projectName||'projekt')+'.TECH';link.click();setTimeout(()=>URL.revokeObjectURL(url),60000);
+    }catch(error){console.error(error);showAppAlert(tr('Chyba při generování exportu.'),tr('Ошибка экспорта'));}
 }

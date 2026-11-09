@@ -18,7 +18,17 @@ function resizePlanCanvas() {
     if(canvas.width!==pixelWidth)canvas.width=pixelWidth;
     if(canvas.height!==pixelHeight)canvas.height=pixelHeight;
 }
-new ResizeObserver(()=>{if(!isExporting){resizePlanCanvas();requestRedraw();}}).observe(container);
+function resizePlanView(){
+    if(isExporting)return;
+    // Opening the toolbar changes height every frame. Keep the existing bitmap until it settles.
+    const row=document.querySelector('.sliding-row-container');
+    if(row?.getAnimations().some(animation=>animation.playState==='running'))return;
+    resizePlanCanvas();requestRedraw();
+}
+new ResizeObserver(resizePlanView).observe(container);
+document.querySelector('.sliding-row-container')?.addEventListener('transitionend',event=>{
+    if(event.propertyName==='max-height')resizePlanView();
+});
 function planCanvasWidth() { return canvas.width / canvasPixelRatio; }
 function planCanvasHeight() { return canvas.height / canvasPixelRatio; }
 
@@ -109,6 +119,11 @@ function drawPlanSource(target, floor, theme = getPlanTheme(floor), imageOverrid
         if(tile&&(!tile.width||!tile.height)){target.restore();return;}
         const image=tile?tile.image:(imageOverride||floor.image);
         target.imageSmoothingEnabled = true; target.imageSmoothingQuality = 'high';
+        if(tile?.fallbackImage){
+            const fallback=theme==='dark'?getDarkPlanImage(tile.fallbackImage,floor.wallMask?.paperLevel||255):tile.fallbackImage;
+            const sx=fallback.width/width,sy=fallback.height/height;
+            target.drawImage(fallback,bounds.minX*sx,bounds.minY*sy,bounds.width*sx,bounds.height*sy,bounds.minX,bounds.minY,bounds.width,bounds.height);
+        }
         const source=theme==='dark'?getDarkPlanImage(image,floor.wallMask?.paperLevel||255):image;
         if(tile)target.drawImage(source,tile.x,tile.y,tile.width,tile.height);
         else {
@@ -140,16 +155,26 @@ function getLargePlanTile(floor) {
     let state=planOriginalCache.get(floor);
     if(!state){getPlanFullImage(floor).catch(error=>console.warn('Plan detail:',error));state=planOriginalCache.get(floor);}
     if(!state?.image)return floor.image;
+    let tile=planTileCache.get(floor);
+    if(planCameraBusy()){
+        if(tile){tile.fallbackImage=floor.image;return tile;}
+        return floor.image;
+    }
     const bounds=getPlanSourceBounds(floor),w=floor.image.width,h=floor.image.height;
-    const x=Math.max(bounds.minX,-offsetX/scale-4),y=Math.max(bounds.minY,-offsetY/scale-4);
-    const right=Math.min(bounds.minX+bounds.width,(planCanvasWidth()-offsetX)/scale+4),bottom=Math.min(bounds.minY+bounds.height,(planCanvasHeight()-offsetY)/scale+4);
+    const marginX=planCanvasWidth()*.2/scale,marginY=planCanvasHeight()*.2/scale;
+    const x=Math.max(bounds.minX,-offsetX/scale-marginX),y=Math.max(bounds.minY,-offsetY/scale-marginY);
+    const right=Math.min(bounds.minX+bounds.width,(planCanvasWidth()-offsetX)/scale+marginX),bottom=Math.min(bounds.minY+bounds.height,(planCanvasHeight()-offsetY)/scale+marginY);
     if(right<=x||bottom<=y)return {planTile:true,image:document.createElement('canvas'),x,y,width:0,height:0};
-    const signature=[x,y,right,bottom,scale,canvasPixelRatio].join(':');let tile=planTileCache.get(floor);if(tile?.signature===signature)return tile;
+    const signature=[x,y,right,bottom,scale,canvasPixelRatio].join(':');if(tile?.signature===signature)return tile;
+    if(tile&&Math.abs(tile.scale-scale)<scale*.02&&tile.ratio===canvasPixelRatio&&
+        tile.x<=Math.max(bounds.minX,-offsetX/scale)&&tile.y<=Math.max(bounds.minY,-offsetY/scale)&&
+        tile.x+tile.width>=Math.min(bounds.minX+bounds.width,(planCanvasWidth()-offsetX)/scale)&&
+        tile.y+tile.height>=Math.min(bounds.minY+bounds.height,(planCanvasHeight()-offsetY)/scale))return tile;
     const ratio=Math.min(scale*canvasPixelRatio,Math.sqrt(12000000/((right-x)*(bottom-y))),8192/Math.max(right-x,bottom-y));
     const raster=document.createElement('canvas');raster.width=Math.max(1,Math.ceil((right-x)*ratio));raster.height=Math.max(1,Math.ceil((bottom-y)*ratio));
     const context=raster.getContext('2d');context.imageSmoothingQuality='high';context.fillStyle='#fff';context.fillRect(0,0,raster.width,raster.height);
     context.drawImage(state.image,x*state.image.width/w,y*state.image.height/h,(right-x)*state.image.width/w,(bottom-y)*state.image.height/h,0,0,raster.width,raster.height);
-    tile={planTile:true,image:raster,x,y,width:right-x,height:bottom-y,signature};planTileCache.set(floor,tile);return tile;
+    tile={planTile:true,image:raster,x,y,width:right-x,height:bottom-y,signature,scale,ratio:canvasPixelRatio};planTileCache.set(floor,tile);return tile;
 }
 function drawDetectedWalls(target,floor) {
     const mask=floor.wallMask;
@@ -202,7 +227,7 @@ async function rasterizePlanPdf(floor, desiredWidth) {
 function getScreenPlanImage(floor) {
     if(floor.rasterSource)return getLargePlanTile(floor);
     if (!floor.pdfSource) return floor.image;
-    if(isDragging||isPanning)return planPdfCache.get(floor)?.raster||floor.image;
+    if(planCameraBusy())return planPdfCache.get(floor)?.raster||floor.image;
     const desiredWidth = Math.min((floor.image.naturalWidth || floor.image.width) * scale * canvasPixelRatio,
         12000, Math.sqrt(PLAN_MAX_PIXELS * floor.image.width / floor.image.height));
     const cache = planPdfCache.get(floor);

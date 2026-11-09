@@ -106,6 +106,7 @@ function getPIRCoveragePoints(floor, device) {
     return points;
 }
 
+const pirCoveragePathCache=new WeakMap();
 function drawPIRCoverage(ctx, floor, force = false) {
     const toggle = document.getElementById('togglePirCoverage');
     if (!force && toggle?.getAttribute('aria-pressed') === 'false') return;
@@ -114,14 +115,18 @@ function drawPIRCoverage(ctx, floor, force = false) {
         const points = getPIRCoveragePoints(floor, device);
         if (!points) return;
         ctx.save();
-        ctx.beginPath();
-        ctx.moveTo(points[0].x, points[0].y);
-        for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
-        ctx.closePath();
+        let path;
+        if(typeof ctx.strokePath==='function'){
+            ctx.beginPath();ctx.moveTo(points[0].x,points[0].y);
+            for(let i=1;i<points.length;i++)ctx.lineTo(points[i].x,points[i].y);ctx.closePath();
+        }else{
+            path=pirCoveragePathCache.get(points);
+            if(!path){path=new Path2D();path.moveTo(points[0].x,points[0].y);for(let i=1;i<points.length;i++)path.lineTo(points[i].x,points[i].y);path.closePath();pirCoveragePathCache.set(points,path);}
+        }
         ctx.fillStyle = device.type === 'glassbreak'
             ? 'rgba(56, 189, 248, 0.2)'
             : 'rgba(34, 197, 94, 0.18)';
-        ctx.fill();
+        if(path)ctx.fill(path);else ctx.fill();
         ctx.restore();
     });
 }
@@ -156,27 +161,18 @@ function requestRedraw() {
     if (!redrawRequested) {
         redrawRequested = true;
         requestAnimationFrame(() => {
-            redraw();
-            window.updateTabletTools?.();
-            redrawRequested = false;
+            try{redraw();window.updateTabletTools?.();}finally{redrawRequested=false;}
         });
     }
 }
 
 function animationLoop(timestamp) {
-    if (!lastRenderTime) lastRenderTime = timestamp;
-    const floor = currentFloorIndex !== -1 ? floors[currentFloorIndex] : null;
-    const animateEmptyCanvas = !!(floor && !floor.image && isSystemReady && !isExporting);
-    if (timestamp - lastRenderTime > (animateEmptyCanvas ? 16 : 33)) {
-        globalTime += 0.08; lastRenderTime = timestamp;
-        let requiresAnimation = activeDeviceIds.size > 0;
-        if (floor) {
-            if (floor.devices.some(d => d.type === 'ramen')) requiresAnimation = true;
-        }
-        if (animateEmptyCanvas) requiresAnimation = true;
-        if (requiresAnimation && !isExporting && !isPanning && !isDragging) { 
-            requestRedraw(); 
-        }
+    if(timestamp-lastRenderTime>=33){
+        const elapsed=lastRenderTime?Math.min(100,timestamp-lastRenderTime):33;lastRenderTime=timestamp;globalTime+=elapsed*.0024;
+        const floor=floors[currentFloorIndex];
+        const modal=document.querySelector('.modal[data-modal-open="true"],.app-dialog-backdrop:not([hidden])');
+        if(floor&&!document.hidden&&!planReducedMotion.matches&&!modal&&!isOverviewMode&&isSystemReady&&!isExporting&&!isPanning&&!isDragging&&
+            (activeDeviceIds.size>0||floor.devices.some(d=>d.type==='ramen')))requestRedraw();
     }
     requestAnimationFrame(animationLoop);
 }
@@ -193,7 +189,7 @@ function drawDevice(ctx, dev, skipSelection = false, theme = 'dark') {
         let text = dev.manualName || tr("Poznámka");
         ctx.save(); ctx.translate(dev.x, dev.y); ctx.rotate((dev.rotation || 0) * Math.PI / 180);
         ctx.font = "bold " + (13 * labelScale) + "px sans-serif"; 
-        let w = ctx.measureText(text).width;
+        let w = getPlanTextWidth(ctx,text);
         ctx.fillStyle = "rgba(18, 18, 20, 0.75)"; 
         ctx.fillRect(-w/2 - 6*labelScale, -11*labelScale, w + 12*labelScale, 22*labelScale);
         if (activeDeviceIds.has(dev.id) && !isExporting && !skipSelection) { 
@@ -329,9 +325,9 @@ function drawDevice(ctx, dev, skipSelection = false, theme = 'dark') {
         if (labelText !== "") {
             const fontSize = 12 * labelScale;
             ctx.font = `400 ${fontSize}px sans-serif`;
-            const prefixWidth = ctx.measureText(label.prefix).width;
+            const prefixWidth = getPlanTextWidth(ctx,label.prefix);
             ctx.font = `700 ${fontSize}px sans-serif`;
-            const numberWidth = ctx.measureText(label.number).width;
+            const numberWidth = getPlanTextWidth(ctx,label.number);
             const width = prefixWidth + numberWidth;
             ctx.fillStyle = '#000'; ctx.beginPath();
             ctx.roundRect(textX - width / 2 - 5 * labelScale, textY - 10 * labelScale, width + 10 * labelScale, 20 * labelScale, 9 * labelScale); ctx.fill();
@@ -349,14 +345,12 @@ function drawDevice(ctx, dev, skipSelection = false, theme = 'dark') {
 
 function drawFloorData(ctx, floor, skipSelection = false, theme = getPlanTheme(floor)) {
     if (!floor) return;
-    if (!isSystemReady) {
-        ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = "#121214"; ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = "#22c55e"; ctx.font = "bold 24px sans-serif"; ctx.textAlign = "center"; ctx.fillText(tr("Načítání projektu..."), canvas.width / 2, canvas.height / 2); ctx.restore(); return;
-    }
+    if (!isSystemReady) return;
 
     if (floor.showConnections) {
+        const devicesById=new Map(floor.devices.map(device=>[device.id,device]));
         floor.cables.forEach(c => {
-            let d1 = floor.devices.find(d => d.id === c.fromId); let d2 = floor.devices.find(d => d.id === c.toId);
+            const d1=devicesById.get(c.fromId),d2=devicesById.get(c.toId);
             if(!d1 || !d2) return;
             
             if (c.h1x === undefined || isNaN(c.h1x)) { recalcCableHandles(c, d1, d2); }
@@ -385,8 +379,8 @@ function drawFloorData(ctx, floor, skipSelection = false, theme = getPlanTheme(f
 }
 
 function redraw() {
-    if (floors.length === 0) return;
-    calculateDynamicNumbersGlobal(floors);
+    if(typeof syncPlanLoading==='function')syncPlanLoading();
+    if (!isSystemReady || floors.length === 0) return;
     ctx.setTransform(canvasPixelRatio, 0, 0, canvasPixelRatio, 0, 0); ctx.clearRect(0, 0, planCanvasWidth(), planCanvasHeight());
     if (currentFloorIndex === -1) return;
     const floor = floors[currentFloorIndex];
@@ -419,12 +413,10 @@ function redraw() {
             }
         }
         ctx.globalAlpha = 1;
-    } else { ctx.fillStyle = planBackground(getPlanTheme(floor)); ctx.fillRect(0, 0, planCanvasWidth(), planCanvasHeight()); }
+    } else { drawPlanScreenBase(ctx,floor); }
 
     ctx.translate(offsetX, offsetY); ctx.scale(scale, scale);
-    if (floor.image) drawPlanSource(ctx, floor, getPlanTheme(floor), getScreenPlanImage(floor));
-    drawDetectedWalls(ctx, floor);
-    drawPlanGrid(ctx, floor);
+    if(!floor.image){drawDetectedWalls(ctx,floor);drawPlanGrid(ctx,floor);}
     drawPIRCoverage(ctx, floor);
 
     if ((snapGuideX !== null || snapGuideY !== null) && !isExporting && isDragging) {
@@ -442,135 +434,3 @@ function redraw() {
     drawFloorData(ctx, floor, false);
 }
 
-// ==========================================
-// RENDER SŘEZU BUDOVY (PŘEHLED)
-// ==========================================
-const overviewFloorLabels = ['3NP', '2NP', '1NP', '1PP', '2PP'];
-
-function getOverviewFloorIndex(label) {
-    return floors.findIndex(floor => String(floor.name).replace(/\s/g, '').toUpperCase() === label);
-}
-
-function updateOverviewFloorButtons(layout) {
-    const group = document.getElementById('overviewFloors');
-    if (!group.children.length) {
-        for (const label of overviewFloorLabels) {
-            const button = document.createElement('button');
-            button.type = 'button'; button.className = 'overview-floor'; button.dataset.overviewFloor = label;
-            button.innerHTML = '<span class="overview-floor-label"></span><span class="overview-floor-body" aria-hidden="true"></span><span class="overview-floor-count" aria-hidden="true"></span>';
-            button.querySelector('.overview-floor-label').textContent = label;
-            group.appendChild(button);
-        }
-    }
-    [...group.children].forEach((button, row) => {
-        const index = getOverviewFloorIndex(button.dataset.overviewFloor);
-        const count = index < 0 ? 0 : floors[index].devices.filter(device => !['deactivated','textNode','ramen','cableTool'].includes(device.type)).length;
-        button.disabled = index < 0;
-        button.setAttribute('aria-current', String(index === currentFloorIndex));
-        button.setAttribute('aria-label', button.dataset.overviewFloor + ' · ' + tr`Počet prvků: ${count}`);
-        button.style.left = (layout.x - 76) + 'px';
-        button.style.top = (layout.y + row * layout.rowHeight) + 'px';
-        button.style.width = (layout.width + 136) + 'px';
-        button.style.height = layout.rowHeight + 'px';
-        const badge = button.querySelector('.overview-floor-count');
-        badge.hidden = count === 0; badge.textContent = String(count);
-    });
-}
-
-function drawBuildingOverview() {
-    const canvas = document.getElementById('overviewCanvas');
-    const stage = document.getElementById('overviewStage');
-    if (!canvas || !stage || !isOverviewMode) return;
-    const { width, height } = stage.getBoundingClientRect();
-    if (!width || !height) return;
-    const ratio = window.devicePixelRatio || 1;
-    canvas.width = Math.round(width * ratio); canvas.height = Math.round(height * ratio);
-    const context = canvas.getContext('2d');
-    context.setTransform(ratio, 0, 0, ratio, 0, 0);
-    context.fillStyle = '#252529'; context.fillRect(0,0,width,height);
-    context.fillStyle = '#111115'; context.beginPath();
-    for (let x = 14; x < width; x += 28) for (let y = 14; y < height; y += 28) {
-        context.moveTo(x + 1.7, y); context.arc(x,y,1.7,0,Math.PI * 2);
-    }
-    context.fill();
-
-    const buildingWidth = Math.min(440, width - 184);
-    const roofHeight = 24;
-    const rowHeight = Math.max(44, Math.min(88, (height - roofHeight - 48) / 5));
-    const totalHeight = roofHeight + 5 * rowHeight;
-    const x = (width - buildingWidth) / 2;
-    const roofTop = (height - totalHeight) / 2;
-    const y = roofTop + roofHeight;
-    const groundY = y + 3 * rowHeight;
-    updateOverviewFloorButtons({ x, y, width: buildingWidth, rowHeight });
-
-    context.strokeStyle = '#88888f'; context.lineWidth = 1.5; context.setLineDash([8,7]);
-    context.beginPath(); context.moveTo(20,groundY); context.lineTo(width - 20,groundY); context.stroke(); context.setLineDash([]);
-    context.fillStyle = '#aaaab0'; context.font = '12px sans-serif'; context.textAlign = 'left';
-    context.fillText(tr('Terén'), 24, groundY - 10);
-
-    // Flat roofs, projecting volumes and glazing, with two gray basement levels.
-    const unit = buildingWidth / 440;
-    const frontWidth = buildingWidth * .92;
-    const sideDepth = buildingWidth - frontWidth;
-    const mainX = x + buildingWidth * .34;
-    const mainWidth = frontWidth - buildingWidth * .34;
-    const frame = Math.max(4, 7 * unit);
-    const line = (x1,y1,x2,y2,color = '#414d4f', thickness = 1) => {
-        context.strokeStyle = color; context.lineWidth = thickness;
-        context.beginPath(); context.moveTo(x1,y1); context.lineTo(x2,y2); context.stroke();
-    };
-    const polygon = (points, color) => {
-        context.fillStyle = color; context.beginPath();
-        points.forEach(([px,py],index) => index ? context.lineTo(px,py) : context.moveTo(px,py));
-        context.closePath(); context.fill();
-    };
-    // Quiet gray foundation distinguishes the underground floors from the facade.
-    for (let row = 3; row < 5; row++) {
-        const top = y + row * rowHeight;
-        context.fillStyle = row === 3 ? '#414147' : '#38383e';
-        context.fillRect(x,top,buildingWidth,rowHeight);
-        context.strokeStyle = '#828288'; context.lineWidth = 1;
-        context.strokeRect(x,top,buildingWidth,rowHeight);
-        for (const fraction of [.25,.75]) {
-            const ww = buildingWidth * .13, wh = rowHeight * .17;
-            context.fillStyle = '#29292f'; context.fillRect(x + buildingWidth * fraction - ww / 2,top + rowHeight * .42,ww,wh);
-            context.strokeStyle = '#707078'; context.strokeRect(x + buildingWidth * fraction - ww / 2,top + rowHeight * .42,ww,wh);
-        }
-    }
-    // Recessed ground-floor wing with closely spaced vertical facade fins.
-    context.fillStyle = '#627476'; context.fillRect(x,y + 2 * rowHeight,frontWidth, rowHeight);
-    for (let px = x + 6 * unit; px < mainX; px += 5 * unit) line(px,y + 2 * rowHeight,px,groundY,'#43585a',.65);
-    // Warm, shallow cantilever on the left, matching the reference's timber volume.
-    context.fillStyle = '#a49a87'; context.fillRect(x - 10 * unit,y + rowHeight,mainX - x + 10 * unit,rowHeight * .86);
-    for (let px = x - 6 * unit; px < mainX; px += 4 * unit) line(px,y + rowHeight + 3 * unit,px,y + rowHeight * 1.86 - 3 * unit,'#8b8274',.55);
-    line(x - 10 * unit,y + rowHeight * 1.86,mainX,y + rowHeight * 1.86,'#303f42',5 * unit);
-    // Dark side plane and pale front frame give the house a modest sense of depth.
-    polygon([[x + frontWidth,y - 5 * unit],[x + buildingWidth,y + sideDepth * .65],
-        [x + buildingWidth,groundY],[x + frontWidth,groundY]],'#384e51');
-    context.fillStyle = '#bdbbb1'; context.fillRect(mainX,y,mainWidth,3 * rowHeight);
-    for (let row = 0; row < 3; row++) {
-        const top = y + row * rowHeight;
-        const glassX = mainX + frame, glassY = top + frame;
-        const glassWidth = mainWidth - 2 * frame, glassHeight = rowHeight - frame * 1.7;
-        context.fillStyle = row === 1 ? '#637b7d' : '#71888a';
-        context.fillRect(glassX,glassY,glassWidth,glassHeight);
-        // Muted interior panels, fine mullions and vertical blinds.
-        context.fillStyle = row === 0 ? '#b2ada0' : '#87958f';
-        context.fillRect(glassX + glassWidth * .48,glassY,glassWidth * .17,glassHeight);
-        for (let px = glassX + 3 * unit; px < glassX + glassWidth * .3; px += 3 * unit) line(px,glassY,px,glassY + glassHeight,'rgba(44,67,69,.4)',.55);
-        for (const fraction of [0,.31,.67,1]) line(glassX + glassWidth * fraction,glassY,glassX + glassWidth * fraction,glassY + glassHeight,'#273b3f',fraction === .31 ? 2 * unit : 1);
-        context.strokeStyle = '#2e4043'; context.lineWidth = 1.5;
-        context.strokeRect(glassX,glassY,glassWidth,glassHeight);
-        line(mainX,top + rowHeight - 1,mainX + mainWidth,top + rowHeight - 1,'#a6a69e',1);
-    }
-    // A slim glazed entrance and a few architectural planting strokes at ground level.
-    context.strokeStyle = '#354b4e'; context.lineWidth = 1.3;
-    context.strokeRect(x + buildingWidth * .2,y + rowHeight * 2.25,buildingWidth * .09,rowHeight * .75);
-    for (const fraction of [.05,.08,.11]) {
-        const plantX = x + buildingWidth * fraction;
-        line(plantX,groundY,plantX - 7 * unit,groundY - 15 * unit,'#777f7d',1);
-        line(plantX,groundY,plantX + 6 * unit,groundY - 12 * unit,'#777f7d',1);
-    }
-    line(x - 16 * unit,groundY,x + buildingWidth + 12 * unit,groundY,'#9c9ca1',1.5);
-}
