@@ -24,6 +24,7 @@ function sanitizeFloors(floorDataArray) {
             pdfPage: Number.isInteger(f.pdfPage) && f.pdfPage > 0 ? f.pdfPage : 1,
             rasterSource: typeof f.rasterSource==='string' && /^data:image\//.test(f.rasterSource) ? f.rasterSource : null,
             sourceName: typeof f.sourceName === 'string' ? f.sourceName : '',
+            legend: sanitizeProjectLegend(f.legend),
             wallMask: null
         };
 
@@ -84,7 +85,7 @@ function saveStateToHistory() {
     const state = {
         customDeviceIcons: JSON.parse(JSON.stringify(customDeviceIcons)),
         fData: floors.map(f => ({
-            name: f.name, imgData: f.imgData,
+            name: f.name, imgData: f.imgData, legend: f.legend ? JSON.parse(JSON.stringify(f.legend)) : null,
             devices: JSON.parse(JSON.stringify(f.devices)), cables: JSON.parse(JSON.stringify(f.cables)), showConnections: f.showConnections,
             wallThreshold: f.wallThreshold, pirRangePixels: f.pirRangePixels,
             planTheme: f.planTheme, vectorPlan: f.vectorPlan, pdfSource: f.pdfSource, rasterSource: f.rasterSource, pdfPage: f.pdfPage, sourceName: f.sourceName
@@ -149,7 +150,7 @@ function getProjectDataPayload() {
         deviceSize: dSize,
         customDeviceIcons,
         floors: floors.map(f => ({
-            name: f.name, imgData: f.imgData, devices: f.devices, cables: f.cables,
+            name: f.name, imgData: f.imgData, devices: f.devices, cables: f.cables, legend: f.legend,
             showConnections: f.showConnections, wallThreshold: f.wallThreshold, pirRangePixels: f.pirRangePixels,
             planTheme: f.planTheme, vectorPlan: f.vectorPlan, pdfSource: f.pdfSource, rasterSource: f.rasterSource, pdfPage: f.pdfPage, sourceName: f.sourceName
         }))

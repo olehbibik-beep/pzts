@@ -178,9 +178,9 @@ function animationLoop(timestamp) {
 }
 requestAnimationFrame(animationLoop);
 
-function drawDevice(ctx, dev, skipSelection = false, theme = 'dark') {
+function drawDevice(ctx, dev, skipSelection = false, theme = 'dark', options = {}) {
     let slider = document.getElementById('deviceSizeSlider');
-    let baseSize = (slider && slider.value) ? parseInt(slider.value) : 16;
+    let baseSize = options.baseSize ?? ((slider && slider.value) ? parseInt(slider.value) : 16);
     let sMult = (baseSize / 14); 
     let labelScale = 1 + (sMult - 1) * 0.5;
 
@@ -213,7 +213,7 @@ function drawDevice(ctx, dev, skipSelection = false, theme = 'dark') {
     }
 
     ctx.save(); ctx.translate(dev.x, dev.y); ctx.rotate((dev.rotation || 0) * Math.PI / 180);
-    const customIcon = typeof getCustomDeviceIconImage === 'function' ? getCustomDeviceIconImage(dev.type) : null;
+    const customIcon = !options.defaultIcon && typeof getCustomDeviceIconImage === 'function' ? getCustomDeviceIconImage(dev.type) : null;
     if (customIcon && customIcon.complete && customIcon.naturalWidth > 0) {
         ctx.drawImage(customIcon, -20 * sMult, -20 * sMult, 40 * sMult, 40 * sMult);
         ctx.restore();
@@ -360,6 +360,7 @@ function drawFloorData(ctx, floor, skipSelection = false, theme = getPlanTheme(f
         if (!showDeactivatedDevices && dev.type === 'deactivated') return;
         drawDevice(ctx, dev, skipSelection, theme);
     });
+    drawProjectLegend(ctx, floor, !skipSelection && !isExporting, theme);
 }
 
 function redraw() {

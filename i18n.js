@@ -1,6 +1,8 @@
 // Czech is the default. Source aliases also cover labels in older saved menu sets.
 (() => {
     const rows = [
+        ['Zobrazit legendu', 'Show legend'], ['Skrýt legendu', 'Hide legend'], ['LEGENDA', 'LEGEND'],
+        ['Přetažením přesunout, rohem změnit velikost.', 'Drag to move, drag the corner to resize.'],
         ['Sběrnice {0}', 'Bus {0}'], ['+ Přidat', '+ Add'],
         ['Скрыть зоны PIR', 'Skrýt zóny PIR', 'Hide PIR coverage'], ['Показать зоны PIR', 'Zobrazit zóny PIR', 'Show PIR coverage'],
         ['Выключить сетку', 'Vypnout mřížku', 'Hide grid'], ['Включить сетку', 'Zapnout mřížku', 'Show grid'],

@@ -492,6 +492,7 @@ const canvasTouchPoints = new Map();
 let canvasTouchGesture = null;
 
 function clearCanvasDrag() {
+    finishProjectLegendDrag();
     if (isDragging) { saveStateToHistory(); triggerAutoSave(); }
     isSelecting = false; isDragging = false; isPanning = false;
     draggedDevice = null; draggedHandle = null; clickedCableId = null; isClickingText = false;
@@ -533,6 +534,7 @@ container.addEventListener('pointerdown', (e) => {
         isPanning = true; startPanX = e.clientX - offsetX; startPanY = e.clientY - offsetY;
     } else if (e.button === 0) { 
         const floor = floors[currentFloorIndex];
+        if (beginProjectLegendDrag(e, canvasX, canvasY)) return;
         if (selectedTool === 'cableTool') {
             const hitCableId = hitTestCables(canvasX, canvasY, floor, showDeactivatedDevices);
             if (hitCableId) { floor.cables = floor.cables.filter(c => c.id !== hitCableId); saveStateToHistory(); requestRedraw(); triggerAutoSave(); return; }
@@ -607,6 +609,7 @@ container.addEventListener('pointermove', (e) => {
     const canvasX = (mX - offsetX) / scale; const canvasY = (mY - offsetY) / scale;
     lastMouseX = canvasX; lastMouseY = canvasY;
     pointerCanvasX = mX; pointerCanvasY = mY;
+    if (moveProjectLegend(e, canvasX, canvasY)) return;
     const pointerFloor = floors[currentFloorIndex];
     if (!pointerFloor || !pointerFloor.image) requestRedraw();
 
@@ -657,6 +660,7 @@ container.addEventListener('pointermove', (e) => {
         }
     }
 
+    if (!isDragging && !isPanning && !isSelecting && hoverProjectLegend(canvasX,canvasY)) return;
     updateDeviceHover(e,canvasX,canvasY);
 });
 
@@ -671,6 +675,7 @@ container.addEventListener('pointerleave', () => {
 });
 
 window.addEventListener('pointerup', (e) => {
+    if (finishProjectLegendDrag(e)) { canvasTouchPoints.delete(e.pointerId); return; }
     if (e.pointerType === 'touch') {
         canvasTouchPoints.delete(e.pointerId);
         if (canvasTouchGesture) {
@@ -1012,6 +1017,7 @@ window.addEventListener('goom-language-changed', () => { if (isOverviewMode) dra
 }
 
 function changeFloor() {
+    finishProjectLegendDrag(); selectedProjectLegend = null; updateProjectLegendButton();
     if(!floors[currentFloorIndex]) return;
     
     updateConnectionButton();

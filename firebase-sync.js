@@ -63,7 +63,7 @@ window.setCloudSyncStatus = setCloudSyncStatus;
 
 function hasProjectContent() {
     return floors.some(floor =>
-        Boolean(floor.imgData) || floor.devices.length > 0 || floor.cables.length > 0
+        Boolean(floor.imgData) || floor.devices.length > 0 || floor.cables.length > 0 || Boolean(floor.legend?.visible)
     ) || Object.keys(customDeviceIcons || {}).length > 0;
 }
 
