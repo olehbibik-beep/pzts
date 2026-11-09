@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GOOM</title>
-    <script src="i18n.js?v=20261108-modern-house-10"></script>
-    <script src="device-support.js?v=20261108-modern-house-10"></script>
+    <script src="i18n.js?v=20261109-plan-render-14"></script>
+    <script src="device-support.js?v=20261109-plan-render-14"></script>
     <style>
         :root {
             --bg-main: #121214; --bg-toolbar: #1c1c1f; --bg-input: #252529;
@@ -441,7 +441,7 @@
 
 
     </style>
-    <link rel="stylesheet" href="ui-theme.css?v=20261108-modern-house-10">
+    <link rel="stylesheet" href="ui-theme.css?v=20261109-plan-render-14">
 </head>
 <body>
     <div id="deviceSupportNotice" role="alert">
@@ -572,7 +572,7 @@
         </div>
     </div>
 
-    <div id="welcomeModal" class="modal" style="display: flex;" data-step="auth">
+    <div id="welcomeModal" class="modal is-art-loading" style="display: flex;" data-step="auth">
         <div class="modal-content welcome-card" role="dialog" aria-modal="true" aria-label="Vítejte v GOOM">
             <div class="welcome-controls">
                 <button id="btnWelcomeAccount" class="welcome-back" type="button" aria-label="Zpět" title="Zpět" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"></path></svg></button>
@@ -644,7 +644,9 @@
                 <div class="welcome-copyright"><strong>GooM</strong><span>Special Edition</span><small>2026</small></div>
             </div>
             
-            <div class="welcome-art-space"><img src="Hi.png?v=20261108-modern-house-10" alt="" aria-hidden="true"></div>
+            <div class="welcome-art-space">
+                <img src="Hi.png?v=20261109-plan-render-14" fetchpriority="high" decoding="async" alt="" aria-hidden="true">
+            </div>
 
         </div>
     </div>
@@ -785,9 +787,12 @@
     <div id="detectionSettingsModal" class="modal">
         <div class="modal-content" style="max-width: 430px;">
             <div class="modal-title">Rozpoznání stěn a PIR</div>
+            <label class="setting-label" for="planThemeInput">Zobrazení výkresu</label>
+            <select id="planThemeInput" style="width:100%;margin:8px 0 16px"><option value="dark">Bílé čáry na tmavém pozadí</option><option value="original">Původní výkres</option></select>
             <label class="setting-label" for="wallThresholdInput">Práh jasu stěn (0–255)</label>
             <input id="wallThresholdInput" type="number" min="0" max="255" step="1" value="100" class="clean-number-input" style="width: 100%; box-sizing: border-box; margin: 8px 0 16px;">
-            <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">Tmavé pixely výkresu tvoří překážky pro paprsky PIR. Pokud text nebo nábytek nesprávně blokují výhled, snižte práh.</div>
+            <label class="plan-output-coverage"><input id="wallPreviewInput" type="checkbox"> Zvýraznit rozpoznané překážky</label>
+            <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">Stěny se rozpoznávají z původního výkresu bez ohledu na barvu zobrazení. Tmavý text a nábytek mohou také blokovat paprsky. Práh upravte podle podkladu.</div>
             <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 14px;">Dosah platí pro vybraný detektor; bez výběru PIR se použije pro nové detektory. Zorný úhel je pevně 90°.</div>
 
             <label class="setting-label" for="pirRangeInput">Dosah paprsku, px (10–2000)</label>
@@ -871,22 +876,30 @@
     </div>
 
     <div id="saveModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-title">Exportovat projekt</div>
-            <div class="modal-text">Zvolte formát pro uložení. .BIPS slouží pro opětovné otevření a úpravu projektu.</div>
-            <div style="display: flex; flex-direction: column; gap: 10px;">
-                <button id="btnExportBIPS" class="btn-cad" style="background: #22c55e; justify-content: center; font-weight: bold; color: #121214;">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#121214" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-                    Uložit Projekt (.BIPS)
-                </button>
-                <button id="btnExportPNG" class="btn-cad" style="justify-content: center; margin-top: 10px;">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-                    Export jako Obrázek (PNG)
-                </button>
-                <button id="btnExportPDF" class="btn-cad" style="justify-content: center;">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                    Export jako Dokument (PDF)
-                </button>
+        <div class="modal-content plan-output-content">
+            <div class="plan-output-heading"><div class="modal-title">Exportovat projekt</div><button id="btnOutputClose" class="btn-cad" type="button">Zavřít</button></div>
+            <div class="plan-output-layout">
+                <div class="plan-output-options">
+                    <div class="modal-text">Celé podlaží, nezávisle na přiblížení obrazovky.</div>
+                    <div class="plan-output-fields">
+                        <label>Formát papíru<select id="outputPaper"><option value="a3">A3</option><option value="a4">A4</option></select></label>
+                        <label>Orientace<select id="outputOrientation"><option value="auto">Automaticky</option><option value="landscape">Na šířku</option><option value="portrait">Na výšku</option></select></label>
+                        <label>Kvalita<select id="outputDpi"><option value="300">300 DPI</option><option value="150">150 DPI</option></select></label>
+                        <label>Pozadí<select id="outputTheme"><option value="original">Světlý výkres</option><option value="dark">Tmavý výkres</option></select></label>
+                    </div>
+                    <label class="plan-output-coverage"><input id="outputCoverage" type="checkbox" checked> Zóny detektorů</label>
+                    <div class="plan-output-actions">
+                        <button id="btnExportPNG" class="btn-cad" type="button">PNG</button>
+                        <button id="btnExportJPEG" class="btn-cad" type="button">JPG</button>
+                        <button id="btnExportSVG" class="btn-cad" type="button">SVG</button>
+                        <button id="btnExportPDF" class="btn-cad" type="button">PDF</button>
+                        <button id="btnPrintPlan" class="btn-cad" type="button">Tisk</button>
+                        <button id="btnExportBIPS" class="btn-cad" type="button">Uložit Projekt (.BIPS)</button>
+                    </div>
+                    <p class="plan-output-note">SVG zachová vektorové čáry DXF, detektory a kabely. Fotografie a rastrové plány zůstanou rastrové.</p>
+                    <p id="outputStatus" role="status" aria-live="polite"></p>
+                </div>
+                <div class="plan-output-preview"><canvas id="outputPreview" aria-label="Náhled celého podlaží"></canvas><p id="outputSize"></p></div>
             </div>
         </div>
     </div>
@@ -957,6 +970,6 @@
         <button type="button" data-tablet-action="delete" class="tool-danger">×</button>
         <button type="button" data-tablet-action="undo">↶</button>
     </div>
-    <script src="bootstrap.js?v=20261108-modern-house-10"></script>
+    <script src="bootstrap.js?v=20261109-plan-render-14"></script>
 </body>
 </html>

@@ -7,10 +7,12 @@
     let searchTime = 0;
     function close(refocus = false) {
         if (!current) return;
-        const { trigger, popup } = current;
+        const { trigger, popup, widget } = current;
         trigger.setAttribute('aria-expanded', 'false');
         trigger.removeAttribute('aria-activedescendant');
-        popup.remove(); current = null;
+        widget.wrapper.classList.remove('is-open');
+        if (window.dismissGoomPopup) window.dismissGoomPopup(popup); else popup.remove();
+        current = null;
         if (refocus) trigger.focus({ preventScroll: true });
         window.clearGoomTooltips?.();
     }
@@ -51,6 +53,8 @@
         const popup = document.createElement('div');
         popup.id = `${widget.trigger.id}-list`;
         popup.className = 'ui-select-popup'; popup.setAttribute('role', 'listbox');
+        const welcomeLanguage = Boolean(widget.select.closest('.welcome-controls')) && widget.select.hasAttribute('data-language-select');
+        if (welcomeLanguage) popup.classList.add('welcome-language-popup');
         popup.setAttribute('aria-label', widget.trigger.getAttribute('aria-label'));
         [...widget.select.options].forEach((option, index) => {
             const row = document.createElement('div');
@@ -67,14 +71,18 @@
         const rect = widget.trigger.getBoundingClientRect();
         const height = Math.min(280, widget.select.options.length * 44 + 2);
         const below = window.innerHeight - rect.bottom - 8;
-        popup.style.width = `${Math.max(rect.width, 120)}px`;
-        popup.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - Math.max(rect.width, 120) - 8))}px`;
+        const popupWidth = welcomeLanguage ? rect.width : Math.max(rect.width, 120);
+        const popupLeft = widget.select.hasAttribute('data-language-select') ? rect.left + (rect.width - popupWidth) / 2 : rect.left;
+        popup.style.width = `${popupWidth}px`;
+        popup.style.left = `${Math.max(8, Math.min(popupLeft, window.innerWidth - popupWidth - 8))}px`;
         popup.style.maxHeight = `${Math.max(70, Math.min(height, below >= 120 ? below : rect.top - 8))}px`;
-        if (below >= 120 || rect.top < 140) popup.style.top = `${rect.bottom}px`;
+        if (welcomeLanguage) popup.style.top = `${rect.top}px`;
+        else if (below >= 120 || rect.top < 140) popup.style.top = `${rect.bottom}px`;
         else popup.style.bottom = `${window.innerHeight - rect.top}px`;
         current = { widget, trigger: widget.trigger, popup, index: Math.max(0, widget.select.selectedIndex) };
         widget.trigger.setAttribute('aria-controls', popup.id);
         widget.trigger.setAttribute('aria-expanded', 'true');
+        widget.wrapper.classList.add('is-open');
         highlight(current.index);
         window.clearGoomTooltips?.();
     }

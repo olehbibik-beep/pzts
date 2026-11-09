@@ -151,12 +151,19 @@ function openDetectionSettings() {
     const floor = floors[currentFloorIndex];
     if (!floor) return;
     document.getElementById('wallThresholdInput').value = floor.wallThreshold;
+    document.getElementById('planThemeInput').value = getPlanTheme(floor);
+    document.getElementById('wallPreviewInput').checked = !!floor.previewWalls;
+    window.refreshGoomSelects?.();
     const selectedPIR = floor.devices.find(device => activeDeviceIds.has(device.id) && ['pir', 'pir_wl', 'glassbreak'].includes(device.type));
     document.getElementById('pirRangeInput').value = selectedPIR?.pirRangePixels || floor.pirRangePixels;
     detectionSettingsModal.style.display = 'flex';
 }
 
 document.getElementById('btnDetectionSettings').addEventListener('click', openDetectionSettings);
+document.getElementById('wallPreviewInput').addEventListener('change',event=>{
+    if(floors[currentFloorIndex])floors[currentFloorIndex].previewWalls=event.target.checked;
+    requestRedraw();
+});
 document.getElementById('btnCloseDetectionSettings').addEventListener('click', () => {
     detectionSettingsModal.style.display = 'none';
 });
@@ -181,6 +188,7 @@ document.getElementById('btnSaveDetectionSettings').addEventListener('click', ()
         return;
     }
 
+    floor.planTheme = document.getElementById('planThemeInput').value;
     floor.wallThreshold = wallThreshold;
     floor.wallMask = wallMask;
     const selectedPIRs = floor.devices.filter(device => activeDeviceIds.has(device.id) && ['pir', 'pir_wl', 'glassbreak'].includes(device.type));
@@ -298,71 +306,19 @@ document.getElementById('btnMenuLoadImg').addEventListener('click', () => { docu
 document.getElementById('btnMenuSave').addEventListener('click', () => { document.getElementById('saveModal').style.display = 'flex'; document.getElementById('mainMenuModal').style.display = 'none'; });
 
 // Простые функции для предотвращения ошибок кнопок Экспорта
-function exportToPNG() {
-    if (currentFloorIndex === -1) return;
-    const a = document.createElement('a'); a.href = canvas.toDataURL('image/png'); a.download = (projectName || "projekt") + ".png"; a.click();
-}
-function exportToPDF() {
-    if (currentFloorIndex === -1) return;
-    const pdf = new jspdf.jsPDF({ orientation: 'landscape' });
-    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 10, 10, 277, 190); pdf.save((projectName || "projekt") + ".pdf");
-}
-
-function printCurrentFloor() {
-    if (currentFloorIndex === -1 || (floors[currentFloorIndex].devices.length === 0 && !floors[currentFloorIndex].image)) {
-        showAppAlert(tr("Žádná data k tisku."), tr('Печать'));
-        return;
-    }
-
-    isExporting = true;
-    const floor = floors[currentFloorIndex];
-    const bounds = getProjectBounds(floor, showDeactivatedDevices);
-    const previousCanvas = { scale, offsetX, offsetY, width: canvas.width, height: canvas.height };
-    canvas.width = bounds.width;
-    canvas.height = bounds.height;
-    scale = 1;
-    offsetX = -bounds.minX;
-    offsetY = -bounds.minY;
-    redraw();
-    setTimeout(() => {
-        try {
-            const image = new Image();
-            image.alt = tr`Чертёж: ${floor.name}`;
-            image.onload = () => window.print();
-            image.onerror = () => {
-                console.error('Не удалось загрузить изображение чертежа для печати.');
-                showAppAlert(tr('Не удалось подготовить чертёж к печати.'), tr('Ошибка печати'));
-            };
-            document.getElementById('printPage').replaceChildren(image);
-            image.src = canvas.toDataURL('image/png');
-        } catch (error) {
-            console.error('Не удалось подготовить чертёж к печати:', error);
-            showAppAlert(tr`Не удалось подготовить чертёж к печати: ${error.message}`, tr('Ошибка печати'));
-        } finally {
-            canvas.width = previousCanvas.width;
-            canvas.height = previousCanvas.height;
-            scale = previousCanvas.scale;
-            offsetX = previousCanvas.offsetX;
-            offsetY = previousCanvas.offsetY;
-            isExporting = false;
-            requestRedraw();
-        }
-    }, 100);
-}
-
+function exportToPNG() { return exportPlanFile('png'); }
+function exportToPDF() { return exportPlanFile('pdf'); }
+function printCurrentFloor() { openPlanOutput(true); }
 document.getElementById('btnMenuPrint').addEventListener('click', () => {
-    document.getElementById('mainMenuModal').style.display = 'none';
-    printCurrentFloor();
+ document.getElementById('mainMenuModal').style.display = 'none'; printCurrentFloor();
 });
-window.addEventListener('afterprint', () => {
-    document.getElementById('printPage').replaceChildren();
-});
+window.addEventListener('afterprint', () => document.getElementById('printPage').replaceChildren());
+document.getElementById('btnExportBIPS').addEventListener('click', () => { exportToBIPS(); saveModal.style.display='none'; });
+for (const [id,format] of [['btnExportPNG','png'],['btnExportPDF','pdf'],['btnExportSVG','svg'],['btnExportJPEG','jpeg']]) {
+ document.getElementById(id).addEventListener('click', () => exportPlanFile(format));
+}
+document.getElementById('btnPrintPlan').addEventListener('click', () => exportPlanFile('print'));
 
-let btnExportBIPS = document.getElementById('btnExportBIPS');
-if(btnExportBIPS) btnExportBIPS.addEventListener('click', () => { exportToBIPS(); document.getElementById('saveModal').style.display='none'; });
-
-document.getElementById('btnExportPNG').addEventListener('click', () => { exportToPNG(); document.getElementById('saveModal').style.display='none'; });
-document.getElementById('btnExportPDF').addEventListener('click', () => { exportToPDF(); document.getElementById('saveModal').style.display='none'; });
 document.getElementById('bipsLoader').addEventListener('change', (e) => { const f = e.target.files[0]; if(f) importFileContent(f); e.target.value = ''; });
 
 function openTextModal(dev) { editingDevice = dev; devTextInput.value = dev.manualName || ""; document.getElementById('textModal').style.display = 'flex'; devTextInput.focus(); }
@@ -531,14 +487,15 @@ window.addEventListener('keyup', (e) => {
 window.addEventListener('blur', stopDeviceRotation);
 
 window.addEventListener('resize', () => { 
-    if (!isExporting) { canvas.width = container.clientWidth; canvas.height = container.clientHeight; requestRedraw(); } 
+    if (!isExporting) { resizePlanCanvas(); requestRedraw(); } 
     if (isOverviewMode && document.getElementById('overviewScreen').style.display === 'flex') { if(typeof drawBuildingOverview === 'function') drawBuildingOverview(); }
 });
 
 container.addEventListener('wheel', (e) => {
     e.preventDefault(); 
     if (isOverviewMode) return;
-    const zoom = e.deltaY > 0 ? 0.9 : 1.1;
+    const nextScale = Math.max(0.005, Math.min(128, scale * Math.exp(-e.deltaY * 0.0015)));
+    const zoom = nextScale / scale;
     const rect = container.getBoundingClientRect(); const mouseX = e.clientX - rect.left; const mouseY = e.clientY - rect.top;
     offsetX = mouseX - (mouseX - offsetX) * zoom; offsetY = mouseY - (mouseY - offsetY) * zoom; scale *= zoom; 
     requestRedraw();
@@ -645,7 +602,7 @@ container.addEventListener('pointermove', (e) => {
             if (canvasTouchPoints.size === 2) {
                 const [a, b] = [...canvasTouchPoints.values()];
                 const rect = container.getBoundingClientRect();
-                scale = Math.max(0.05, Math.min(20, canvasTouchGesture.scale * Math.hypot(a.x - b.x, a.y - b.y) / canvasTouchGesture.distance));
+                scale = Math.max(0.005, Math.min(128, canvasTouchGesture.scale * Math.hypot(a.x - b.x, a.y - b.y) / canvasTouchGesture.distance));
                 offsetX = (a.x + b.x) / 2 - rect.left - canvasTouchGesture.x * scale;
                 offsetY = (a.y + b.y) / 2 - rect.top - canvasTouchGesture.y * scale;
                 requestRedraw();
@@ -997,7 +954,7 @@ function resetPlacementTool() {
 
 async function initProject() {
     try {
-        canvas.width = container.clientWidth; canvas.height = container.clientHeight;
+        resizePlanCanvas();
         updateLoopSelect();
 
         const menuTitleEl = document.getElementById('menuTitleContainer');
@@ -1151,10 +1108,10 @@ window.addEventListener('goom-language-changed', () => { if (isOverviewMode) dra
     const floor = floors[currentFloorIndex];
     if (!floor || !floor.image) { scale = 1; offsetX = 0; offsetY = 0; return; }
     let bw = floor.image.width; let bh = floor.image.height;
-    let scaleX = canvas.width / bw; let scaleY = canvas.height / bh;
+    let scaleX = planCanvasWidth() / bw; let scaleY = planCanvasHeight() / bh;
     scale = Math.min(scaleX, scaleY) * 0.95; 
     if (scale > 1) scale = 1; 
-    offsetX = (canvas.width - bw * scale) / 2; offsetY = (canvas.height - bh * scale) / 2;
+    offsetX = (planCanvasWidth() - bw * scale) / 2; offsetY = (planCanvasHeight() - bh * scale) / 2;
 }
 
 function changeFloor() {
@@ -1169,150 +1126,17 @@ function changeFloor() {
 }
 
 document.getElementById('imageLoader').addEventListener('change', async function(e) {
-    if (currentFloorIndex === -1) return;
-    const file = e.target.files[0]; if (!file) return;
-
-    isSystemReady = false; requestRedraw(); 
-
-    function setImportedFloorImage(floor, image, imgData) {
-        let wallMask;
-        try {
-            wallMask = createWallMask({ ...floor, image }, floor.wallThreshold);
-        } catch (error) {
-            console.error('Ошибка распознавания стен:', error);
-            showAppAlert(tr`Изображение загружено, но стены распознать не удалось: ${error.message}`, tr('План загружен с предупреждением'));
-            return false;
-        }
-        floor.image = image;
-        floor.imgData = imgData;
-        floor.wallMask = wallMask;
-        return true;
-    }
-
-    if (file.type === 'application/pdf') {
-        const fileReader = new FileReader();
-        fileReader.onload = async function() {
-            const typedarray = new Uint8Array(this.result);
-            try {
-                const pdf = await pdfjsLib.getDocument(typedarray).promise;
-                const page = await pdf.getPage(1); const pdfScale = 3.0; const viewport = page.getViewport({scale: pdfScale});
-                const tempCanvas = document.createElement('canvas'); const tempCtx = tempCanvas.getContext('2d');
-                tempCanvas.width = viewport.width; tempCanvas.height = viewport.height;
-                await page.render({ canvasContext: tempCtx, viewport: viewport }).promise;
-                
-                const dataUrl = tempCanvas.toDataURL('image/png'); const img = new Image();
-                img.onload = function() {
-                    if (setImportedFloorImage(floors[currentFloorIndex], img, dataUrl)) {
-                        isSystemReady = true; changeFloor(); saveStateToHistory();
-                    } else { isSystemReady = true; requestRedraw(); }
-                }
-                img.src = dataUrl;
-            } catch (error) { showAppAlert(tr("Chyba při načítání PDF."), tr('Ошибка загрузки PDF')); console.error(error); isSystemReady = true; requestRedraw(); }
-        };
-        fileReader.readAsArrayBuffer(file);
-    } else if (file.name.toLowerCase().endsWith('.dxf')) {
-        const reader = new FileReader();
-        reader.onload = function(event) {
-            try {
-                const parser = new DxfParser();
-                const dxf = parser.parseSync(event.target.result);
-                
-                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-                if (dxf.header && dxf.header.$EXTMIN && dxf.header.$EXTMAX) {
-                    minX = dxf.header.$EXTMIN.x; minY = dxf.header.$EXTMIN.y;
-                    maxX = dxf.header.$EXTMAX.x; maxY = dxf.header.$EXTMAX.y;
-                } else {
-                    dxf.entities.forEach(ent => {
-                        if (ent.vertices) {
-                            ent.vertices.forEach(v => {
-                                if (v.x < minX) minX = v.x; if (v.x > maxX) maxX = v.x;
-                                if (v.y < minY) minY = v.y; if (v.y > maxY) maxY = v.y;
-                            });
-                        }
-                    });
-                }
-
-                const pad = 50; 
-                const width = (maxX - minX) + pad * 2;
-                const height = (maxY - minY) + pad * 2;
-
-                const tempCanvas = document.createElement('canvas');
-                const tempCtx = tempCanvas.getContext('2d');
-                
-                const maxDim = 4000;
-                let scaleDXF = 1;
-                if (width > maxDim || height > maxDim) {
-                    scaleDXF = maxDim / Math.max(width, height);
-                }
-                
-                tempCanvas.width = width * scaleDXF;
-                tempCanvas.height = height * scaleDXF;
-                
-                tempCtx.fillStyle = "#ffffff";
-                tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-                
-                tempCtx.strokeStyle = "#121214"; 
-                tempCtx.lineWidth = 1.5;
-                tempCtx.lineCap = "round";
-                tempCtx.lineJoin = "round";
-
-                const tx = (x) => (x - minX + pad) * scaleDXF;
-                const ty = (y) => tempCanvas.height - ((y - minY + pad) * scaleDXF);
-
-                dxf.entities.forEach(entity => {
-                    tempCtx.beginPath();
-                    if (entity.type === 'LINE') {
-                        tempCtx.moveTo(tx(entity.vertices[0].x), ty(entity.vertices[0].y));
-                        tempCtx.lineTo(tx(entity.vertices[1].x), ty(entity.vertices[1].y));
-                    } else if (entity.type === 'LWPOLYLINE' || entity.type === 'POLYLINE') {
-                        if (entity.vertices && entity.vertices.length > 0) {
-                            tempCtx.moveTo(tx(entity.vertices[0].x), ty(entity.vertices[0].y));
-                            for (let i = 1; i < entity.vertices.length; i++) {
-                                tempCtx.lineTo(tx(entity.vertices[i].x), ty(entity.vertices[i].y));
-                            }
-                            if (entity.shape) tempCtx.closePath(); 
-                        }
-                    } else if (entity.type === 'CIRCLE') {
-                        tempCtx.arc(tx(entity.center.x), ty(entity.center.y), entity.radius * scaleDXF, 0, Math.PI * 2);
-                    }
-                    tempCtx.stroke();
-                });
-
-                const dataUrl = tempCanvas.toDataURL('image/png'); 
-                const img = new Image();
-                img.onload = function() { 
-                    if (!setImportedFloorImage(floors[currentFloorIndex], img, dataUrl)) {
-                        isSystemReady = true;
-                        requestRedraw();
-                        return;
-                    }
-                    isSystemReady = true; 
-                    changeFloor(); 
-                    saveStateToHistory(); 
-                }
-                img.src = dataUrl;
-
-            } catch (err) {
-                showAppAlert(tr("Chyba při zpracování DXF souboru."), tr('Ошибка загрузки DXF'));
-                console.error(err);
-                isSystemReady = true; requestRedraw();
-            }
-        };
-        reader.readAsText(file); 
-    } else {
-        const reader = new FileReader();
-        reader.onload = function(event) {
-            const img = new Image();
-            img.onload = function() {
-                if (setImportedFloorImage(floors[currentFloorIndex], img, event.target.result)) {
-                    isSystemReady = true; changeFloor(); saveStateToHistory();
-                } else { isSystemReady = true; requestRedraw(); }
-            }
-            img.src = event.target.result;
-        }
-        reader.readAsDataURL(file);
-    }
-    e.target.value = '';
+ const floor=floors[currentFloorIndex],file=e.target.files[0];e.target.value='';
+ if(!floor||!file||!isSystemReady)return;
+ isSystemReady=false;container.setAttribute('aria-busy','true');requestRedraw();
+ try {
+  await new Promise(requestAnimationFrame);
+  const imported=await importPlanSource(file,floor);
+  if(imported){Object.assign(floor,imported);isSystemReady=true;changeFloor();saveStateToHistory();triggerAutoSave();
+   if(imported.vectorPlan?.unsupported.length)showAppAlert(tr`Nepodporované prvky DXF: ${imported.vectorPlan.unsupported.join(', ')}`,tr('Import DXF'));
+  }
+ } catch(error){console.error(error);showAppAlert(error.message,tr('Chyba načítání výkresu'));}
+ finally{isSystemReady=true;container.removeAttribute('aria-busy');requestRedraw();}
 });
 
 function importFileContent(file, options = {}) {

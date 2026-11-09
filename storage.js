@@ -17,6 +17,11 @@ function sanitizeFloors(floorDataArray) {
             pirRangePixels: Number.isFinite(f.pirRangePixels) && f.pirRangePixels > 0
                 ? Math.min(2000, f.pirRangePixels === 180 ? 300 : f.pirRangePixels)
                 : 300,
+            planTheme: f.planTheme === 'original' ? 'original' : 'dark',
+            vectorPlan: sanitizeVectorPlan(f.vectorPlan),
+            pdfSource: typeof f.pdfSource === 'string' && /^data:application\/pdf(?:;[^,]*)?;base64,/.test(f.pdfSource) ? f.pdfSource : null,
+            pdfPage: Number.isInteger(f.pdfPage) && f.pdfPage > 0 ? f.pdfPage : 1,
+            sourceName: typeof f.sourceName === 'string' ? f.sourceName : '',
             wallMask: null
         };
 
@@ -78,7 +83,8 @@ function saveStateToHistory() {
         fData: floors.map(f => ({
             name: f.name, imgData: f.imgData,
             devices: JSON.parse(JSON.stringify(f.devices)), cables: JSON.parse(JSON.stringify(f.cables)), showConnections: f.showConnections,
-            wallThreshold: f.wallThreshold, pirRangePixels: f.pirRangePixels
+            wallThreshold: f.wallThreshold, pirRangePixels: f.pirRangePixels,
+            planTheme: f.planTheme, vectorPlan: f.vectorPlan, pdfSource: f.pdfSource, pdfPage: f.pdfPage, sourceName: f.sourceName
         })),
         currentFloorIndex: currentFloorIndex, currentMaxLines: currentMaxLines
     };
@@ -138,7 +144,8 @@ function getProjectDataPayload() {
         customDeviceIcons,
         floors: floors.map(f => ({
             name: f.name, imgData: f.imgData, devices: f.devices, cables: f.cables,
-            showConnections: f.showConnections, wallThreshold: f.wallThreshold, pirRangePixels: f.pirRangePixels
+            showConnections: f.showConnections, wallThreshold: f.wallThreshold, pirRangePixels: f.pirRangePixels,
+            planTheme: f.planTheme, vectorPlan: f.vectorPlan, pdfSource: f.pdfSource, pdfPage: f.pdfPage, sourceName: f.sourceName
         }))
     };
 }

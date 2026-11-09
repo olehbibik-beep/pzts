@@ -16,6 +16,7 @@ let customDeviceIcons = {};
 let currentFloorIndex = -1;
 let selectedTool = 'select';
 
+let canvasPixelRatio = 1;
 let scale = 1; let offsetX = 0; let offsetY = 0;
 let isPanning = false; let startPanX = 0; let startPanY = 0;
 

@@ -53,6 +53,7 @@ function createWallMask(floor, threshold = floor.wallThreshold) {
     const maskCtx = maskCanvas.getContext('2d', { willReadFrequently: true });
     if (!maskCtx) throw new Error(tr('Не удалось создать маску стен для чертежа.'));
 
+    maskCtx.fillStyle = '#fff'; maskCtx.fillRect(0, 0, width, height);
     maskCtx.drawImage(floor.image, 0, 0, width, height);
     const pixels = maskCtx.getImageData(0, 0, width, height).data;
     const data = new Uint8Array(width * height);
@@ -116,7 +117,7 @@ function getPIRCoveragePoints(floor, device) {
     const range = rangePixels * maskScaleX;
     const fov = fovDegrees * Math.PI / 180;
     const centerAngle = ((device.rotation || 0) + (isGlassbreak ? 0 : 180)) * Math.PI / 180;
-    const rayCount = Math.max(12, Math.ceil(fovDegrees));
+    const rayCount = Math.min(720, Math.max(90, Math.ceil(fovDegrees * rangePixels / 180)));
     const points = [{ x: device.x, y: device.y }];
 
     for (let ray = 0; ray <= rayCount; ray++) {
@@ -151,9 +152,9 @@ function getPIRCoveragePoints(floor, device) {
     return points;
 }
 
-function drawPIRCoverage(ctx, floor) {
+function drawPIRCoverage(ctx, floor, force = false) {
     const toggle = document.getElementById('togglePirCoverage');
-    if (toggle?.getAttribute('aria-pressed') === 'false') return;
+    if (!force && toggle?.getAttribute('aria-pressed') === 'false') return;
     floor.devices.forEach(device => {
         if (!['pir', 'pir_wl', 'glassbreak'].includes(device.type)) return;
         const points = getPIRCoveragePoints(floor, device);
@@ -178,8 +179,8 @@ function drawPlanGrid(ctx, floor) {
     const spacing = 50;
     const minX = -offsetX / scale;
     const minY = -offsetY / scale;
-    const maxX = (canvas.width - offsetX) / scale;
-    const maxY = (canvas.height - offsetY) / scale;
+    const maxX = (planCanvasWidth() - offsetX) / scale;
+    const maxY = (planCanvasHeight() - offsetY) / scale;
     ctx.save();
     ctx.beginPath();
     for (let x = Math.floor(minX / spacing) * spacing; x <= maxX; x += spacing) {
@@ -232,7 +233,7 @@ function animationLoop(timestamp) {
 }
 requestAnimationFrame(animationLoop);
 
-function drawDevice(ctx, dev, skipSelection = false) {
+function drawDevice(ctx, dev, skipSelection = false, theme = 'dark') {
     let slider = document.getElementById('deviceSizeSlider');
     let baseSize = (slider && slider.value) ? parseInt(slider.value) : 16;
     let sMult = (baseSize / 14); 
@@ -392,12 +393,12 @@ function drawDevice(ctx, dev, skipSelection = false) {
         }
         if (dev.manualName && dev.type !== 'textNode') { 
             let nameY = (labelText !== "") ? textY + (16 * labelScale) : textY;
-            ctx.font = (11 * labelScale) + "px sans-serif"; ctx.fillStyle = "#121214"; ctx.shadowColor = "rgba(255,255,255,0.8)"; ctx.shadowBlur = 4; ctx.fillText(dev.manualName, textX, nameY); ctx.shadowBlur = 0;
+            ctx.font = (11 * labelScale) + "px sans-serif"; ctx.fillStyle = theme === 'dark' ? "#f2f4f7" : "#121214"; ctx.shadowColor = theme === 'dark' ? "#181a1d" : "rgba(255,255,255,0.8)"; ctx.shadowBlur = 4; ctx.fillText(dev.manualName, textX, nameY); ctx.shadowBlur = 0;
         }
     }
 }
 
-function drawFloorData(ctx, floor, skipSelection = false) {
+function drawFloorData(ctx, floor, skipSelection = false, theme = getPlanTheme(floor)) {
     if (!floor) return;
     if (!isSystemReady) {
         ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = "#121214"; ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -430,26 +431,26 @@ function drawFloorData(ctx, floor, skipSelection = false) {
     }
     floor.devices.forEach(dev => {
         if (!showDeactivatedDevices && dev.type === 'deactivated') return;
-        drawDevice(ctx, dev, skipSelection);
+        drawDevice(ctx, dev, skipSelection, theme);
     });
 }
 
 function redraw() {
     if (floors.length === 0) return;
     calculateDynamicNumbersGlobal(floors);
-    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.setTransform(canvasPixelRatio, 0, 0, canvasPixelRatio, 0, 0); ctx.clearRect(0, 0, planCanvasWidth(), planCanvasHeight());
     if (currentFloorIndex === -1) return;
     const floor = floors[currentFloorIndex];
     if (!floor.image && !isExporting) {
-        ctx.fillStyle = "#252529"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#252529"; ctx.fillRect(0, 0, planCanvasWidth(), planCanvasHeight());
         if (emptyCanvasLogo.complete && emptyCanvasLogo.naturalWidth > 0) {
-            const logoWidth = Math.min(180, canvas.width * 0.3);
+            const logoWidth = Math.min(180, planCanvasWidth() * 0.3);
             const logoHeight = logoWidth * emptyCanvasLogo.naturalHeight / emptyCanvasLogo.naturalWidth;
-            ctx.drawImage(emptyCanvasLogo, (canvas.width - logoWidth) / 2, (canvas.height - logoHeight) / 2, logoWidth, logoHeight);
+            ctx.drawImage(emptyCanvasLogo, (planCanvasWidth() - logoWidth) / 2, (planCanvasHeight() - logoHeight) / 2, logoWidth, logoHeight);
         }
         const spacing = 28;
-        for (let x = spacing / 2; x < canvas.width; x += spacing) {
-            for (let y = spacing / 2; y < canvas.height; y += spacing) {
+        for (let x = spacing / 2; x < planCanvasWidth(); x += spacing) {
+            for (let y = spacing / 2; y < planCanvasHeight(); y += spacing) {
                 let dx = 0; let dy = 0; let distance = Infinity;
                 if (pointerCanvasX !== null && pointerCanvasY !== null) {
                     dx = x - pointerCanvasX; dy = y - pointerCanvasY;
@@ -469,47 +470,18 @@ function redraw() {
             }
         }
         ctx.globalAlpha = 1;
-    } else { ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, canvas.width, canvas.height); }
+    } else { ctx.fillStyle = planBackground(getPlanTheme(floor)); ctx.fillRect(0, 0, planCanvasWidth(), planCanvasHeight()); }
 
     ctx.translate(offsetX, offsetY); ctx.scale(scale, scale);
-    if (floor.image) {
-        ctx.drawImage(floor.image, 0, 0);
-        const frame = floor.wallMask;
-        if (frame?.frameColumns?.length || frame?.frameRows?.length) {
-            const scaleX = frame.width / frame.imageWidth;
-            const scaleY = frame.height / frame.imageHeight;
-            ctx.save();
-            ctx.fillStyle = '#ffffff';
-            const fillFrameLines = (lines, lineScale, length, vertical) => {
-                const sorted = [...lines].sort((a, b) => a - b);
-                let start = sorted[0];
-                let end = start;
-                for (let i = 1; i <= sorted.length; i++) {
-                    if (i < sorted.length && sorted[i] <= end + 1) {
-                        end = sorted[i];
-                        continue;
-                    }
-                    const center = (start + end) / (2 * lineScale);
-                    const thickness = Math.max((end - start + 3) / lineScale, 3 / scale);
-                    const position = center - thickness / 2;
-                    if (vertical) ctx.fillRect(position, 0, thickness, length);
-                    else ctx.fillRect(0, position, length, thickness);
-                    start = sorted[i];
-                    end = start;
-                }
-            };
-            if (frame.frameColumns.length) fillFrameLines(frame.frameColumns, scaleX, frame.imageHeight, true);
-            if (frame.frameRows.length) fillFrameLines(frame.frameRows, scaleY, frame.imageWidth, false);
-            ctx.restore();
-        }
-    }
+    if (floor.image) drawPlanSource(ctx, floor, getPlanTheme(floor), getScreenPlanImage(floor));
+    drawDetectedWalls(ctx, floor);
     drawPlanGrid(ctx, floor);
     drawPIRCoverage(ctx, floor);
 
     if ((snapGuideX !== null || snapGuideY !== null) && !isExporting && isDragging) {
         ctx.save(); ctx.strokeStyle = "#22c55e"; ctx.lineWidth = 1.5 / scale; ctx.setLineDash([5 / scale, 5 / scale]); ctx.globalAlpha = 0.6;
-        if (snapGuideX !== null) { ctx.beginPath(); ctx.moveTo(snapGuideX, -offsetY / scale); ctx.lineTo(snapGuideX, (canvas.height - offsetY) / scale); ctx.stroke(); }
-        if (snapGuideY !== null) { ctx.beginPath(); ctx.moveTo(-offsetX / scale, snapGuideY); ctx.lineTo((canvas.width - offsetX) / scale, snapGuideY); ctx.stroke(); }
+        if (snapGuideX !== null) { ctx.beginPath(); ctx.moveTo(snapGuideX, -offsetY / scale); ctx.lineTo(snapGuideX, (planCanvasHeight() - offsetY) / scale); ctx.stroke(); }
+        if (snapGuideY !== null) { ctx.beginPath(); ctx.moveTo(-offsetX / scale, snapGuideY); ctx.lineTo((planCanvasWidth() - offsetX) / scale, snapGuideY); ctx.stroke(); }
         ctx.restore();
     }
 

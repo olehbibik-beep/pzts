@@ -1,6 +1,6 @@
 (() => {
     // Change this version whenever publishing application files together.
-    const version = '20261108-modern-house-10';
+    const version = '20261109-plan-render-14';
     let started = false;
     function loadScript(src) {
         return new Promise((resolve, reject) => {
@@ -28,7 +28,8 @@
                 loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'),
                 loadScript('https://cdn.jsdelivr.net/npm/dxf-parser@1.1.2/dist/dxf-parser.min.js')
             ].map(promise => promise.catch(error => console.warn('Библиотека импорта/экспорта недоступна:', error)));
-            for (const name of ['config', 'state', 'engine', 'storage', 'dialogs', 'render', 'app', 'onboarding', 'firebase-auth', 'account-profile', 'pro-billing', 'firebase-sync', 'icon-editor', 'toolbar-menus', 'select-controls', 'tablet-tools']) {
+            window.planLibrariesReady = Promise.all(libraries);
+            for (const name of ['modal-ui', 'config', 'state', 'engine', 'storage', 'dialogs', 'render', 'plan-renderer', 'svg-context', 'plan-export', 'app', 'onboarding', 'firebase-auth', 'account-profile', 'pro-billing', 'firebase-sync', 'icon-editor', 'toolbar-menus', 'select-controls', 'tablet-tools']) {
                 await loadScript(`${name}.js?v=${version}`);
             }
             await Promise.all(libraries);
