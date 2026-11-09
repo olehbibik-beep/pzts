@@ -39,67 +39,21 @@ function drawWirelessWaves(ctx, startX, startY, sMult, color) {
 }
 
 function createWallMask(floor, threshold = floor.wallThreshold) {
-    if (!floor.image) return null;
-
-    const imageWidth = floor.image.naturalWidth || floor.image.width;
-    const imageHeight = floor.image.naturalHeight || floor.image.height;
-    const maxPixels = 6000000;
-    const resizeFactor = Math.min(1, Math.sqrt(maxPixels / (imageWidth * imageHeight)));
-    const width = Math.max(1, Math.round(imageWidth * resizeFactor));
-    const height = Math.max(1, Math.round(imageHeight * resizeFactor));
-    const maskCanvas = document.createElement('canvas');
-    maskCanvas.width = width;
-    maskCanvas.height = height;
-    const maskCtx = maskCanvas.getContext('2d', { willReadFrequently: true });
-    if (!maskCtx) throw new Error(tr('Не удалось создать маску стен для чертежа.'));
-
-    maskCtx.fillStyle = '#fff'; maskCtx.fillRect(0, 0, width, height);
-    maskCtx.drawImage(floor.image, 0, 0, width, height);
-    const pixels = maskCtx.getImageData(0, 0, width, height).data;
-    const data = new Uint8Array(width * height);
-    const columnInk = new Uint32Array(width);
-    const rowInk = new Uint32Array(height);
-    for (let source = 0, target = 0; target < data.length; source += 4, target++) {
-        const luminance = 0.2126 * pixels[source] + 0.7152 * pixels[source + 1] + 0.0722 * pixels[source + 2];
-        data[target] = pixels[source + 3] > 127 && luminance <= threshold ? 1 : 0;
-        if (pixels[source + 3] > 127 && luminance < 230) {
-            columnInk[target % width]++;
-            rowInk[Math.floor(target / width)]++;
-        }
-    }
-
-    const findEdgeLines = (counts, span) => {
-        const margin = Math.ceil(counts.length * 0.025);
-        const thresholdRatio = 0.85;
-        const left = [];
-        const right = [];
-        for (let i = 0; i < margin; i++) {
-            if (counts[i] / span >= thresholdRatio) left.push(i);
-            const oppositeIndex = counts.length - 1 - i;
-            if (counts[oppositeIndex] / span >= thresholdRatio) right.push(oppositeIndex);
-        }
-        return left.length && right.length ? [...left, ...right] : [];
-    };
-    const frameColumns = findEdgeLines(columnInk, height);
-    const frameRows = findEdgeLines(rowInk, width);
-
-    if (frameColumns.length || frameRows.length) {
-        for (let y = 0; y < height; y++) {
-            for (const x of frameColumns) data[y * width + x] = 0;
-        }
-        for (const y of frameRows) {
-            data.fill(0, y * width, (y + 1) * width);
-        }
-    }
-
-    return { data, width, height, imageWidth, imageHeight, frameColumns, frameRows };
+    if(!floor.image)return null;
+    const source=analyzePlanPixels(floor.image,!floor.vectorPlan),data=new Uint8Array(source.width*source.height);
+    const limit=Math.max(0,Math.min(255,Number(threshold)||0));
+    if(limit>0)for(let i=0;i<data.length;i++)data[i]=source.luminance[i]<limit?1:0;
+    for(const x of source.frameColumns)for(let y=0;y<source.height;y++)data[y*source.width+x]=0;
+    for(const y of source.frameRows)data.fill(0,y*source.width,(y+1)*source.width);
+    const {width,height,imageWidth,imageHeight,frameColumns,frameRows,contentBounds,paperLevel}=source;
+    return {data,width,height,imageWidth,imageHeight,frameColumns,frameRows,contentBounds,paperLevel};
 }
 
 const pirCoverageCache = new WeakMap();
 
 function getPIRCoveragePoints(floor, device) {
     const mask = floor.wallMask;
-    const rangePixels = Number.isFinite(device.pirRangePixels) ? device.pirRangePixels : floor.pirRangePixels;
+    const rangePixels = 300;
     const isGlassbreak = device.type === 'glassbreak';
     const fovDegrees = 90;
     if (!rangePixels) return null;
@@ -172,28 +126,23 @@ function drawPIRCoverage(ctx, floor, force = false) {
     });
 }
 
-function drawPlanGrid(ctx, floor) {
-    const toggle = document.getElementById('togglePlanGrid');
-    if (toggle?.getAttribute('aria-pressed') !== 'true') return;
-
-    const spacing = 50;
-    const minX = -offsetX / scale;
-    const minY = -offsetY / scale;
-    const maxX = (planCanvasWidth() - offsetX) / scale;
-    const maxY = (planCanvasHeight() - offsetY) / scale;
+function getPlanGridStyle(zoom=scale){
+    let spacing=100;
+    while(spacing*zoom<55)spacing*=2;
+    while(spacing*zoom>140)spacing/=2;
+    return {spacing,majorEvery:5,minorAlpha:.065,majorAlpha:.14,minorWidth:.55,majorWidth:.85};
+}
+function drawPlanGrid(ctx,floor){
+    if(document.getElementById('togglePlanGrid')?.getAttribute('aria-pressed')!=='true')return;
+    const grid=getPlanGridStyle(),minX=-offsetX/scale,minY=-offsetY/scale,maxX=(planCanvasWidth()-offsetX)/scale,maxY=(planCanvasHeight()-offsetY)/scale;
     ctx.save();
-    ctx.beginPath();
-    for (let x = Math.floor(minX / spacing) * spacing; x <= maxX; x += spacing) {
-        ctx.moveTo(x, minY);
-        ctx.lineTo(x, maxY);
+    for(const major of [false,true]){
+        ctx.beginPath();
+        for(let i=Math.floor(minX/grid.spacing);i*grid.spacing<=maxX;i++)if((i%grid.majorEvery===0)===major){ctx.moveTo(i*grid.spacing,minY);ctx.lineTo(i*grid.spacing,maxY);}
+        for(let i=Math.floor(minY/grid.spacing);i*grid.spacing<=maxY;i++)if((i%grid.majorEvery===0)===major){ctx.moveTo(minX,i*grid.spacing);ctx.lineTo(maxX,i*grid.spacing);}
+        ctx.strokeStyle=getPlanTheme(floor)==='dark'?`rgba(225,229,235,${major?grid.majorAlpha:grid.minorAlpha})`:`rgba(30,35,42,${major?grid.majorAlpha:grid.minorAlpha})`;
+        ctx.lineWidth=(major?grid.majorWidth:grid.minorWidth)/scale;ctx.stroke();
     }
-    for (let y = Math.floor(minY / spacing) * spacing; y <= maxY; y += spacing) {
-        ctx.moveTo(minX, y);
-        ctx.lineTo(maxX, y);
-    }
-    ctx.strokeStyle = 'rgba(220, 224, 230, 0.56)';
-    ctx.lineWidth = 1 / scale;
-    ctx.stroke();
     ctx.restore();
 }
 

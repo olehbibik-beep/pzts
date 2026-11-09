@@ -227,6 +227,10 @@
         ["Výstup je připraven.","The output is ready."],
         ["Výstup se nezdařil.","Output failed."],
         ['Zvýraznit rozpoznané překážky','Highlight detected obstacles'],
+        ["Citlivost rozpoznání stěn","Wall detection sensitivity"],
+        ["Bez překážek","No obstacles"],
+        ["I jemné čáry","Even faint lines"],
+        ["Citlivost se projeví ihned. Vyšší hodnota zachytí i světlé čáry; text a nábytek mohou být také překážkou.","Sensitivity updates immediately. Higher values detect faint lines; text and furniture may also be obstacles."],
         ['Vyberte podlaží', 'Select a floor'], ['Zpět na půdorys', 'Back to plan'], ['Počet prvků: {0}', 'Device count: {0}'], ['ZPĚT', 'BACK']
     ];
 

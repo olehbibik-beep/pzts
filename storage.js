@@ -14,19 +14,18 @@ function sanitizeFloors(floorDataArray) {
             cables: Array.isArray(f.cables) ? f.cables : [],    
             showConnections: f.showConnections !== false,
             wallThreshold: Number.isFinite(f.wallThreshold) ? Math.min(255, Math.max(0, f.wallThreshold)) : 100,
-            pirRangePixels: Number.isFinite(f.pirRangePixels) && f.pirRangePixels > 0
-                ? Math.min(2000, f.pirRangePixels === 180 ? 300 : f.pirRangePixels)
-                : 300,
+            pirRangePixels: 300,
             planTheme: f.planTheme === 'original' ? 'original' : 'dark',
             vectorPlan: sanitizeVectorPlan(f.vectorPlan),
             pdfSource: typeof f.pdfSource === 'string' && /^data:application\/pdf(?:;[^,]*)?;base64,/.test(f.pdfSource) ? f.pdfSource : null,
             pdfPage: Number.isInteger(f.pdfPage) && f.pdfPage > 0 ? f.pdfPage : 1,
+            rasterSource: typeof f.rasterSource==='string' && /^data:image\//.test(f.rasterSource) ? f.rasterSource : null,
             sourceName: typeof f.sourceName === 'string' ? f.sourceName : '',
             wallMask: null
         };
 
         newFloor.devices.forEach(device => {
-            if (['pir', 'pir_wl', 'glassbreak'].includes(device.type) && device.pirRangePixels === 180) {
+            if (['pir', 'pir_wl', 'glassbreak'].includes(device.type)) {
                 device.pirRangePixels = 300;
             }
         });
@@ -84,7 +83,7 @@ function saveStateToHistory() {
             name: f.name, imgData: f.imgData,
             devices: JSON.parse(JSON.stringify(f.devices)), cables: JSON.parse(JSON.stringify(f.cables)), showConnections: f.showConnections,
             wallThreshold: f.wallThreshold, pirRangePixels: f.pirRangePixels,
-            planTheme: f.planTheme, vectorPlan: f.vectorPlan, pdfSource: f.pdfSource, pdfPage: f.pdfPage, sourceName: f.sourceName
+            planTheme: f.planTheme, vectorPlan: f.vectorPlan, pdfSource: f.pdfSource, rasterSource: f.rasterSource, pdfPage: f.pdfPage, sourceName: f.sourceName
         })),
         currentFloorIndex: currentFloorIndex, currentMaxLines: currentMaxLines
     };
@@ -145,7 +144,7 @@ function getProjectDataPayload() {
         floors: floors.map(f => ({
             name: f.name, imgData: f.imgData, devices: f.devices, cables: f.cables,
             showConnections: f.showConnections, wallThreshold: f.wallThreshold, pirRangePixels: f.pirRangePixels,
-            planTheme: f.planTheme, vectorPlan: f.vectorPlan, pdfSource: f.pdfSource, pdfPage: f.pdfPage, sourceName: f.sourceName
+            planTheme: f.planTheme, vectorPlan: f.vectorPlan, pdfSource: f.pdfSource, rasterSource: f.rasterSource, pdfPage: f.pdfPage, sourceName: f.sourceName
         }))
     };
 }

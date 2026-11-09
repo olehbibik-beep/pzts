@@ -1,4 +1,30 @@
 let planExportBusy = false;
+let planPrintURL;
+async function printPlanDirect(){
+    const floor=floors[currentFloorIndex];
+    if(!floor||!isSystemReady||planExportBusy)return;
+    planExportBusy=true;container.setAttribute('aria-busy','true');
+    try{
+        await new Promise(requestAnimationFrame);
+        const coverage=document.getElementById('togglePirCoverage')?.getAttribute('aria-pressed')!=='false';
+        const bounds=getPlanOutputBounds(floor,coverage);
+        const ratio=Math.min(6000/Math.max(bounds.width,bounds.height),Math.sqrt(PLAN_MAX_PIXELS/(bounds.width*bounds.height)));
+        const width=Math.max(1,Math.round(bounds.width*ratio)),height=Math.max(1,Math.round(bounds.height*ratio));
+        let image;
+        if(floor.pdfSource)image=await rasterizePlanPdf(floor,width*floor.image.width/bounds.width);
+        else if(floor.rasterSource)image=await rasterizePlanImage(floor,width*floor.image.width/bounds.width);
+        const target=new SVGPlanContext(width,height);
+        drawPlanOutput(target,floor,{bounds,widthMM:bounds.width,heightMM:bounds.height,margin:0,options:{theme:'original',coverage}},image);
+        if(planPrintURL)URL.revokeObjectURL(planPrintURL);
+        planPrintURL=URL.createObjectURL(new Blob([target.toSVG()],{type:'image/svg+xml'}));
+        const preview=await loadPlanImage(planPrintURL);preview.alt=`${projectName} – ${floor.name}`;
+        let style=document.getElementById('planPrintStyle');if(!style){style=document.createElement('style');style.id='planPrintStyle';document.head.appendChild(style);}
+        style.textContent='@media print{@page{size:auto;margin:8mm}html,body{margin:0!important;padding:0!important;border:0!important;box-shadow:none!important;width:auto!important;height:auto!important;overflow:visible!important}#printPage{position:fixed!important;inset:0!important;width:auto!important;height:auto!important;background:#fff!important}#printPage img{width:100%;height:100%;max-width:100%!important;max-height:100%!important;object-fit:contain}}';
+        document.getElementById('printPage').replaceChildren(preview);window.print();
+    }catch(error){console.error(error);showAppAlert(error.message,tr('Ошибка печати'));}
+    finally{planExportBusy=false;container.removeAttribute('aria-busy');}
+}
+window.addEventListener('afterprint',()=>{if(planPrintURL){URL.revokeObjectURL(planPrintURL);planPrintURL=null;}});
 function planOutputOptions() {
     return { paper: document.getElementById('outputPaper').value, orientation: document.getElementById('outputOrientation').value,
         dpi: Number(document.getElementById('outputDpi').value), theme: document.getElementById('outputTheme').value,
@@ -53,6 +79,7 @@ function updatePlanOutputPreview(){
     document.getElementById('outputSize').textContent=`${layout.widthMM} × ${layout.heightMM} mm · ${width} × ${height} px · ${layout.options.dpi} DPI`;
 }
 function openPlanOutput(print=false){
+    if(print)return printPlanDirect();
     if(!floors[currentFloorIndex] || !isSystemReady)return;
     saveModal.style.display='flex';saveModal.dataset.output=print?'print':'export';updatePlanOutputPreview();
 }
@@ -62,6 +89,7 @@ async function makePlanOutput(floor,options=planOutputOptions(),svg=false){
     if(width*height>PLAN_MAX_PIXELS)throw new Error(tr('Výstup je příliš velký.'));
     let image;
     if(floor.pdfSource)image=await rasterizePlanPdf(floor,width*floor.image.width/layout.bounds.width);
+    else if(floor.rasterSource)image=await rasterizePlanImage(floor,width*floor.image.width/layout.bounds.width);
     if(svg){
         const target=new SVGPlanContext(width,height);drawPlanOutput(target,floor,layout,image);
         return {svg:target.toSVG(),layout};
@@ -75,6 +103,7 @@ function downloadPlanBlob(blob,extension,floor){
     setTimeout(()=>URL.revokeObjectURL(url),60000);
 }
 async function exportPlanFile(format){
+    if(format==='print')return printPlanDirect();
     if(planExportBusy||!isSystemReady||!floors[currentFloorIndex])return;
     planExportBusy=true;const floor=floors[currentFloorIndex],options=planOutputOptions();
     const buttons=[...document.querySelectorAll('#saveModal button')];buttons.forEach(b=>b.disabled=true);
@@ -89,12 +118,6 @@ async function exportPlanFile(format){
             const pdf=new jspdf.jsPDF({orientation:result.layout.landscape?'landscape':'portrait',unit:'mm',format:options.paper,compress:true});
             pdf.addImage(result.raster.toDataURL('image/png'),'PNG',0,0,result.layout.widthMM,result.layout.heightMM,undefined,'FAST');
             pdf.save((projectName||'projekt')+'-'+floor.name+'.pdf');
-        }else if(format==='print'){
-            let style=document.getElementById('planPrintStyle');
-            if(!style){style=document.createElement('style');style.id='planPrintStyle';document.head.appendChild(style);}
-            style.textContent=`@media print{@page{size:${options.paper.toUpperCase()} ${result.layout.landscape?'landscape':'portrait'};margin:0}html,body{margin:0!important;padding:0!important;border:0!important;box-shadow:none!important;width:auto!important;height:auto!important;overflow:visible!important}#printPage{position:static!important;width:${result.layout.widthMM}mm!important;height:${result.layout.heightMM}mm!important}#printPage img{width:100%;height:100%;max-width:none!important;max-height:none!important}}`;
-            const image=await loadPlanImage(result.raster.toDataURL('image/png'));image.alt=`${projectName} – ${floor.name}`;
-            document.getElementById('printPage').replaceChildren(image);window.print();
         }else{
             const mime=format==='jpeg'?'image/jpeg':'image/png';
             const blob=await new Promise(resolve=>result.raster.toBlob(resolve,mime,.96));

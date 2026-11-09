@@ -140,7 +140,7 @@ function calculateDynamicNumbersGlobal(floorsArray) {
 
 function getProjectBounds(floor, showDeac) {
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    if (floor.image) { minX = 0; minY = 0; maxX = floor.image.width; maxY = floor.image.height; }
+    if (floor.image) { const bounds=getPlanSourceBounds(floor);minX=bounds.minX;minY=bounds.minY;maxX=minX+bounds.width;maxY=minY+bounds.height; }
     if (floor.devices.length === 0 && !floor.image) return { minX: 0, minY: 0, width: 1920, height: 1080 };
 
     floor.devices.forEach(d => {

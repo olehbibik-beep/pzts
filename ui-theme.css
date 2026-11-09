@@ -75,11 +75,11 @@ body::after {
 .modal-blueprint .blueprint-trace, .modal-blueprint .blueprint-circle { stroke-dasharray: 1; stroke-dashoffset: 1; animation: blueprint-draw 19s cubic-bezier(.37,0,.63,1) infinite; }
 .modal-blueprint .blueprint-secondary { animation-delay: -8s; animation-duration: 23s; }
 .modal-blueprint .blueprint-detail { animation-delay: -14s; animation-duration: 26s; }
-@keyframes blueprint-flow { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -1; } }
+@keyframes blueprint-flow { 0% { stroke-dashoffset:0;opacity:0; } 18% { opacity:.22; } 72% { opacity:.22; } 100% { stroke-dashoffset:-1;opacity:0; } }
 @keyframes blueprint-draw {
     0% { stroke-dashoffset: 1; opacity: 0; }
-    18% { opacity: .34; }
-    55%, 70% { stroke-dashoffset: 0; opacity: .34; }
+    18% { opacity: .22; }
+    55%, 70% { stroke-dashoffset: 0; opacity: .22; }
     100% { stroke-dashoffset: 0; opacity: 0; }
 }
 #welcomeModal .welcome-panel, #welcomeModal[data-step="email"] .welcome-panel {
@@ -291,3 +291,12 @@ button.btn-cad, .toolbar-icon-button, .device-btn, .footer-icon, .ui-select-trig
     .plan-output-preview { border-left: 0; border-top: 1px solid #44474c; padding: 16px 0 0; }
     #outputPreview { max-height: 220px; }
 }
+.wall-sensitivity-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-top:18px; }
+#detectionSettingsModal .setting-label { display:block; }
+#detectionSettingsModal .ui-select { display:block; width:100%; margin:8px 0 12px; }
+.wall-sensitivity-heading output { font-size:12px; font-variant-numeric:tabular-nums; color:#d3d6dc; }
+.wall-sensitivity-slider { display:block; width:100%; margin:18px 0 10px; height:6px; appearance:none; border:0; border-radius:3px; background:#45494e; outline:none; cursor:pointer; touch-action:pan-y; accent-color:#82d322; }
+.wall-sensitivity-slider::-webkit-slider-thumb { appearance:none; width:20px; height:20px; background:#82d322; border:3px solid #242629; border-radius:50%; box-shadow:0 0 0 1px #a8dc6d; }
+.wall-sensitivity-slider:focus-visible { outline:1px solid #82d322; outline-offset:8px; }
+.wall-sensitivity-ends { display:flex; justify-content:space-between; gap:16px; color:#a9adb4; font-size:11px; }
+.wall-sensitivity-help { color:#a9adb4; font-size:12px; line-height:1.6; margin:12px 0 20px; }

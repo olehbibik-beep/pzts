@@ -1,6 +1,6 @@
 (() => {
     // Change this version whenever publishing application files together.
-    const version = '20261109-plan-render-14';
+    const version = '20261109-plan-refine-15';
     let started = false;
     function loadScript(src) {
         return new Promise((resolve, reject) => {

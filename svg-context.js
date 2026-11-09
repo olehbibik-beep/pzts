@@ -39,6 +39,10 @@ class SVGPlanContext {
     strokeRect(x,y,w,h){this.elements.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}" ${this.transformAttribute()} fill="none" stroke="${this.escape(this.strokeStyle)}" stroke-width="${this.lineWidth}"/>`);}
     measureText(text){this.measureContext.font=this.font;return this.measureContext.measureText(text);}
     fillText(text,x,y){const anchor={center:'middle',right:'end',end:'end'}[this.textAlign]||'start';const baseline={middle:'central',top:'text-before-edge',bottom:'text-after-edge'}[this.textBaseline]||'alphabetic';this.elements.push(`<text x="${x}" y="${y}" ${this.transformAttribute()} fill="${this.escape(this.fillStyle)}" style="font:${this.escape(this.font)}" text-anchor="${anchor}" dominant-baseline="${baseline}">${this.escape(text)}</text>`);}
-    drawImage(image,x,y,w=image.width,h=image.height){const src=image instanceof HTMLCanvasElement?image.toDataURL('image/png'):image.src;this.elements.push(`<image x="${x}" y="${y}" width="${w}" height="${h}" ${this.transformAttribute()} href="${this.escape(src)}"/>`);}
+    drawImage(image,...args){
+        const src=image instanceof HTMLCanvasElement?image.toDataURL('image/png'):image.src;
+        if(args.length===8){const [sx,sy,sw,sh,x,y,w,h]=args;this.elements.push(`<g ${this.transformAttribute()}><svg x="${x}" y="${y}" width="${w}" height="${h}" viewBox="${sx} ${sy} ${sw} ${sh}" preserveAspectRatio="none" overflow="hidden"><image width="${image.naturalWidth||image.width}" height="${image.naturalHeight||image.height}" href="${this.escape(src)}"/></svg></g>`);}
+        else{const [x,y,w=image.width,h=image.height]=args;this.elements.push(`<image x="${x}" y="${y}" width="${w}" height="${h}" ${this.transformAttribute()} href="${this.escape(src)}"/>`);}
+    }
     toSVG(){return `<svg xmlns="http://www.w3.org/2000/svg" width="${this.canvas.width}" height="${this.canvas.height}" viewBox="0 0 ${this.canvas.width} ${this.canvas.height}">${this.elements.join('')}</svg>`;}
 }

@@ -147,62 +147,42 @@ if (planGridToggle) {
 
 const detectionSettingsModal = document.getElementById('detectionSettingsModal');
 
-function openDetectionSettings() {
-    const floor = floors[currentFloorIndex];
-    if (!floor) return;
-    document.getElementById('wallThresholdInput').value = floor.wallThreshold;
-    document.getElementById('planThemeInput').value = getPlanTheme(floor);
-    document.getElementById('wallPreviewInput').checked = !!floor.previewWalls;
-    window.refreshGoomSelects?.();
-    const selectedPIR = floor.devices.find(device => activeDeviceIds.has(device.id) && ['pir', 'pir_wl', 'glassbreak'].includes(device.type));
-    document.getElementById('pirRangeInput').value = selectedPIR?.pirRangePixels || floor.pirRangePixels;
-    detectionSettingsModal.style.display = 'flex';
+let wallSettingsSession=null,wallPreviewTimer;
+function wallSliderThreshold(){return Math.max(0,Math.min(1000,Number(document.getElementById('wallThresholdInput').value)))*255/1000;}
+function refreshWallSensitivityLabel(){document.getElementById('wallSensitivityValue').textContent=Math.round(Number(document.getElementById('wallThresholdInput').value)/10)+' %';}
+function openDetectionSettings(){
+    const floor=floors[currentFloorIndex];if(!floor)return;
+    wallSettingsSession={floor,mask:floor.wallMask,theme:getPlanTheme(floor)};
+    document.getElementById('wallThresholdInput').value=Math.round(floor.wallThreshold/255*1000);
+    document.getElementById('planThemeInput').value=getPlanTheme(floor);
+    document.getElementById('wallPreviewInput').checked=!!floor.previewWalls;
+    refreshWallSensitivityLabel();window.refreshGoomSelects?.();detectionSettingsModal.style.display='flex';
 }
-
-document.getElementById('btnDetectionSettings').addEventListener('click', openDetectionSettings);
-document.getElementById('wallPreviewInput').addEventListener('change',event=>{
-    if(floors[currentFloorIndex])floors[currentFloorIndex].previewWalls=event.target.checked;
-    requestRedraw();
+function cancelWallSettings(){
+    clearTimeout(wallPreviewTimer);
+    if(wallSettingsSession){wallSettingsSession.floor.wallMask=wallSettingsSession.mask;wallSettingsSession.floor.planTheme=wallSettingsSession.theme;wallSettingsSession=null;requestRedraw();}
+}
+function applyWallPreview(){
+    if(!wallSettingsSession||detectionSettingsModal.style.display!=='flex')return;
+    try{wallSettingsSession.floor.wallMask=createWallMask(wallSettingsSession.floor,wallSliderThreshold());requestRedraw();}
+    catch(error){console.warn('Wall preview:',error);}
+}
+document.getElementById('btnDetectionSettings').addEventListener('click',openDetectionSettings);
+document.getElementById('wallThresholdInput').addEventListener('input',()=>{
+    refreshWallSensitivityLabel();clearTimeout(wallPreviewTimer);wallPreviewTimer=setTimeout(applyWallPreview,80);
 });
-document.getElementById('btnCloseDetectionSettings').addEventListener('click', () => {
-    detectionSettingsModal.style.display = 'none';
-});
-
-document.getElementById('btnSaveDetectionSettings').addEventListener('click', () => {
-    const floor = floors[currentFloorIndex];
-    if (!floor) return;
-    const wallThreshold = Number(document.getElementById('wallThresholdInput').value);
-    const pirRangePixels = Number(document.getElementById('pirRangeInput').value);
-    if (!Number.isInteger(wallThreshold) || wallThreshold < 0 || wallThreshold > 255 ||
-        !Number.isFinite(pirRangePixels) || pirRangePixels < 10 || pirRangePixels > 2000) {
-        showAppAlert(tr('Укажите порог яркости от 0 до 255 и радиус PIR от 10 до 2000 пикселей.'), tr('Некорректные настройки'));
-        return;
-    }
-
-    let wallMask;
-    try {
-        wallMask = createWallMask(floor, wallThreshold);
-    } catch (error) {
-        console.error('Ошибка распознавания стен:', error);
-        showAppAlert(tr`Не удалось распознать стены: ${error.message}`, tr('Ошибка распознавания стен'));
-        return;
-    }
-
-    floor.planTheme = document.getElementById('planThemeInput').value;
-    floor.wallThreshold = wallThreshold;
-    floor.wallMask = wallMask;
-    const selectedPIRs = floor.devices.filter(device => activeDeviceIds.has(device.id) && ['pir', 'pir_wl', 'glassbreak'].includes(device.type));
-    if (selectedPIRs.length > 0) {
-        selectedPIRs.forEach(device => {
-            device.pirRangePixels = pirRangePixels;
-        });
-    } else {
-        floor.pirRangePixels = pirRangePixels;
-    }
-    detectionSettingsModal.style.display = 'none';
-    saveStateToHistory();
-    triggerAutoSave();
-    requestRedraw();
+document.getElementById('planThemeInput').addEventListener('change',event=>{if(wallSettingsSession){wallSettingsSession.floor.planTheme=event.target.value;requestRedraw();}});
+document.getElementById('wallPreviewInput').addEventListener('change',event=>{if(floors[currentFloorIndex])floors[currentFloorIndex].previewWalls=event.target.checked;requestRedraw();});
+document.getElementById('btnCloseDetectionSettings').addEventListener('click',()=>{cancelWallSettings();detectionSettingsModal.style.display='none';});
+new MutationObserver(()=>{if(detectionSettingsModal.style.display==='none')cancelWallSettings();}).observe(detectionSettingsModal,{attributes:true,attributeFilter:['style']});
+document.getElementById('btnSaveDetectionSettings').addEventListener('click',()=>{
+    const floor=wallSettingsSession?.floor;if(!floor)return;
+    clearTimeout(wallPreviewTimer);
+    try{floor.wallMask=createWallMask(floor,wallSliderThreshold());}
+    catch(error){showAppAlert(error.message,tr('Ошибка распознавания стен'));return;}
+    floor.wallThreshold=wallSliderThreshold();floor.planTheme=document.getElementById('planThemeInput').value;floor.pirRangePixels=300;
+    floor.devices.filter(d=>['pir','pir_wl','glassbreak'].includes(d.type)).forEach(d=>d.pirRangePixels=300);
+    wallSettingsSession=null;detectionSettingsModal.style.display='none';saveStateToHistory();triggerAutoSave();requestRedraw();
 });
 
 let hBtn = document.getElementById('helpBtn');
@@ -308,7 +288,7 @@ document.getElementById('btnMenuSave').addEventListener('click', () => { documen
 // Простые функции для предотвращения ошибок кнопок Экспорта
 function exportToPNG() { return exportPlanFile('png'); }
 function exportToPDF() { return exportPlanFile('pdf'); }
-function printCurrentFloor() { openPlanOutput(true); }
+function printCurrentFloor() { return printPlanDirect(); }
 document.getElementById('btnMenuPrint').addEventListener('click', () => {
  document.getElementById('mainMenuModal').style.display = 'none'; printCurrentFloor();
 });
@@ -1107,11 +1087,12 @@ window.addEventListener('goom-language-changed', () => { if (isOverviewMode) dra
  function centerCurrentFloor() {
     const floor = floors[currentFloorIndex];
     if (!floor || !floor.image) { scale = 1; offsetX = 0; offsetY = 0; return; }
-    let bw = floor.image.width; let bh = floor.image.height;
+    const bounds=getPlanSourceBounds(floor);
+    let bw = bounds.width; let bh = bounds.height;
     let scaleX = planCanvasWidth() / bw; let scaleY = planCanvasHeight() / bh;
     scale = Math.min(scaleX, scaleY) * 0.95; 
     if (scale > 1) scale = 1; 
-    offsetX = (planCanvasWidth() - bw * scale) / 2; offsetY = (planCanvasHeight() - bh * scale) / 2;
+    offsetX = (planCanvasWidth() - bw * scale) / 2 - bounds.minX*scale; offsetY = (planCanvasHeight() - bh * scale) / 2 - bounds.minY*scale;
 }
 
 function changeFloor() {

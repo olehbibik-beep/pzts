@@ -1,20 +1,44 @@
 // Shared decorative background and motion. No layout changes or artificial loading delays.
 (() => {
     const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
-    const svgMarkup = `<svg class="modal-blueprint welcome-blueprint" viewBox="0 0 520 580" preserveAspectRatio="none" aria-hidden="true" focusable="false">
-        <path class="blueprint-flow" pathLength="1" d="M-24 100H152Q176 100 176 124V206H436"></path>
-        <path class="blueprint-flow blueprint-secondary" pathLength="1" d="M-16 472H260V332H440"></path>
-        <path class="blueprint-trace" pathLength="1" d="M54 32V226H358M72 264H210V522H386"></path>
-        <circle class="blueprint-circle" pathLength="1" cx="130" cy="372" r="72"></circle>
-        <circle class="blueprint-circle blueprint-secondary" pathLength="1" cx="350" cy="156" r="46"></circle>
-        <circle class="blueprint-circle blueprint-detail" pathLength="1" cx="274" cy="446" r="28"></circle>
-    </svg>`;
+    const svgNamespace='http://www.w3.org/2000/svg';
+    function drawRandomBlueprint(element,width,height){
+        const random=(a,b)=>a+Math.random()*(b-a),point=()=>({x:random(12,Math.max(14,width-12)),y:random(12,Math.max(14,height-12))});
+        if(element.tagName.toLowerCase()==='circle'){
+            const radius=random(10,Math.max(12,Math.min(width,height)*.16));
+            element.setAttribute('r',radius);element.setAttribute('cx',random(radius+4,Math.max(radius+5,width-radius-4)));element.setAttribute('cy',random(radius+4,Math.max(radius+5,height-radius-4)));
+        }else{
+            const p=point(),q=point(),r=point();let d;
+            switch(element.dataset.shape){
+                case 'box': d=`M${p.x} ${p.y}H${q.x}V${q.y}H${p.x}Z`;break;
+                case 'triangle': d=`M${p.x} ${p.y}L${q.x} ${q.y}L${r.x} ${r.y}Z`;break;
+                case 'arc': d=`M${p.x} ${p.y}Q${q.x} ${q.y} ${r.x} ${r.y}`;break;
+                default:d=`M${p.x} ${p.y}H${q.x}V${q.y}H${r.x}`;
+            }
+            element.setAttribute('d',d);
+        }
+    }
     window.attachModalBlueprint = container => {
-        if (!container || container.querySelector(':scope > .modal-blueprint-host')) return;
-        const host = document.createElement('div');
-        host.className = 'modal-blueprint-host'; host.setAttribute('aria-hidden', 'true');
-        host.innerHTML = svgMarkup;
-        container.prepend(host);
+        if(!container||container.querySelector(':scope > .modal-blueprint-host'))return;
+        const host=document.createElement('div');host.className='modal-blueprint-host';host.setAttribute('aria-hidden','true');
+        const svg=document.createElementNS(svgNamespace,'svg');svg.classList.add('modal-blueprint','welcome-blueprint');
+        svg.setAttribute('preserveAspectRatio','xMinYMid meet');svg.setAttribute('aria-hidden','true');svg.setAttribute('focusable','false');
+        host.appendChild(svg);container.prepend(host);
+        const shapes=['flow','flow','line','line','box','box','triangle','arc','arc','circle','circle','circle'];
+        shapes.forEach(shape=>{
+            const element=document.createElementNS(svgNamespace,shape==='circle'?'circle':'path');
+            element.dataset.shape=shape;element.setAttribute('pathLength','1');element.classList.add(shape==='circle'?'blueprint-circle':shape==='flow'?'blueprint-flow':'blueprint-trace');
+            element.style.animationDuration=(13+Math.random()*19)+'s';element.style.animationDelay=(-Math.random()*28)+'s';
+            svg.appendChild(element);
+            element.addEventListener('animationiteration',()=>{const box=svg.getBoundingClientRect();if(box.width&&box.height)drawRandomBlueprint(element,box.width,box.height);});
+        });
+        const resize=()=>{
+            const box=svg.getBoundingClientRect();if(!box.width||!box.height)return;
+            svg.setAttribute('viewBox',`0 0 ${box.width} ${box.height}`);
+            [...svg.children].forEach(element=>drawRandomBlueprint(element,box.width,box.height));
+        };
+        svg.setAttribute('viewBox','0 0 260 400');[...svg.children].forEach(element=>drawRandomBlueprint(element,260,400));
+        new ResizeObserver(resize).observe(host);
     };
     document.querySelectorAll('.modal-content:not(.welcome-card), .app-dialog-card').forEach(window.attachModalBlueprint);
     window.attachModalBlueprint(document.querySelector('.welcome-art-space'));
