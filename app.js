@@ -87,6 +87,7 @@ const tooltipObserver = new MutationObserver(records => {
 tooltipObserver.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['title'] });
 
 document.addEventListener('pointerover', e => {
+    if(e.pointerType==='touch')return;
     const target = e.target instanceof Element ? e.target.closest('[data-tooltip]') : null;
     if (!target) return;
     showAppTooltip(target);
@@ -213,7 +214,7 @@ if(bToggleConnections) {
     bToggleConnections.addEventListener('click', () => {
         if(isOverviewMode) return;
         floors[currentFloorIndex].showConnections = !floors[currentFloorIndex].showConnections; 
-        bToggleConnections.innerHTML = floors[currentFloorIndex].showConnections ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg> Skrýt kabely` : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg> Zobrazit kabely`; 
+        updateConnectionButton();
         saveStateToHistory(); requestRedraw(); triggerAutoSave();
     });
 }
@@ -315,7 +316,7 @@ function stopDeviceRotation() {
     }
 }
 
-function startDeviceRotation() {
+function startDeviceRotation(direction=1,initialStep=0) {
     if (deviceRotationAnimation || currentFloorIndex === -1 || isOverviewMode || activeDeviceIds.size === 0) return;
     const floor = floors[currentFloorIndex];
     if (!floor) return;
@@ -325,18 +326,23 @@ function startDeviceRotation() {
         .map(device => ({ device, start: device.rotation || 0 }));
     if (devices.length === 0) return;
 
-    const normalizedAngle = ((devices[0].start % 90) + 90) % 90;
+    direction=direction<0?-1:1;
+    if(initialStep)devices.forEach(({device})=>device.rotation=(((device.rotation||0)+direction*initialStep)%360+360)%360);
+    const normalizedAngle = (((devices[0].device.rotation||0) % 90) + 90) % 90;
     deviceRotationAnimation = {
-        devices,
+        devices, direction,
         lastFrame: performance.now(),
-        angleToStop: normalizedAngle < 0.001 ? 90 : 90 - normalizedAngle,
+        angleToStop: normalizedAngle < 0.001 ? 90 : direction>0?90-normalizedAngle:normalizedAngle,
         pauseUntil: 0,
-        rotated: 0
+        rotated: initialStep
     };
+    const ownAnimation=deviceRotationAnimation;
+    if(initialStep)requestRedraw();
 
     const rotateFrame = (now) => {
         const animation = deviceRotationAnimation;
-        if (!animation) return;
+        if (animation!==ownAnimation) return;
+        if(!isSystemReady||isOverviewMode||document.querySelector('.modal[data-modal-open="true"],.app-dialog-backdrop:not([hidden])')){stopDeviceRotation();return;}
         if (animation.pauseUntil && now < animation.pauseUntil) {
             animation.lastFrame = now;
         } else {
@@ -349,7 +355,7 @@ function startDeviceRotation() {
                 animation.lastFrame = now;
                 const step = Math.min(180 * elapsed / 1000, animation.angleToStop);
                 animation.devices.forEach(({ device }) => {
-                    device.rotation = (device.rotation || 0) + step;
+                    device.rotation = (((device.rotation || 0) + animation.direction*step)%360+360)%360;
                 });
                 animation.rotated += step;
                 animation.angleToStop -= step;
@@ -398,6 +404,7 @@ window.addEventListener('keydown', (e) => {
         requestRedraw(); return; 
     }
 
+    if(document.querySelector('.modal[data-modal-open="true"],.app-dialog-backdrop:not([hidden])'))return;
     if (e.altKey && e.key.toLowerCase() === 'r') {
         selectedTool = 'ramen'; document.querySelectorAll('.device-btn').forEach(b => b.classList.remove('active'));
         document.getElementById('ramenModal').style.display = 'flex'; e.preventDefault(); return;
@@ -408,7 +415,9 @@ window.addEventListener('keydown', (e) => {
     if (currentFloorIndex === -1 || isOverviewMode) return;
     const floor = floors[currentFloorIndex];
 
-    if (e.key.toLowerCase() === 'd') {
+    const rotationKey=e.code==='KeyS'?'s':e.code==='KeyD'?'d':e.key.toLowerCase();
+    if (rotationKey === 'd' && e.altKey && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
         if (activeDeviceIds.size > 0) {
             let changed = false;
             activeDeviceIds.forEach(id => {
@@ -423,9 +432,9 @@ window.addEventListener('keydown', (e) => {
         return;
     }
 
-    if (e.key.toLowerCase() === 's') {
+    if (['s','d'].includes(rotationKey) && !e.altKey && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
-        if (!e.repeat) startDeviceRotation();
+        if (!e.repeat) {stopDeviceRotation();startDeviceRotation(rotationKey==='s'?1:-1);}
         return;
     }
 
@@ -462,7 +471,8 @@ window.addEventListener('keydown', (e) => {
 });
 
 window.addEventListener('keyup', (e) => {
-    if (e.key.toLowerCase() === 's') stopDeviceRotation();
+    const key=e.code==='KeyS'?'s':e.code==='KeyD'?'d':e.key.toLowerCase();
+    if((key==='s'&&deviceRotationAnimation?.direction===1)||(key==='d'&&deviceRotationAnimation?.direction===-1))stopDeviceRotation();
 });
 window.addEventListener('blur', stopDeviceRotation);
 
@@ -647,96 +657,7 @@ container.addEventListener('pointermove', (e) => {
         }
     }
 
-    // ===============================================
-    // ЛОГИКА ТУЛТИПА И ПОДСВЕТКИ (КРУЖОЧЕК + РУЧКА)
-    // ===============================================
-    const tooltip = document.getElementById('deviceTooltip');
-    if (tooltip) {
-        if (suppressedDeviceTooltipPoint && Math.hypot(e.clientX - suppressedDeviceTooltipPoint.x, e.clientY - suppressedDeviceTooltipPoint.y) > 4) suppressedDeviceTooltipPoint = null;
-        if (isPanning || isDragging || isSelecting || e.pointerType !== 'mouse' || suppressedDeviceTooltipPoint || !window.hasProAccess?.()) {
-            tooltip.style.opacity = "0";
-            container.style.cursor = isPanning ? 'grabbing' : 'crosshair';
-            if (window.hoveredDeviceId !== null) { window.hoveredDeviceId = null; requestRedraw(); }
-            return;
-        }
-
-        let foundHoverDevice = null;
-        let slider = document.getElementById('deviceSizeSlider');
-        let sMult = (slider && slider.value) ? (parseInt(slider.value) / 14) : (16 / 14);
-        let labelScale = 1 + (sMult - 1) * 0.5;
-
-        for (let i = floors[currentFloorIndex].devices.length - 1; i >= 0; i--) {
-            let dev = floors[currentFloorIndex].devices[i];
-            if (!showDeactivatedDevices && dev.type === 'deactivated') continue;
-
-            let inBody = false;
-            if (dev.type === 'textNode') {
-                ctx.font = "bold " + (13 * labelScale) + "px sans-serif";
-                let w = ctx.measureText(dev.manualName || tr("Poznámka")).width;
-                inBody = canvasX >= dev.x - w/2 - 6*labelScale && canvasX <= dev.x + w/2 + 6*labelScale && canvasY >= dev.y - 11*labelScale && canvasY <= dev.y + 11*labelScale;
-            } else {
-                inBody = Math.abs(dev.x - canvasX) < 22*sMult && Math.abs(dev.y - canvasY) < 22*sMult;
-            }
-
-            if (inBody) { foundHoverDevice = dev; break; }
-        }
-
-        // ЕСЛИ МЫШКА НАД ДАТЧИКОМ
-        if (foundHoverDevice) {
-            // 1. Меняем курсор на ручку
-            container.style.cursor = 'pointer';
-            
-            // 2. Зажигаем кружок подсветки (вызываем перерисовку)
-            if (window.hoveredDeviceId !== foundHoverDevice.id) {
-                window.hoveredDeviceId = foundHoverDevice.id;
-                requestRedraw();
-            }
-
-            // 3. Заполняем и показываем подсказку
-            const names = {
-                pir: "PIR Detektor", pir_wl: tr("Bezdrátový PIR"), magnet: tr("Magnetický kontakt"), magnet_wl: tr("Bezdrátový Magnet"), 
-                glassbreak: tr("Tříštění skla"), panic: tr("Tísňové tlačítko"), siren: tr("Siréna"), panel: tr("Ústředna EZS"), 
-                expander: tr("Expandér (EXP)"), abax: "Modul ABAX2", keypad: tr("Klávesnice"), deactivated: tr("Deaktivováno"), 
-                textNode: tr("Textová poznámka"), ramen: tr("Tajný Ramen"), cableTool: tr("Nástroj kabelu")
-            };
-
-            document.getElementById('ttType').textContent = names[foundHoverDevice.type] || foundHoverDevice.type.toUpperCase();
-
-            if (['textNode', 'panel', 'ramen', 'deactivated'].includes(foundHoverDevice.type)) {
-                document.getElementById('ttNumber').style.display = 'none';
-                document.getElementById('ttLoop').style.display = 'none';
-            } else {
-                document.getElementById('ttNumber').style.display = 'block';
-                document.getElementById('ttLoop').style.display = 'block';
-                
-                let isManual = foundHoverDevice.manualNumber ? tr(" (Ručně)") : "";
-                const address = getDeviceAddressParts(foundHoverDevice);
-                document.getElementById('ttNumber').innerHTML = `${tr('Adresa')}: ${address.prefix}<strong>${address.number || 'Auto'}</strong><span>${isManual}</span>`;
-                document.getElementById('ttLoop').textContent = tr`Sběrnice: ${foundHoverDevice.loopId || 1}`;
-            }
-
-            if (foundHoverDevice.manualName && foundHoverDevice.type !== 'textNode') {
-                document.getElementById('ttName').style.display = 'block';
-                document.getElementById('ttName').textContent = `📝 ${foundHoverDevice.manualName}`;
-            } else {
-                document.getElementById('ttName').style.display = 'none';
-            }
-
-            tooltip.style.left = (e.clientX + 15) + 'px';
-            tooltip.style.top = (e.clientY + 15) + 'px';
-            tooltip.style.opacity = "1";
-            
-        // ЕСЛИ МЫШКА В ПУСТОМ МЕСТЕ
-        } else {
-            // Возвращаем обычный прицел и прячем подсветку/тултип
-            container.style.cursor = 'crosshair';
-            if (window.hoveredDeviceId !== null) {
-                window.hoveredDeviceId = null;
-                requestRedraw();
-            }
-            tooltip.style.opacity = "0";
-        }
-    }
+    updateDeviceHover(e,canvasX,canvasY);
 });
 
 // Страховка при уходе мыши с холста
@@ -874,6 +795,7 @@ container.addEventListener('pointercancel', () => {
 });
 
 function loadDefaultFloors(showWelcome = false, newProjectName = tr("Nový projekt")) {
+    window.projectOwnerUid=window.getFirebaseUser?.()?.uid||null;
     resetPlacementTool();
     window.resetActiveCloudProject?.();
     customDeviceIcons = {};
@@ -916,6 +838,7 @@ function showWelcomeScreen(step = 'auth') {
 }
 
 function resetPlacementTool() {
+    stopDeviceRotation();
     selectedTool = 'select';
     window.tabletPanMode = false;
     document.querySelectorAll('#deviceSelector .device-btn').forEach(button => button.classList.remove('active'));
@@ -1011,7 +934,7 @@ async function initProject() {
             try {
                 if (!await loadFromDB()) throw new Error(tr('Локальное сохранение недоступно. Создайте или откройте другой проект.'));
                 isSystemReady = true;
-                changeFloor(); saveStateToHistory(); requestRedraw();
+                changeFloor(); applySavedPlanViewport(window.restoredPlanViewport); saveStateToHistory(); requestRedraw();
                 document.getElementById('welcomeModal').style.display = 'none';
             } catch (error) {
                 showAppAlert(error.message, tr('Не удалось продолжить проект'));
@@ -1091,11 +1014,8 @@ window.addEventListener('goom-language-changed', () => { if (isOverviewMode) dra
 function changeFloor() {
     if(!floors[currentFloorIndex]) return;
     
-    let btnConn = document.getElementById('btnToggleConnections');
-    if (btnConn) {
-        btnConn.innerHTML = floors[currentFloorIndex].showConnections ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg> Skrýt kabely` : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg> Zobrazit kabely`;
-    }
-    
+    updateConnectionButton();
+
     centerCurrentFloor(); activeDeviceIds.clear(); requestRedraw(); triggerAutoSave();
 }
 
@@ -1158,6 +1078,7 @@ function importFileContent(file, options = {}) {
             isSystemReady = false; requestRedraw(); 
 
             floors = await loadFloorsImages(loadedFloors);
+            window.projectOwnerUid=window.getFirebaseUser?.()?.uid||null;
             if (typeof refreshCustomDeviceIcons === 'function') refreshCustomDeviceIcons();
             
             currentFloorIndex = (data && data.currentFloorIndex !== undefined) ? data.currentFloorIndex : 0;
@@ -1308,4 +1229,4 @@ if (btnSaveNumber) {
         editingDevice = null;
     });
 }
-initProject();
+window.localProjectStartup=initProject();

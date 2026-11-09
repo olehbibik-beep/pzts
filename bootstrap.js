@@ -1,6 +1,6 @@
 (() => {
     // Change this version whenever publishing application files together.
-    const version = '20261109-floors-17';
+    const version = '20261109-editor-18';
     let started = false;
     function loadScript(src) {
         return new Promise((resolve, reject) => {
@@ -29,7 +29,7 @@
                 loadScript('https://cdn.jsdelivr.net/npm/dxf-parser@1.1.2/dist/dxf-parser.min.js')
             ].map(promise => promise.catch(error => console.warn('Библиотека импорта/экспорта недоступна:', error)));
             window.planLibrariesReady = Promise.all(libraries);
-            for (const name of ['modal-ui', 'config', 'state', 'engine', 'storage', 'dialogs', 'render', 'plan-renderer', 'render-performance', 'building-overview', 'svg-context', 'plan-export', 'app', 'onboarding', 'firebase-auth', 'account-profile', 'pro-billing', 'firebase-sync', 'icon-editor', 'toolbar-menus', 'select-controls', 'tablet-tools']) {
+            for (const name of ['modal-ui', 'config', 'state', 'engine', 'storage', 'dialogs', 'render', 'plan-renderer', 'render-performance', 'editor-interactions', 'editor-session', 'building-overview', 'svg-context', 'plan-export', 'app', 'onboarding', 'firebase-auth', 'account-profile', 'pro-billing', 'firebase-sync', 'icon-editor', 'toolbar-menus', 'select-controls', 'tablet-tools']) {
                 await loadScript(`${name}.js?v=${version}`);
             }
             await Promise.all(libraries);

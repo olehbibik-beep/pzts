@@ -249,6 +249,14 @@
         ["Hlavní ústředna: {0}","Main control panel: {0}"],
         ["detektor","detector"],
         ["detektory","detectors"],
+        ["PIR detektor","PIR detector"],
+        ["Bezdrátový magnet","Wireless contact"],
+        ["Detektor rozbití skla","Glass-break detector"],
+        ["Neaktivní detektor","Inactive detector"],
+        ["Detektor","Detector"],
+        ["Otočit doleva","Rotate left"],
+        ["Otočit doprava","Rotate right"],
+        ["Podržet: otočit doprava / doleva","Hold: rotate right / left"],
         ['Vyberte podlaží', 'Select a floor'], ['Zpět na půdorys', 'Back to plan'], ['Počet prvků: {0}', 'Device count: {0}'], ['ZPĚT', 'BACK']
     ];
 

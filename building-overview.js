@@ -41,7 +41,9 @@ function appendOverviewRanges(container,ranges){
 function showOverviewFloorDetails(index){
     const stats=overviewStats[index];if(!stats)return;
     document.getElementById('overviewDetailFloor').textContent=stats.name;
-    document.getElementById('overviewDetailCounts').textContent=tr`Detektory: ${stats.detectors}`+' · '+tr`Zóny: ${stats.zones}`+' · '+tr`Prvky: ${stats.elements}`;
+    document.getElementById('overviewDetailCounts').textContent=tr`Detektory: ${stats.detectors}`+' · '+tr`Zóny: ${stats.zones}`;
+    document.getElementById('overviewDetailPanel').hidden=!stats.panels.length;
+    document.querySelectorAll('.overview-floor').forEach(button=>button.classList.toggle('is-overview-preview',getOverviewFloorIndex(button.dataset.overviewFloor)===index));
     document.getElementById('overviewDetailPanel').textContent=index===overviewMainPanelFloor?tr('Hlavní ústředna'):stats.panels.length?tr`Ústředny: ${stats.panels.length}`:tr('Bez ústředny');
     appendOverviewRanges(document.getElementById('overviewDetailZones'),stats.ranges);
 }
@@ -61,6 +63,7 @@ function updateOverviewFloorButtons(){
         const index=getOverviewFloorIndex(button.dataset.overviewFloor),stats=overviewStats[index];
         button.disabled=!stats;button.setAttribute('aria-current',String(index===currentFloorIndex));if(!stats)continue;
         button.querySelector('.overview-floor-count').textContent=String(stats.detectors);
+        button.querySelector('.overview-floor-body').hidden=stats.detectors===0;
         button.querySelector('.overview-detector-label').textContent=overviewDetectorWord(stats.detectors);
         button.querySelector('.overview-zone-count').textContent=tr`Zóny: ${stats.zones}`;
         button.querySelector('.overview-floor-zones').textContent=overviewRangeText(stats.ranges)||tr('Bez zón');
@@ -69,6 +72,14 @@ function updateOverviewFloorButtons(){
         badge.querySelector('span').textContent=stats.panels.length>1?tr`Ústředny: ${stats.panels.length}`:tr('Ústředna');
         button.setAttribute('aria-label',`${button.dataset.overviewFloor} · ${tr`Detektory: ${stats.detectors}`} · ${tr`Zóny: ${stats.zones}`} · ${overviewRangeText(stats.ranges)||tr('Bez zón')}${stats.panels.length?' · '+tr`Ústředny: ${stats.panels.length}`:''}`);
     }
+}
+function alignOverviewArtwork(){
+    const image=document.getElementById('overviewArtwork'),panel=document.querySelector('.overview-floor-panel');
+    if(!image.naturalWidth||!panel.clientWidth||!panel.clientHeight)return;
+    const ground=.676,scale=Math.min(panel.clientWidth/image.naturalWidth,panel.clientHeight*(2/3)/ground/image.naturalHeight);
+    const width=image.naturalWidth*scale,height=image.naturalHeight*scale;
+    const styles={width:width+'px',height:height+'px',left:(panel.clientWidth-width)/2+'px',top:(panel.clientHeight*2/3-height*ground)+'px'};
+    for(const [key,value] of Object.entries(styles))if(image.style[key]!==value)image.style[key]=value;
 }
 function drawBuildingOverview(){
     if(!isOverviewMode)return;
@@ -90,12 +101,15 @@ function drawBuildingOverview(){
     const panelFloors=overviewStats.filter(stats=>stats.panels.length).map(stats=>stats.name);
     const summary=document.getElementById('overviewProjectStats');summary.replaceChildren();
     const panelSummary=overviewMainPanelFloor>=0?tr`Hlavní ústředna: ${overviewStats[overviewMainPanelFloor].name}`:panelFloors.length?tr`Ústředny: ${panelFloors.join(', ')}`:tr('Ústředna není umístěna');
-    for(const text of [tr`Detektory: ${count}`,tr`Zóny: ${zones}`,panelSummary]){
+    summary.setAttribute('aria-label',tr`Detektory: ${count}`+' · '+tr`Zóny: ${zones}`+' · '+panelSummary);
+    for(const text of [panelSummary]){
         const badge=document.createElement('span');badge.textContent=text;summary.appendChild(badge);
     }
-    showOverviewFloorDetails(currentFloorIndex);
+    showOverviewFloorDetails(currentFloorIndex);alignOverviewArtwork();
 }
 window.addEventListener('goom-language-changed',()=>{if(isOverviewMode)drawBuildingOverview();});
 const overviewArtwork=document.getElementById('overviewArtwork');
-function revealOverviewArtwork(){if(overviewArtwork.naturalWidth)overviewArtwork.classList.add('is-ready');}
+function revealOverviewArtwork(){if(overviewArtwork.naturalWidth){overviewArtwork.classList.add('is-ready');if(isOverviewMode)alignOverviewArtwork();}}
 overviewArtwork.addEventListener('load',revealOverviewArtwork);if(overviewArtwork.complete)revealOverviewArtwork();
+
+window.attachModalBlueprint?.(document.getElementById('overviewStage'));

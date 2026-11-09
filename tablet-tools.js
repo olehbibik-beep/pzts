@@ -3,7 +3,7 @@
     let tabletInput = matchMedia('(pointer: coarse)').matches;
     let previousState = '';
     const labels = {
-        select: 'Výběr detektoru', pan: 'Posun plánu', rotate: 'Otočit o 90°', duplicate: 'Duplikovat',
+        select: 'Výběr detektoru', pan: 'Posun plánu', duplicate: 'Duplikovat',
         note: 'Poznámka', address: 'Adresa prvku', delete: 'Odstranit vybrané', undo: 'Vrátit akci'
     };
     function selected() { return floors[currentFloorIndex]?.devices.filter(device => activeDeviceIds.has(device.id)) || []; }
@@ -11,6 +11,7 @@
         const items = selected();
         const modal = [...document.querySelectorAll('.modal')].some(element => element.style.display === 'flex' || element.style.display === 'block');
         const visible = tabletInput && isSystemReady && !isOverviewMode && !modal;
+        updateDeviceRotationHandles(visible,items);
         const state = `${visible}:${items.map(item => item.id).join(',')}:${selectedTool}:${window.tabletPanMode}:${historyIndex}:${getGoomLanguage()}`;
         if (previousState === state) return;
         previousState = state; toolbar.hidden = !visible;
@@ -46,7 +47,6 @@
         else if (action === 'note') openTextModal(items[0]);
         else if (action === 'address') openNumberModal(items[0]);
         else {
-            if (action === 'rotate') items.forEach(item => { if (!['textNode', 'ramen'].includes(item.type)) item.rotation = ((item.rotation || 0) + 90) % 360; });
             if (action === 'delete') {
                 floor.devices = floor.devices.filter(item => !activeDeviceIds.has(item.id));
                 floor.cables = floor.cables.filter(cable => !activeDeviceIds.has(cable.fromId) && !activeDeviceIds.has(cable.toId));

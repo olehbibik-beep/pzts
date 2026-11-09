@@ -200,32 +200,16 @@ function drawDevice(ctx, dev, skipSelection = false, theme = 'dark') {
 
     ctx.lineWidth = 2.5 * sMult; ctx.textAlign = "center"; ctx.textBaseline = "middle"; const size = 14 * sMult; 
 
-    // =========================================================
-    // Подсветка устройства при наведении
-    // =========================================================
-    if (window.hoveredDeviceId === dev.id && !isExporting && !skipSelection && !activeDeviceIds.has(dev.id)) {
-        ctx.save(); 
-        ctx.translate(dev.x, dev.y); 
-        const hoverRadius = size + 9 * sMult;
-        ctx.beginPath();
-        ctx.arc(0, 0, hoverRadius, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(14, 165, 233, 0.14)";
-        ctx.fill();
-        ctx.strokeStyle = "#38bdf8";
-        ctx.lineWidth = 2 * sMult;
-        ctx.setLineDash([5 * sMult, 3 * sMult]);
-        ctx.stroke();
-        ctx.setLineDash([]);
+    const selected=activeDeviceIds.has(dev.id),hovered=window.hoveredDeviceId===dev.id;
+    if((selected||hovered)&&!isExporting&&!skipSelection){
+        ctx.save();ctx.translate(dev.x,dev.y);ctx.beginPath();ctx.arc(0,0,size+7*sMult,0,Math.PI*2);
+        const dark=theme==='dark';ctx.fillStyle=dark?`rgba(255,255,255,${selected ? .30 : .24})`:`rgba(0,0,0,${selected ? .17 : .11})`;
+        ctx.fill();ctx.strokeStyle=dark?'rgba(255,255,255,.7)':'rgba(0,0,0,.6)';ctx.lineWidth=1.2*sMult;ctx.stroke();
+        if(selected){
+            ctx.rotate(planReducedMotion.matches?0:globalTime*.16);ctx.lineWidth=1.5*sMult;ctx.lineCap='round';
+            for(const start of [0,Math.PI]){ctx.beginPath();ctx.arc(0,0,size+13*sMult,start,start+Math.PI*.38);ctx.stroke();}
+        }
         ctx.restore();
-    }
-    // =========================================================
-    
-    // Активное выделение (вращающийся синий пунктир)
-    if (activeDeviceIds.has(dev.id) && !isExporting && !skipSelection) {
-        ctx.save(); ctx.translate(dev.x, dev.y); ctx.strokeStyle = "#0ea5e9"; ctx.lineWidth = 4 * sMult; 
-        ctx.save(); ctx.rotate(globalTime * 0.5); ctx.setLineDash([16*sMult, 8*sMult]); ctx.beginPath(); ctx.arc(0, 0, size + 16*sMult, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
-        ctx.save(); ctx.rotate(-globalTime); ctx.setLineDash([3*sMult, 12*sMult]); ctx.beginPath(); ctx.arc(0, 0, size + 9*sMult, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
-        ctx.restore(); ctx.setLineDash([]);
     }
 
     ctx.save(); ctx.translate(dev.x, dev.y); ctx.rotate((dev.rotation || 0) * Math.PI / 180);

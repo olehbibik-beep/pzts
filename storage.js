@@ -140,7 +140,9 @@ function getProjectDataPayload() {
     let dSize = (slider && slider.value) ? parseInt(slider.value) : 16;
     return { 
         version: "1.0",
-        format: "TECH", 
+        format: "TECH",
+        ownerUid:window.projectOwnerUid||window.getFirebaseUser?.()?.uid||null,
+        viewport:{scale,offsetX,offsetY,width:planCanvasWidth(),height:planCanvasHeight()}, 
         projectName: projectName,
         currentFloorIndex: currentFloorIndex, 
         currentMaxLines: currentMaxLines,
@@ -186,10 +188,14 @@ function getSavedProjectData() {
     });
 }
 
-async function loadFromDB() {
+async function loadFromDB(options={}) {
     const data = await getSavedProjectData();
     if (!Array.isArray(data?.floors) || !data.floors.length) return false;
+    if(options.requireUid&&data.ownerUid&&data.ownerUid!==options.requireUid)return false;
     const loadedFloors = await loadFloorsImages(data.floors);
+    if(options.requireUid&&window.getFirebaseUser?.()?.uid!==options.requireUid)return false;
+    window.projectOwnerUid=data.ownerUid||window.getFirebaseUser?.()?.uid||null;
+    window.restoredPlanViewport=data.viewport;
     if (data.currentMaxLines) currentMaxLines = data.currentMaxLines;
     customDeviceIcons = data.customDeviceIcons && typeof data.customDeviceIcons === 'object' ? data.customDeviceIcons : {};
     const slider = document.getElementById('deviceSizeSlider');
