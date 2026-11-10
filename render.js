@@ -178,6 +178,26 @@ function animationLoop(timestamp) {
 }
 requestAnimationFrame(animationLoop);
 
+function planTextNodeFont(device, labelScale) {
+    return `${device.plainText === true ? '' : 'bold '}${13 * labelScale}px sans-serif`;
+}
+
+function planTextNodeContent(device) {
+    return device.manualName || tr(device.plainText === true ? 'Text na výkresu' : 'Poznámka');
+}
+
+function hitTestPlanTextNode(device, x, y, labelScale) {
+    ctx.save();
+    ctx.font = planTextNodeFont(device, labelScale);
+    const halfWidth = getPlanTextWidth(ctx, planTextNodeContent(device)) / 2;
+    ctx.restore();
+    const angle = (device.rotation || 0) * Math.PI / 180;
+    const dx = x - device.x, dy = y - device.y;
+    const localX = dx * Math.cos(angle) + dy * Math.sin(angle);
+    const localY = -dx * Math.sin(angle) + dy * Math.cos(angle);
+    return Math.abs(localX) <= halfWidth + 6 * labelScale && Math.abs(localY) <= 11 * labelScale;
+}
+
 function drawDevice(ctx, dev, skipSelection = false, theme = 'dark', options = {}) {
     let slider = document.getElementById('deviceSizeSlider');
     let baseSize = options.baseSize ?? ((slider && slider.value) ? parseInt(slider.value) : 16);
@@ -185,29 +205,57 @@ function drawDevice(ctx, dev, skipSelection = false, theme = 'dark', options = {
     let labelScale = 1 + (sMult - 1) * 0.5;
 
     if (dev.type === 'textNode') {
-        ctx.textAlign = "center"; ctx.textBaseline = "middle"; 
-        let text = dev.manualName || tr("Poznámka");
-        ctx.save(); ctx.translate(dev.x, dev.y); ctx.rotate((dev.rotation || 0) * Math.PI / 180);
-        ctx.font = "bold " + (13 * labelScale) + "px sans-serif"; 
-        let w = getPlanTextWidth(ctx,text);
-        ctx.fillStyle = "rgba(18, 18, 20, 0.75)"; 
-        ctx.fillRect(-w/2 - 6*labelScale, -11*labelScale, w + 12*labelScale, 22*labelScale);
-        if (activeDeviceIds.has(dev.id) && !isExporting && !skipSelection) { 
-            ctx.strokeStyle = "#0ea5e9"; ctx.lineWidth = 2*labelScale; ctx.setLineDash([6*labelScale, 4*labelScale]); ctx.strokeRect(-w/2 - 6*labelScale, -11*labelScale, w + 12*labelScale, 22*labelScale); 
+        const plainText = dev.plainText === true;
+        const selected = activeDeviceIds.has(dev.id) && !isExporting && !skipSelection;
+        const text = planTextNodeContent(dev);
+        ctx.save();
+        ctx.translate(dev.x, dev.y);
+        ctx.rotate((dev.rotation || 0) * Math.PI / 180);
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = planTextNodeFont(dev, labelScale);
+        if (!plainText || selected) {
+            const width = getPlanTextWidth(ctx, text) + 12 * labelScale;
+            const height = 22 * labelScale;
+            if (!plainText) {
+                ctx.fillStyle = 'rgba(18, 18, 20, 0.75)';
+                ctx.fillRect(-width / 2, -height / 2, width, height);
+            }
+            if (selected) {
+                ctx.strokeStyle = '#0ea5e9';
+                ctx.lineWidth = 2 * labelScale;
+                ctx.setLineDash([6 * labelScale, 4 * labelScale]);
+                ctx.strokeRect(-width / 2, -height / 2, width, height);
+            }
         }
-        ctx.fillStyle = "#ffffff"; ctx.fillText(text, 0, 0); ctx.restore(); return; 
+        ctx.fillStyle = plainText && theme !== 'dark' ? '#171719' : '#ffffff';
+        ctx.fillText(text, 0, 0);
+        ctx.restore();
+        return;
     }
 
     ctx.lineWidth = 2.5 * sMult; ctx.textAlign = "center"; ctx.textBaseline = "middle"; const size = 14 * sMult; 
 
-    const selected=activeDeviceIds.has(dev.id),hovered=window.hoveredDeviceId===dev.id;
-    if((selected||hovered)&&!isExporting&&!skipSelection){
-        ctx.save();ctx.translate(dev.x,dev.y);ctx.beginPath();ctx.arc(0,0,size+7*sMult,0,Math.PI*2);
-        const dark=theme==='dark';ctx.fillStyle=dark?`rgba(255,255,255,${selected ? .30 : .24})`:`rgba(0,0,0,${selected ? .17 : .11})`;
-        ctx.fill();ctx.strokeStyle=dark?'rgba(255,255,255,.7)':'rgba(0,0,0,.6)';ctx.lineWidth=1.2*sMult;ctx.stroke();
-        if(selected){
-            ctx.rotate(planReducedMotion.matches?0:globalTime*.16);ctx.lineWidth=1.5*sMult;ctx.lineCap='round';
-            for(const start of [0,Math.PI]){ctx.beginPath();ctx.arc(0,0,size+13*sMult,start,start+Math.PI*.38);ctx.stroke();}
+    const selected = activeDeviceIds.has(dev.id);
+    const hovered = window.hoveredDeviceId === dev.id;
+    if ((selected || hovered) && !isExporting && !skipSelection) {
+        ctx.save();
+        ctx.translate(dev.x, dev.y);
+        if (selected) {
+            ctx.strokeStyle = theme === 'dark' ? 'rgba(255,255,255,.8)' : '#52525b';
+            ctx.rotate(planReducedMotion.matches ? 0 : globalTime * .16);
+            ctx.lineWidth = 1.5 * sMult;
+            ctx.lineCap = 'round';
+            for (const start of [0, Math.PI]) {
+                ctx.beginPath();
+                ctx.arc(0, 0, size + 13 * sMult, start, start + Math.PI * .38);
+                ctx.stroke();
+            }
+        } else {
+            ctx.beginPath();
+            ctx.arc(0, 0, size + 7 * sMult, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
         }
         ctx.restore();
     }
@@ -416,6 +464,6 @@ function redraw() {
         const w = selEndX - selStartX; const h = selEndY - selStartY;
         ctx.fillRect(selStartX, selStartY, w, h); ctx.strokeRect(selStartX, selStartY, w, h);
     }
-    drawFloorData(ctx, floor, false);
+    drawFloorData(ctx, floor, false, floor.image ? getPlanTheme(floor) : 'dark');
 }
 

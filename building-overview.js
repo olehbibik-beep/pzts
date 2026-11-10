@@ -43,7 +43,6 @@ function showOverviewFloorDetails(index){
     document.getElementById('overviewDetailFloor').textContent=stats.name;
     document.getElementById('overviewDetailCounts').textContent=tr`Detektory: ${stats.detectors}`+' · '+tr`Zóny: ${stats.zones}`;
     document.getElementById('overviewDetailPanel').hidden=!stats.panels.length;
-    document.querySelectorAll('.overview-floor').forEach(button=>button.classList.toggle('is-overview-preview',getOverviewFloorIndex(button.dataset.overviewFloor)===index));
     document.getElementById('overviewDetailPanel').textContent=index===overviewMainPanelFloor?tr('Hlavní ústředna'):stats.panels.length?tr`Ústředny: ${stats.panels.length}`:tr('Bez ústředny');
     appendOverviewRanges(document.getElementById('overviewDetailZones'),stats.ranges);
 }
@@ -52,11 +51,18 @@ function updateOverviewFloorButtons(){
     if(!group.children.length){
         for(const label of overviewFloorLabels){
             const button=document.createElement('button');button.type='button';button.className='overview-floor';button.dataset.overviewFloor=label;
-            if(label.endsWith('PP'))button.classList.add('overview-basement');
             button.innerHTML='<span class="overview-floor-label"></span><span class="overview-floor-body"><span class="overview-floor-metrics"><strong class="overview-floor-count"></strong><span class="overview-detector-label"></span><span class="overview-zone-count"></span></span><span class="overview-floor-zones"></span></span><span class="overview-panel-badge" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4m6-4v4M9 18v4m6-4v4M2 9h4m-4 6h4m12-6h4m-4 6h4"/><rect x="10" y="10" width="4" height="4"/></svg><span>Ústředna</span></span>';
             button.querySelector('.overview-floor-label').textContent=label;
             const details=()=>showOverviewFloorDetails(getOverviewFloorIndex(label));
-            button.addEventListener('pointerenter',details);button.addEventListener('focus',details);group.appendChild(button);
+            button.addEventListener('pointerenter',details);button.addEventListener('focus',details);
+            button.addEventListener('pointerleave',()=>{
+                const focused=group.querySelector(':focus-visible');
+                showOverviewFloorDetails(focused?getOverviewFloorIndex(focused.dataset.overviewFloor):currentFloorIndex);
+            });
+            button.addEventListener('blur',()=>{
+                if(!group.matches(':hover'))showOverviewFloorDetails(currentFloorIndex);
+            });
+            group.appendChild(button);
         }
     }
     for(const button of group.children){
@@ -112,4 +118,3 @@ const overviewArtwork=document.getElementById('overviewArtwork');
 function revealOverviewArtwork(){if(overviewArtwork.naturalWidth){overviewArtwork.classList.add('is-ready');if(isOverviewMode)alignOverviewArtwork();}}
 overviewArtwork.addEventListener('load',revealOverviewArtwork);if(overviewArtwork.complete)revealOverviewArtwork();
 
-window.attachModalBlueprint?.(document.getElementById('overviewStage'));

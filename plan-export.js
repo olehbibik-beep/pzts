@@ -40,7 +40,7 @@ function getPlanOutputBounds(floor,coverage) {
         }
         if(device.manualName){
             const labelScale=1+(Number(document.getElementById('deviceSizeSlider').value)/14-1)*.5;
-            ctx.save();ctx.font=`${device.type==='textNode'?'bold ':''}${13*labelScale}px sans-serif`;
+            ctx.save();ctx.font=device.type==='textNode'?planTextNodeFont(device,labelScale):`${13*labelScale}px sans-serif`;
             const half=ctx.measureText(device.manualName).width/2+32*labelScale;ctx.restore();
             // A circle around text covers any rotation without clipping corners.
             const radius=half+24*labelScale;left=Math.min(left,device.x-radius);right=Math.max(right,device.x+radius);top=Math.min(top,device.y-radius);bottom=Math.max(bottom,device.y+radius);

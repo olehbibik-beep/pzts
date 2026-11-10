@@ -34,7 +34,7 @@ function projectLegendLayout(legend) {
     const cached = projectLegendLayouts.get(legend);
     if (cached?.language === language && cached.entries === legend.entries && cached.iconsReady === iconsReady) return cached;
     ctx.save(); ctx.font = '13px sans-serif';
-    const labels = legend.entries.map(entry => tr(entry.label));
+    const labels = legend.entries.map(entry => `— ${tr(entry.label)}`);
     const width = Math.max(170, ...labels.map(label => 56 + ctx.measureText(label).width));
     ctx.restore();
     const shapes = legend.entries.map(entry => iconsReady ? sanitizeIconShapes(entry.shapes) : []);
@@ -55,7 +55,7 @@ function drawProjectLegend(target, floor, editing, theme) {
     target.save(); target.translate(legend.x, legend.y); target.scale(legend.scale, legend.scale);
     target.textAlign = 'left'; target.textBaseline = 'middle';
     target.fillStyle = theme === 'dark' ? '#f4f4f5' : '#171719'; target.font = '16px sans-serif';
-    target.fillText(tr('LEGENDA'), 0, 12);
+    target.fillText(tr('Legenda:'), 0, 12);
     legend.entries.forEach((entry, index) => {
         const y = 46 + index * 28;
         target.save(); target.translate(20, y);
@@ -121,7 +121,7 @@ function hoverProjectLegend(x,y) {
 }
 function toggleProjectLegend() {
     const floor = floors[currentFloorIndex];
-    if (!floor || !isSystemReady) return;
+    if (!floor || !isSystemReady || isOverviewMode) return;
     finishProjectLegendDrag();
     if (floor.legend?.entries.length) floor.legend.visible = !floor.legend.visible;
     else {
@@ -136,19 +136,17 @@ function toggleProjectLegend() {
     }
     selectedProjectLegend = floor.legend.visible ? floor.legend : null;
     activeDeviceIds.clear(); resetPlacementTool();
-    document.getElementById('mainMenuModal').style.display = 'none';
     saveStateToHistory(); triggerAutoSave(); requestRedraw(); updateProjectLegendButton();
 }
 function updateProjectLegendButton() {
-    const button = document.getElementById('btnMenuLegend');
-    if (!button) return;
+    const button = document.getElementById('btnToggleLegend');
     const visible = !!floors[currentFloorIndex]?.legend?.visible;
-    button.querySelector('span').textContent = tr(visible ? 'Skrýt legendu' : 'Zobrazit legendu');
+    const label = tr(visible ? 'Skrýt legendu' : 'Zobrazit legendu');
     button.setAttribute('aria-pressed', String(visible));
-    button.title = tr('Přetažením přesunout, rohem změnit velikost.');
+    button.title = label;
+    button.setAttribute('aria-label', label);
 }
-document.getElementById('btnMenuLegend').addEventListener('click', toggleProjectLegend);
-new MutationObserver(updateProjectLegendButton).observe(document.getElementById('mainMenuModal'),{attributes:true,attributeFilter:['style']});
+document.getElementById('btnToggleLegend').addEventListener('click', toggleProjectLegend);
 window.addEventListener('goom-language-changed', () => {updateProjectLegendButton();requestRedraw();});
 // Keyboard precision also makes resizing discoverable without a mouse grip.
 window.addEventListener('keydown', event => {

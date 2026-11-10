@@ -1,6 +1,6 @@
 const toolbarMenuStorageKey = 'goom-toolbar-menus-v1';
 const toolbarMenuLimit = 7;
-const toolbarMenuDeviceButtons = [...document.querySelectorAll('#deviceSelector .device-btn[data-type]')];
+const toolbarMenuDeviceButtons = [...document.querySelectorAll('#deviceSelector .device-btn[data-type]:not([data-type="plainText"])')];
 const toolbarMenuTypeLabels = {
     panel: tr('Центральный блок'),
     expander: tr('Расширитель'),
@@ -107,18 +107,19 @@ function applyToolbarMenu(menu, persist = true) {
     toolbarMenuDeviceButtons.forEach(button => {
         button.hidden = !visibleTypes.has(button.dataset.type);
     });
+    const textTools = document.getElementById('textTools');
+    textTools.hidden = !visibleTypes.has('textNode');
 
     const selectorChildren = [...document.getElementById('deviceSelector').children];
+    const isVisibleTool = child => !child.hidden && (child === textTools || child.matches('.device-btn[data-type]'));
     selectorChildren.forEach((element, index) => {
         if (!element.classList.contains('menu-divider')) return;
-        const beforeHasDevice = selectorChildren.slice(0, index).some(child =>
-            child.matches('.device-btn[data-type]') && !child.hidden);
-        const afterHasDevice = selectorChildren.slice(index + 1).some(child =>
-            child.matches('.device-btn[data-type]') && !child.hidden);
+        const beforeHasDevice = selectorChildren.slice(0, index).some(isVisibleTool);
+        const afterHasDevice = selectorChildren.slice(index + 1).some(isVisibleTool);
         element.hidden = !beforeHasDevice || !afterHasDevice;
     });
 
-    if (!visibleTypes.has(selectedTool)) {
+    if (!visibleTypes.has(selectedTool === 'plainText' ? 'textNode' : selectedTool)) {
         selectedTool = 'select';
         document.querySelectorAll('#deviceSelector .device-btn').forEach(button => button.classList.remove('active'));
     }

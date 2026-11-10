@@ -197,15 +197,26 @@ document.getElementById('deviceSelector').addEventListener('click', (e) => {
     btn.classList.add('active');
     selectedTool = btn.dataset.type;
     window.tabletPanMode = false;
+    if (selectedTool === 'plainText') {
+        stopDeviceRotation();
+        activeDeviceIds.clear();
+        requestRedraw();
+        return;
+    }
 
     if (currentFloorIndex !== -1 && activeDeviceIds.size > 0 && !isOverviewMode) {
         let changed = false;
         const floor = floors[currentFloorIndex];
         activeDeviceIds.forEach(id => {
             let dev = floor.devices.find(d => d.id === id);
+            if (dev?.type === 'textNode' && dev.plainText === true) {
+                activeDeviceIds.delete(id);
+                return;
+            }
             if (dev) { dev.type = selectedTool; if (dev.type !== 'deactivated') dev.oldType = null; changed = true; }
         });
-        if (changed) { saveStateToHistory(); triggerAutoSave(); requestRedraw(); }
+        if (changed) { saveStateToHistory(); triggerAutoSave(); }
+        requestRedraw();
     } else { activeDeviceIds.clear(); requestRedraw(); }
 });
 
@@ -220,7 +231,7 @@ if(bToggleConnections) {
 }
 
 const modals = document.querySelectorAll('.modal');
-modals.forEach(modal => { modal.addEventListener('click', (e) => { if (e.target === modal) { if (modal.id === 'welcomeModal' && !isSystemReady) return; modal.style.display = 'none'; if(modal.id === 'textModal') editingDevice = null; } }); });
+modals.forEach(modal => { modal.addEventListener('click', (e) => { if (e.target === modal) { if (modal.id === 'welcomeModal' && !isSystemReady) return; if (modal.id === 'textModal') closeTextModal(); else modal.style.display = 'none'; } }); });
 
 document.getElementById('btnLogo').addEventListener('click', () => document.getElementById('mainMenuModal').style.display = 'flex');
 
@@ -302,7 +313,24 @@ document.getElementById('btnPrintPlan').addEventListener('click', () => exportPl
 
 document.getElementById('bipsLoader').addEventListener('change', (e) => { const f = e.target.files[0]; if(f) importFileContent(f); e.target.value = ''; });
 
-function openTextModal(dev) { editingDevice = dev; devTextInput.value = dev.manualName || ""; document.getElementById('textModal').style.display = 'flex'; devTextInput.focus(); }
+let pendingTextFloor = null;
+
+function openTextModal(device, placementFloor = null) {
+    editingDevice = device;
+    pendingTextFloor = placementFloor;
+    const plainText = device.type === 'textNode' && device.plainText === true;
+    document.getElementById('textModalTitle').textContent = tr(plainText ? 'Text na výkresu' : 'Poznámka / Text');
+    devTextInput.required = plainText;
+    devTextInput.value = device.manualName || '';
+    document.getElementById('textModal').style.display = 'flex';
+    devTextInput.focus();
+}
+
+function closeTextModal() {
+    document.getElementById('textModal').style.display = 'none';
+    editingDevice = null;
+    pendingTextFloor = null;
+}
 
 let deviceRotationAnimation = null;
 
@@ -373,10 +401,33 @@ function startDeviceRotation(direction=1,initialStep=0) {
 }
 
 document.getElementById('btnSaveText').addEventListener('click', () => {
-    if (editingDevice) { editingDevice.manualName = devTextInput.value.trim(); saveStateToHistory(); requestRedraw(); triggerAutoSave(); }
-    document.getElementById('textModal').style.display = 'none'; editingDevice = null;
+    const floor = floors[currentFloorIndex];
+    if (!editingDevice || !floor || (pendingTextFloor ? pendingTextFloor !== floor : !floor.devices.includes(editingDevice))) {
+        closeTextModal();
+        return;
+    }
+    devTextInput.value = devTextInput.value.trim();
+    if (!devTextInput.reportValidity()) return;
+    editingDevice.manualName = devTextInput.value;
+    if (pendingTextFloor) {
+        floor.devices.push(editingDevice);
+        activeDeviceIds.clear();
+        activeDeviceIds.add(editingDevice.id);
+    }
+    closeTextModal();
+    saveStateToHistory();
+    requestRedraw();
+    triggerAutoSave();
 });
-devTextInput.addEventListener('keypress', function (e) { if (e.key === 'Enter') document.getElementById('btnSaveText').click(); });
+document.getElementById('btnCancelText').addEventListener('click', closeTextModal);
+devTextInput.addEventListener('keydown', event => {
+    if (event.isComposing) return;
+    if (event.key === 'Enter') document.getElementById('btnSaveText').click();
+    if (event.key === 'Escape') {
+        event.stopPropagation();
+        closeTextModal();
+    }
+});
 
 window.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
@@ -394,7 +445,7 @@ window.addEventListener('keydown', (e) => {
         document.querySelectorAll('.modal').forEach(m => { if (m.style.display === 'flex' || m.style.display === 'block') { m.style.display = 'none'; modalClosed = true; } });
         let hPanel = document.getElementById('helpPanel');
         if (hPanel && hPanel.classList.contains('open')) { hPanel.classList.remove('open'); modalClosed = true; }
-        if (modalClosed) { editingDevice = null; return; }
+        if (modalClosed) { editingDevice = null; pendingTextFloor = null; return; }
         selectedTool = 'select';
         document.querySelectorAll('#deviceSelector .device-btn[data-type]').forEach(b => b.classList.remove('active'));
         activeDeviceIds.clear();
@@ -565,8 +616,7 @@ container.addEventListener('pointerdown', (e) => {
             if (!showDeactivatedDevices && dev.type === 'deactivated') continue;
 
             if (dev.type === 'textNode') {
-                ctx.font = "bold " + (13 * labelScale) + "px sans-serif"; let w = ctx.measureText(dev.manualName || tr("Poznámka")).width;
-                inBody = canvasX >= dev.x - w/2 - 6*labelScale && canvasX <= dev.x + w/2 + 6*labelScale && canvasY >= dev.y - 11*labelScale && canvasY <= dev.y + 11*labelScale;
+                inBody = hitTestPlanTextNode(dev, canvasX, canvasY, labelScale);
             } else {
                 inBody = Math.abs(dev.x - canvasX) < 22*sMult && Math.abs(dev.y - canvasY) < 22*sMult;
                 let textX = dev.x + 20*sMult; let textY = dev.y + 20*sMult;
@@ -710,6 +760,13 @@ window.addEventListener('pointerup', (e) => {
                 const newId = genId(); const loopId = parseInt(loopSelect.value);
                 
                 let tempDev = { id: newId, x: snap.x, y: snap.y, type: selectedTool, manualName: "", loopId: loopId, rotation: 0, manualNumber: null };
+                if (selectedTool === 'plainText') {
+                    tempDev.type = 'textNode';
+                    tempDev.plainText = true;
+                    openTextModal(tempDev, floor);
+                    requestRedraw();
+                    return;
+                }
                 if (['pir', 'pir_wl'].includes(selectedTool)) {
                     tempDev.pirRangePixels = floor.pirRangePixels;
                 }
@@ -718,11 +775,11 @@ window.addEventListener('pointerup', (e) => {
 
                 if (activeDeviceIds.size === 1) {
                     let firstId = Array.from(activeDeviceIds)[0];
+                    const firstDevice = floor.devices.find(d => d.id === firstId);
                     let existingIdx = floor.cables.findIndex(c => (c.fromId === firstId && c.toId === newId) || (c.fromId === newId && c.toId === firstId));
-                    if (existingIdx === -1) {
+                    if (existingIdx === -1 && firstDevice && firstDevice.plainText !== true) {
                         let cObj = { id: genId(), fromId: firstId, toId: newId, isCustom: false };
-                        let d1 = floor.devices.find(d => d.id === firstId);
-                        if (d1) recalcCableHandles(cObj, d1, {x: snap.x, y: snap.y});
+                        recalcCableHandles(cObj, firstDevice, tempDev);
                         floor.cables.push(cObj);
                     }
                 }
@@ -754,11 +811,11 @@ window.addEventListener('pointerup', (e) => {
                         if (activeDeviceIds.size === 1 && !e.shiftKey) {
                             let firstId = Array.from(activeDeviceIds)[0];
                             if (firstId !== dev.id) { 
+                                const firstDevice = floor.devices.find(d => d.id === firstId);
                                 let existingIdx = floor.cables.findIndex(c => (c.fromId === firstId && c.toId === dev.id) || (c.fromId === dev.id && c.toId === firstId));
-                                if (existingIdx === -1) {
+                                if (existingIdx === -1 && firstDevice && firstDevice.plainText !== true && dev.plainText !== true) {
                                     let cObj = { id: genId(), fromId: firstId, toId: dev.id, isCustom: false };
-                                    let d1 = floor.devices.find(d => d.id === firstId);
-                                    if(d1) recalcCableHandles(cObj, d1, dev);
+                                    recalcCableHandles(cObj, firstDevice, dev);
                                     floor.cables.push(cObj);
                                     saveStateToHistory();
                                 }
@@ -976,7 +1033,7 @@ document.getElementById('btnOverview').addEventListener('click', event => {
     event.preventDefault(); event.stopPropagation();
     if (!isSystemReady || !floors.length) return;
     document.querySelectorAll('.modal').forEach(modal => modal.style.display = 'none');
-    editingDevice = null; clearCanvasDrag(); window.clearGoomTooltips?.();
+    editingDevice = null; pendingTextFloor = null; clearCanvasDrag(); window.clearGoomTooltips?.();
     isOverviewMode = true;
     document.getElementById('overviewScreen').style.display = 'flex';
     requestRedraw();

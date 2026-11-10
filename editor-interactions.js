@@ -1,4 +1,5 @@
 function deviceBriefName(device){
+    if (device.type === 'textNode' && device.plainText === true) return tr('Text na výkresu');
     const names={pir:'PIR detektor',pir_wl:'Bezdrátový PIR',magnet:'Magnetický kontakt',magnet_wl:'Bezdrátový magnet',glassbreak:'Detektor rozbití skla',panic:'Tísňové tlačítko',siren:'Siréna',panel:'Ústředna',keypad:'Klávesnice',expander:'Expandér',abax:'ABAX',textNode:'Poznámka',deactivated:'Neaktivní detektor',ramen:'Ramen'};
     return tr(names[device.type]||'Detektor');
 }
@@ -23,10 +24,8 @@ function updateDeviceHover(event,x,y){
     for(let i=floor.devices.length-1;i>=0;i--){
         const device=floor.devices[i];if(!showDeactivatedDevices&&device.type==='deactivated')continue;
         let hit;
-        if(device.type==='textNode'){
-            ctx.save();ctx.font=`bold ${13*labelScale}px sans-serif`;const width=getPlanTextWidth(ctx,device.manualName||tr('Poznámka'));ctx.restore();
-            hit=Math.abs(device.x-x)<width/2+6*labelScale&&Math.abs(device.y-y)<11*labelScale;
-        }else hit=Math.abs(device.x-x)<22*size&&Math.abs(device.y-y)<22*size;
+        if(device.type==='textNode') hit=hitTestPlanTextNode(device,x,y,labelScale);
+        else hit=Math.abs(device.x-x)<22*size&&Math.abs(device.y-y)<22*size;
         if(hit){found=device;break;}
     }
     const hovered=found?.id||null;

@@ -113,7 +113,7 @@ async function restoreState(state) {
     currentFloorIndex = state.currentFloorIndex;
     if (typeof saveCustomIconsToActiveMenu === 'function') saveCustomIconsToActiveMenu();
     if (typeof refreshCustomDeviceIcons === 'function') refreshCustomDeviceIcons();
-    isSystemReady = true; requestRedraw(); triggerAutoSave();
+    isSystemReady = true; updateProjectLegendButton(); requestRedraw(); triggerAutoSave();
 }
 
 function initDB() {

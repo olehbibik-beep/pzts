@@ -1,6 +1,6 @@
 (() => {
     // Change this version whenever publishing application files together.
-    const version = '20261109-legend-19';
+    const version = '20261110-text-22';
     let started = false;
     function loadScript(src) {
         return new Promise((resolve, reject) => {
