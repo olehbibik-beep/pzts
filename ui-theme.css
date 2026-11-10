@@ -314,6 +314,7 @@ button.btn-cad, .toolbar-icon-button, .device-btn, .footer-icon, .ui-select-trig
 .motion-surface[data-modal-open="false"] .modal-blueprint { display:none; }
 .plan-loading { position:absolute; inset:0; z-index:30; display:grid; place-items:center; pointer-events:none; background:rgba(24,26,29,.22); }
 .plan-loading[hidden] { display:none; }
+.startup-loading { position:fixed; z-index:1000001; pointer-events:auto; background:#252529; }
 .plan-loading-disc { display:grid; place-items:center; width:110px; height:110px; border-radius:50%; background:rgba(255,255,255,.24); }
 .plan-loading img { width:76px; height:76px; object-fit:contain; animation:plan-whale-spin 2.4s linear infinite; will-change:transform; }
 @keyframes plan-whale-spin { to { transform:rotate(-360deg); } }
@@ -382,21 +383,24 @@ button.btn-cad, .toolbar-icon-button, .device-btn, .footer-icon, .ui-select-trig
 .tablet-rotation-handles svg { width:100%; height:100%; fill:none; stroke:currentColor; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; filter:drop-shadow(0 1px 2px #0006); }
 .tablet-rotation-handles[data-theme="original"] button { color:#252a31; }
 /* Transparent horizontal floor sections over the illustration; details stay on the left. */
-#overviewStage { isolation:isolate; grid-template-columns:minmax(190px,260px) minmax(0,1fr); gap:24px; padding:24px; }
+#overviewStage { isolation:isolate; grid-template-columns:minmax(170px,22%) minmax(0,1fr); grid-template-rows:auto minmax(396px,1fr); gap:16px 24px; padding:24px; min-height:535px; }
 #overviewCanvas { z-index:0; }
 .overview-scene,.overview-floor-panel { z-index:2; }
-.overview-scene { justify-content:flex-start; gap:28px; }
+.overview-heading { position:relative; z-index:2; grid-column:1 / -1; }
+.overview-scene { display:block; }
 .overview-eyebrow { font-size:9px; letter-spacing:1.2px; }
-.overview-heading h2 { font-size:20px; margin:10px 0 14px; }
+.overview-heading h2 { font-size:20px; margin:4px 0; }
 .overview-project-stats { font-size:10px; }
 .overview-project-stats span { border:0; padding:0; background:none; color:#a6b094; }
-.overview-floor-details { border:0; background:transparent; border-radius:0; padding:0; max-height:none; }
-#overviewDetailFloor { font-size:32px; font-weight:600; }
-.overview-detail-heading { flex-direction:column; align-items:flex-start; gap:8px; margin-bottom:18px; }
-#overviewDetailCounts { font-size:12px; line-height:1.8; color:#c5c9d0; }
-.overview-detail-zones-label { margin-top:20px; font-size:9px; }
-.overview-detail-zones { font-size:12px; max-height:220px; overflow:auto; }
-.overview-floor-panel { display:block; min-height:440px; }
+.overview-floor-details { position:absolute; inset-inline:0; top:calc((var(--overview-detail-row, 0) + .5) * 100% / 9); transform:translateY(-50%); border:0; background:transparent; border-radius:0; padding:0; max-height:calc(100% / 9); }
+#overviewDetailFloor { font-size:16px; line-height:17px; font-weight:650; }
+.overview-detail-heading { justify-content:flex-start; gap:6px; margin:0; }
+#overviewDetailPanel { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+#overviewDetailCounts { font-size:11px; line-height:14px; color:#c5c9d0; }
+.overview-detail-addresses { display:flex; align-items:baseline; gap:5px; }
+.overview-detail-zones-label { margin:0; flex-shrink:0; font-size:9px; letter-spacing:0; line-height:13px; }
+.overview-detail-zones { font-size:10px; line-height:13px; max-height:13px; min-width:0; overflow:auto; }
+.overview-floor-panel { display:block; min-height:396px; }
 .overview-floor-heading { display:none; }
 .overview-floor-panel .overview-artwork { position:absolute; inset:0; min-height:0; pointer-events:none; }
 #overviewArtwork { opacity:0; }
@@ -414,11 +418,6 @@ button.btn-cad, .toolbar-icon-button, .device-btn, .footer-icon, .ui-select-trig
 .overview-floor[aria-current="true"] { background:#d5e0ec12; }
 .overview-floor:enabled:hover,.overview-floor:focus-visible { background:#d5e0ec24; }
 @media (max-width:760px) {
-    #overviewStage { grid-template-columns:1fr; grid-template-rows:auto minmax(440px,1fr); padding:16px; gap:18px; min-height:660px; }
-    .overview-scene { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:20px; }
+    #overviewStage { grid-template-columns:minmax(138px,27%) minmax(0,1fr); padding:16px; gap:12px; min-height:510px; }
     .overview-heading h2 { font-size:17px; }
-    #overviewDetailFloor { font-size:24px; }
-    .overview-detail-heading { gap:4px; margin-bottom:8px; }
-    .overview-detail-zones-label { margin-top:8px; }
-    .overview-detail-zones { max-height:80px; font-size:11px; }
 }

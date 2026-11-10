@@ -40,6 +40,9 @@ function appendOverviewRanges(container,ranges){
 }
 function showOverviewFloorDetails(index){
     const stats=overviewStats[index];if(!stats)return;
+    const label = String(stats.name).replace(/\s/g, '').toUpperCase();
+    const row = Math.max(0, overviewFloorLabels.indexOf(label));
+    document.getElementById('overviewFloorDetails').style.setProperty('--overview-detail-row', row);
     document.getElementById('overviewDetailFloor').textContent=stats.name;
     document.getElementById('overviewDetailCounts').textContent=tr`Detektory: ${stats.detectors}`+' · '+tr`Zóny: ${stats.zones}`;
     document.getElementById('overviewDetailPanel').hidden=!stats.panels.length;

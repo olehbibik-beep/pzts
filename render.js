@@ -411,18 +411,31 @@ function drawFloorData(ctx, floor, skipSelection = false, theme = getPlanTheme(f
     drawProjectLegend(ctx, floor, !skipSelection && !isExporting, theme);
 }
 
-function drawFreePlanWatermark(target, width, height, theme) {
-    if (window.hasProAccess?.()) return;
-    const fontSize = Math.min(width, height) * .085;
+const planWatermarkImages = new Map();
+
+function drawFreePlanWatermark(target, width, height, theme, footerHeight = 0) {
+    if (window.hasProAccess?.() || !emptyCanvasLogo.naturalWidth) return;
+    const dark = theme === 'dark';
+    let logo = planWatermarkImages.get(dark);
+    if (!logo) {
+        // Cache a small tinted copy. Canvas-backed images are embedded in SVG exports.
+        logo = document.createElement('canvas');
+        logo.width = 160;
+        logo.height = Math.max(1, Math.round(logo.width * emptyCanvasLogo.naturalHeight / emptyCanvasLogo.naturalWidth));
+        const mask = logo.getContext('2d');
+        mask.fillStyle = dark ? '#ffffff' : '#172033';
+        mask.fillRect(0, 0, logo.width, logo.height);
+        mask.globalCompositeOperation = 'destination-in';
+        mask.drawImage(emptyCanvasLogo, 0, 0, logo.width, logo.height);
+        planWatermarkImages.set(dark, logo);
+    }
+    const shortSide = Math.min(width, height);
+    const markWidth = shortSide * .075;
+    const markHeight = markWidth * logo.height / logo.width;
+    const margin = shortSide * .024;
     target.save();
-    target.translate(width / 2, height / 2);
-    target.rotate(-Math.PI / 8);
-    target.globalAlpha = theme === 'dark' ? .16 : .14;
-    target.fillStyle = theme === 'dark' ? '#ffffff' : '#172033';
-    target.font = `700 ${fontSize}px sans-serif`;
-    target.textAlign = 'center';
-    target.textBaseline = 'middle';
-    target.fillText('GooM · PZTS FREE', 0, 0);
+    target.globalAlpha = dark ? .16 : .14;
+    target.drawImage(logo, width - margin - markWidth, height - footerHeight - margin - markHeight, markWidth, markHeight);
     target.restore();
 }
 
@@ -465,7 +478,7 @@ function redraw() {
 
     const theme = floor.image ? getPlanTheme(floor) : 'dark';
     if (floor.image || floor.devices.length || floor.legend?.visible) {
-        drawFreePlanWatermark(ctx, planCanvasWidth(), planCanvasHeight(), theme);
+        drawFreePlanWatermark(ctx, planCanvasWidth(), planCanvasHeight(), theme, document.getElementById('appFooter').offsetHeight);
     }
     ctx.translate(offsetX, offsetY); ctx.scale(scale, scale);
     if(!floor.image){drawDetectedWalls(ctx,floor);drawPlanGrid(ctx,floor);}

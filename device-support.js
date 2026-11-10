@@ -17,10 +17,11 @@
         document.documentElement.dataset.device = support.phone ? 'phone' : 'computer-or-tablet';
         const title = document.getElementById('deviceSupportTitle');
         const message = document.getElementById('deviceSupportMessage');
-        if (title) title.textContent = support.phone ? tr('Откройте GOOM на планшете или ПК') : tr('Увеличьте ширину окна');
-        if (message) message.textContent = support.phone
-            ? tr('Версия для телефонов недоступна. Для работы с проектами используйте планшет, ноутбук или компьютер.')
-            : tr('Для работы с планом нужна ширина окна от 600 пикселей. Разверните окно или поверните планшет.');
+        if (title) title.textContent = support.phone ? tr('Otevřete na počítači nebo tabletu') : tr('Увеличьте ширину окна');
+        if (message) {
+            message.hidden = support.phone;
+            message.textContent = tr('Для работы с планом нужна ширина окна от 600 пикселей. Разверните окно или поверните планшет.');
+        }
         if (previousSupport !== support.supported) {
             previousSupport = support.supported;
             window.dispatchEvent(new CustomEvent('goom-device-support-changed', { detail: support }));

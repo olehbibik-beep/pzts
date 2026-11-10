@@ -6,14 +6,11 @@ function applySavedPlanViewport(view){
     if(Number.isFinite(view.width)&&Number.isFinite(view.height)){offsetX+=(planCanvasWidth()-view.width)/2;offsetY+=(planCanvasHeight()-view.height)/2;}
     requestRedraw();
 }
-document.addEventListener('goom-auth-state-changed',async event=>{
-    const user=event.detail.user;
-    if(!editorReload||reloadResumeAttempted)return;
-    if(!user){reloadResumeAttempted=true;return;}
-    reloadResumeAttempted=true;
-    await window.localProjectStartup;
-    if(isSystemReady||window.getFirebaseUser?.()?.uid!==user.uid)return;
+async function restoreEditorAfterReload(user) {
+    if (!user) return;
     try{
+        await window.localProjectStartup;
+        if(isSystemReady||window.getFirebaseUser?.()?.uid!==user.uid)return;
         const saved=await getSavedProjectData();
         if(!saved?.floors?.length||(saved.ownerUid&&saved.ownerUid!==user.uid))return;
         if(!await loadFromDB({requireUid:user.uid}))return;
@@ -21,5 +18,10 @@ document.addEventListener('goom-auth-state-changed',async event=>{
         isSystemReady=true;changeFloor();applySavedPlanViewport(saved.viewport);saveStateToHistory();
         document.getElementById('welcomeModal').style.display='none';triggerAutoSave({skipCloudSync:true});requestRedraw();
     }catch(error){console.warn('Resume after reload:',error);showWelcomeScreen();}
+}
+document.addEventListener('goom-auth-state-changed', event => {
+    if (!editorReload || reloadResumeAttempted) return;
+    reloadResumeAttempted = true;
+    window.initialEditorResume = restoreEditorAfterReload(event.detail.user);
 });
 window.addEventListener('pagehide',()=>{if(typeof stopDeviceRotation==='function')stopDeviceRotation();if(isSystemReady)saveToDB({skipCloudSync:true});});

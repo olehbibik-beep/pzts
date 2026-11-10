@@ -14,6 +14,7 @@ async function printPlanDirect(){
         if(floor.pdfSource)image=await rasterizePlanPdf(floor,width*floor.image.width/bounds.width);
         else if(floor.rasterSource)image=await rasterizePlanImage(floor,width*floor.image.width/bounds.width);
         const target=new SVGPlanContext(width,height);
+        if (!window.hasProAccess?.()) await emptyCanvasLogo.decode().catch(() => {});
         drawPlanOutput(target,floor,{bounds,widthMM:bounds.width,heightMM:bounds.height,margin:0,options:{theme:'original',coverage}},image);
         if(planPrintURL)URL.revokeObjectURL(planPrintURL);
         planPrintURL=URL.createObjectURL(new Blob([target.toSVG()],{type:'image/svg+xml'}));
@@ -96,6 +97,7 @@ async function makePlanOutput(floor,options=planOutputOptions(),svg=false){
     let image;
     if(floor.pdfSource)image=await rasterizePlanPdf(floor,width*floor.image.width/layout.bounds.width);
     else if(floor.rasterSource)image=await rasterizePlanImage(floor,width*floor.image.width/layout.bounds.width);
+    if (!window.hasProAccess?.()) await emptyCanvasLogo.decode().catch(() => {});
     if(svg){
         const target=new SVGPlanContext(width,height);drawPlanOutput(target,floor,layout,image);
         return {svg:target.toSVG(),layout};
@@ -136,6 +138,9 @@ async function exportPlanFile(format){
 document.getElementById('btnOutputClose').addEventListener('click',()=>{if(!planExportBusy)saveModal.style.display='none';});
 document.querySelectorAll('#saveModal select,#outputCoverage').forEach(input=>input.addEventListener('change',updatePlanOutputPreview));
 new MutationObserver(()=>{if(saveModal.style.display==='flex')updatePlanOutputPreview();}).observe(saveModal,{attributes:true,attributeFilter:['style']});
+emptyCanvasLogo.addEventListener('load', () => {
+    if (isSystemReady && saveModal.style.display === 'flex') updatePlanOutputPreview();
+});
 document.addEventListener('goom-account-changed', () => {
     requestRedraw();
     if (isSystemReady && saveModal.style.display === 'flex') updatePlanOutputPreview();
