@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GOOM</title>
-    <script src="i18n.js?v=20261110-text-22"></script>
-    <script src="device-support.js?v=20261110-text-22"></script>
+    <script src="i18n.js?v=20261110-free-23"></script>
+    <script src="device-support.js?v=20261110-free-23"></script>
     <style>
         :root {
             --bg-main: #121214; --bg-toolbar: #1c1c1f; --bg-input: #252529;
@@ -441,7 +441,7 @@
 
 
     </style>
-    <link rel="stylesheet" href="ui-theme.css?v=20261110-text-22">
+    <link rel="stylesheet" href="ui-theme.css?v=20261110-free-23">
 </head>
 <body>
     <div id="deviceSupportNotice" role="alert">
@@ -568,7 +568,9 @@
     <div class="canvas-container" id="canvasContainer">
         <canvas id="blueprintCanvas"></canvas>
         <div id="tabletRotationHandles" class="tablet-rotation-handles" hidden><button type="button" data-rotate-direction="-1" aria-label="Otočit doleva"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M24 24A11 11 0 1 0 7 10M7 3v7h7"/></svg></button><button type="button" data-rotate-direction="1" aria-label="Otočit doprava"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M8 24A11 11 0 1 1 25 10M25 3v7h-7"/></svg></button></div>
-        <div id="planLoading" class="plan-loading" role="status" aria-label="Načítání projektu..." hidden><img src="Logo.png" alt="" aria-hidden="true"></div>
+        <div id="planLoading" class="plan-loading" role="status" aria-label="Načítání projektu..." hidden>
+            <div class="plan-loading-disc" aria-hidden="true"><img src="Logo.png" alt=""></div>
+        </div>
     </div>
 
     <div class="footer" id="appFooter">
@@ -653,7 +655,7 @@
             </div>
             
             <div class="welcome-art-space">
-                <img src="Hi.png?v=20261110-text-22" fetchpriority="high" decoding="async" alt="" aria-hidden="true">
+                <img src="Hi.png?v=20261110-free-23" fetchpriority="high" decoding="async" alt="" aria-hidden="true">
             </div>
 
         </div>
@@ -963,7 +965,7 @@
                     
                     <section id="overviewFloorDetails" class="overview-floor-details" aria-live="polite"><div class="overview-detail-heading"><strong id="overviewDetailFloor"></strong><span id="overviewDetailPanel"></span></div><div id="overviewDetailCounts"></div><div class="overview-detail-zones-label">Adresy zón</div><div id="overviewDetailZones" class="overview-detail-zones"></div></section>
                 </section>
-                <section class="overview-floor-panel"><div class="overview-artwork"><img id="overviewArtwork" src="NP.png?v=20261110-text-22" alt="Dům, průmyslová budova a věž" loading="lazy" decoding="async"></div><header class="overview-floor-heading"><h3>Podlaží</h3><span>6 NP · 3 PP</span></header><div id="overviewFloors" role="group" aria-label="Vyberte podlaží"></div></section>
+                <section class="overview-floor-panel"><div class="overview-artwork"><img id="overviewArtwork" src="NP.png?v=20261110-free-23" alt="Dům, průmyslová budova a věž" loading="lazy" decoding="async"></div><header class="overview-floor-heading"><h3>Podlaží</h3><span>6 NP · 3 PP</span></header><div id="overviewFloors" role="group" aria-label="Vyberte podlaží"></div></section>
             </div>
         </div>
         <div class="overview-footer">
@@ -982,6 +984,6 @@
         <button type="button" data-tablet-action="delete" class="tool-danger">×</button>
         <button type="button" data-tablet-action="undo">↶</button>
     </div>
-    <script src="bootstrap.js?v=20261110-text-22"></script>
+    <script src="bootstrap.js?v=20261110-free-23"></script>
 </body>
 </html>

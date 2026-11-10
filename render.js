@@ -411,6 +411,21 @@ function drawFloorData(ctx, floor, skipSelection = false, theme = getPlanTheme(f
     drawProjectLegend(ctx, floor, !skipSelection && !isExporting, theme);
 }
 
+function drawFreePlanWatermark(target, width, height, theme) {
+    if (window.hasProAccess?.()) return;
+    const fontSize = Math.min(width, height) * .085;
+    target.save();
+    target.translate(width / 2, height / 2);
+    target.rotate(-Math.PI / 8);
+    target.globalAlpha = theme === 'dark' ? .16 : .14;
+    target.fillStyle = theme === 'dark' ? '#ffffff' : '#172033';
+    target.font = `700 ${fontSize}px sans-serif`;
+    target.textAlign = 'center';
+    target.textBaseline = 'middle';
+    target.fillText('GooM · PZTS FREE', 0, 0);
+    target.restore();
+}
+
 function redraw() {
     if(typeof syncPlanLoading==='function')syncPlanLoading();
     if (!isSystemReady || floors.length === 0) return;
@@ -448,6 +463,10 @@ function redraw() {
         ctx.globalAlpha = 1;
     } else { drawPlanScreenBase(ctx,floor); }
 
+    const theme = floor.image ? getPlanTheme(floor) : 'dark';
+    if (floor.image || floor.devices.length || floor.legend?.visible) {
+        drawFreePlanWatermark(ctx, planCanvasWidth(), planCanvasHeight(), theme);
+    }
     ctx.translate(offsetX, offsetY); ctx.scale(scale, scale);
     if(!floor.image){drawDetectedWalls(ctx,floor);drawPlanGrid(ctx,floor);}
     drawPIRCoverage(ctx, floor);
@@ -464,6 +483,6 @@ function redraw() {
         const w = selEndX - selStartX; const h = selEndY - selStartY;
         ctx.fillRect(selStartX, selStartY, w, h); ctx.strokeRect(selStartX, selStartY, w, h);
     }
-    drawFloorData(ctx, floor, false, floor.image ? getPlanTheme(floor) : 'dark');
+    drawFloorData(ctx, floor, false, theme);
 }
 

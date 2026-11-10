@@ -61,11 +61,17 @@ function drawPlanOutput(target,floor,layout,imageOverride) {
     const marginX=width*margin/widthMM,marginY=height*margin/heightMM;
     const factor=Math.min((width-2*marginX)/bounds.width,(height-2*marginY)/bounds.height);
     target.fillStyle=planBackground(options.theme);target.fillRect(0,0,width,height);
-    target.save();target.translate((width-bounds.width*factor)/2-bounds.minX*factor,(height-bounds.height*factor)/2-bounds.minY*factor);target.scale(factor,factor);
+    const contentX=(width-bounds.width*factor)/2-bounds.minX*factor;
+    const contentY=(height-bounds.height*factor)/2-bounds.minY*factor;
+    target.save();
     const previousExport=isExporting;
     try{
         isExporting=true;calculateDynamicNumbersGlobal(floors);
-        drawPlanSource(target,floor,options.theme,imageOverride);
+        target.save();target.translate(contentX,contentY);target.scale(factor,factor);
+        try { drawPlanSource(target,floor,options.theme,imageOverride); }
+        finally { target.restore(); }
+        drawFreePlanWatermark(target,width,height,options.theme);
+        target.translate(contentX,contentY);target.scale(factor,factor);
         if(options.coverage)drawPIRCoverage(target,floor,true);
         drawFloorData(target,floor,true,options.theme);
     }finally{isExporting=previousExport;target.restore();}
@@ -130,3 +136,7 @@ async function exportPlanFile(format){
 document.getElementById('btnOutputClose').addEventListener('click',()=>{if(!planExportBusy)saveModal.style.display='none';});
 document.querySelectorAll('#saveModal select,#outputCoverage').forEach(input=>input.addEventListener('change',updatePlanOutputPreview));
 new MutationObserver(()=>{if(saveModal.style.display==='flex')updatePlanOutputPreview();}).observe(saveModal,{attributes:true,attributeFilter:['style']});
+document.addEventListener('goom-account-changed', () => {
+    requestRedraw();
+    if (isSystemReady && saveModal.style.display === 'flex') updatePlanOutputPreview();
+});
