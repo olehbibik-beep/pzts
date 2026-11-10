@@ -179,7 +179,7 @@ window.getFirebaseDatabase = async () => {
 window.callProBilling = async (name, data = {}) => {
     if (!await window.ensureFirebaseSession()) throw new Error(tr('Přihlaste se ke svému účtu.'));
     if (!window.firebase.functions) await loadFirebaseScript(firebaseSdkUrls[4]);
-    const result = await window.firebase.functions('europe-west1').httpsCallable(name)({ ...data, language: getGoomLanguage() });
+    const result = await window.firebase.app().functions('europe-west1').httpsCallable(name)({ ...data, language: getGoomLanguage() });
     return result.data;
 };
 

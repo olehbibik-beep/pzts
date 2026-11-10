@@ -1,6 +1,7 @@
 // Czech is the default. Source aliases also cover labels in older saved menu sets.
 (() => {
     const rows = [
+        ['Přístup od správce do: {0}', 'Administrator access until: {0}'],
         ['Zobrazit legendu', 'Show legend'], ['Skrýt legendu', 'Hide legend'], ['Legenda:', 'Legend:'],
         ['Text a poznámky', 'Text and notes'], ['Text na výkresu', 'Plan text'], ['Přidat text na výkres', 'Add text to the plan'],
         ['Sběrnice {0}', 'Bus {0}'], ['+ Přidat', '+ Add'],

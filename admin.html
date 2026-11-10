@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>GooM — администрирование</title>
+    <link rel="stylesheet" href="admin.css?v=1">
+    <script defer src="config.js?v=20261110-admin-24"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/10.14.1/firebase-functions-compat.js"></script>
+    <script defer src="admin.js?v=1"></script>
+</head>
+<body>
+    <header class="admin-header">
+        <a class="brand" href="./"><img src="Logo.png" alt="">GooM <span>Администрирование</span></a>
+        <div class="session" id="adminSession" hidden>
+            <span id="adminIdentity"></span>
+            <button id="adminSignOut" type="button">Выйти</button>
+        </div>
+    </header>
+    <main>
+        <section id="adminLogin" class="card login" aria-labelledby="loginTitle" hidden>
+            <p class="eyebrow">GOOM / ВХОД</p>
+            <h1 id="loginTitle">Панель управления</h1>
+            <p class="muted">Войдите в свой аккаунт GooM с правами администратора.</p>
+            <button class="primary" type="button" id="adminGoogle">Войти через Google</button>
+            <form id="adminLoginForm" class="login-form">
+                <label>Электронная почта <input name="email" type="email" autocomplete="username" required></label>
+                <label>Пароль <input name="password" type="password" autocomplete="current-password" required></label>
+                <button type="submit">Войти по почте</button>
+            </form>
+        </section>
+        <p id="adminStatus" class="status" role="status">Проверяем подключение…</p>
+        <div id="adminWorkspace" hidden>
+            <section aria-labelledby="programTitle">
+                <p class="eyebrow">GOOM / УПРАВЛЕНИЕ</p>
+                <h1 id="programTitle">Программы</h1>
+                <div id="adminPrograms" class="programs"></div>
+            </section>
+            <section class="card users" aria-labelledby="usersTitle">
+                <div class="section-header">
+                    <div><h2 id="usersTitle">Пользователи</h2><p id="adminProgramHint" class="muted"></p></div>
+                    <form id="adminSearch" class="search" role="search">
+                        <input id="adminQuery" type="search" maxlength="320" placeholder="Точный e-mail или UID" aria-label="Поиск по e-mail или UID">
+                        <button type="submit">Найти</button>
+                        <button type="button" id="adminReset">Все</button>
+                    </form>
+                </div>
+                <div class="table-scroll">
+                    <table>
+                        <thead><tr><th scope="col">Аккаунт</th><th scope="col">Роль</th><th scope="col">Pro для <span id="adminActiveProgram"></span></th><th scope="col">Последний вход</th><th scope="col"><span class="sr-only">Действия</span></th></tr></thead>
+                        <tbody id="adminUsers"></tbody>
+                    </table>
+                </div>
+                <div class="pagination">
+                    <span class="muted" id="adminPage"></span>
+                    <button type="button" id="adminPrev">Назад</button>
+                    <button type="button" id="adminNext">Далее</button>
+                </div>
+            </section>
+            <section class="card audit" aria-labelledby="auditTitle">
+                <div class="section-header"><div><h2 id="auditTitle">Журнал действий</h2><p class="muted">Последние 25 изменений доступа и ролей.</p></div><button type="button" id="adminRefreshAudit">Обновить</button></div>
+                <ul id="adminEvents" class="events"></ul>
+            </section>
+        </div>
+    </main>
+    <dialog id="adminUserDialog" aria-labelledby="adminUserTitle">
+        <header class="section-header"><div><h2 id="adminUserTitle"></h2><p class="muted" id="adminUserUid"></p></div><button type="button" id="adminCloseDialog" aria-label="Закрыть">×</button></header>
+        <p id="adminUserStatus" class="status" role="status" hidden></p>
+        <form id="adminRoleForm" class="control-row" hidden>
+            <label>Роль <select id="adminRole"><option value="user">Пользователь</option><option value="admin">Администратор</option></select></label>
+            <button type="submit">Сохранить роль</button>
+        </form>
+        <div id="adminUserPrograms" class="user-programs"></div>
+    </dialog>
+</body>
+</html>

@@ -1,6 +1,7 @@
 (() => {
     let profile = null;
     let license = null;
+    let grant = null;
     let uid = null;
     let generation = 0;
     let ready = Promise.resolve();
@@ -17,15 +18,14 @@
         return Number(ico[7]) === (11 - sum % 11) % 10;
     }
     window.isValidCompanyIco = validIco;
-    function licenseIsCurrent() {
-        const value = license?.applicationExpiresAt?.[APP_PRODUCT];
-        const expiresAt = value?.toMillis?.() ?? value?.seconds * 1000;
-        return Number.isFinite(expiresAt) && expiresAt > Date.now();
-    }
-    window.hasProAccess = () => Boolean(window.getFirebaseUser()?.emailVerified && uid === window.getFirebaseUser()?.uid
-        && license?.status === 'active' && license.uid === uid && license.plan === 'pro'
+    const millis = value => value?.toMillis?.() ?? value?.seconds * 1000;
+    const paidUntil = () => millis(license?.applicationExpiresAt?.[APP_PRODUCT]);
+    const grantedUntil = () => millis(grant?.expiresAt?.[APP_PRODUCT]);
+    const hasPaidAccess = () => license?.status === 'active' && license.uid === uid && license.plan === 'pro'
         && license.paymentStatus === 'paid' && license.source === 'stripe' && license.billingMode === 'monthly'
-        && license.applications?.includes(APP_PRODUCT) && licenseIsCurrent());
+        && license.applications?.includes(APP_PRODUCT) && paidUntil() > Date.now();
+    window.hasProAccess = () => Boolean(window.getFirebaseUser()?.emailVerified && uid === window.getFirebaseUser()?.uid
+        && (hasPaidAccess() || grantedUntil() > Date.now()));
     window.hasCloudAccess = window.hasProAccess;
 
     function feedback(message = '', error = false) {
@@ -47,15 +47,18 @@
         byId('btnAccountVerifyEmail').hidden = Boolean(user?.emailVerified);
         byId('btnAccountRefresh').textContent = tr(user?.emailVerified ? 'Obnovit údaje' : 'E-mail jsem ověřil(a)');
         byId('accountCloudInfo').textContent = tr(entitled ? 'PRO je aktivní. Cloudové úložiště je připraveno.' : 'Cloudové úložiště je součástí PRO.');
-        byId('accountCloudKeyBlock').hidden = !entitled;
-        byId('accountCloudKey').value = entitled ? license.licenseId || `PZTS-PRO-${license.keySuffix}` : '';
+        const hasKey = entitled && hasPaidAccess();
+        byId('accountCloudKeyBlock').hidden = !hasKey;
+        byId('accountCloudKey').value = hasKey ? license.licenseId || `PZTS-PRO-${license.keySuffix}` : '';
         byId('btnAccountCopyKey').hidden = !entitled;
         byId('btnManageSubscription').hidden = !license?.billingCustomerId;
-        const expires = license?.applicationExpiresAt?.[APP_PRODUCT];
-        const expiryMs = expires?.toMillis?.() ?? expires?.seconds * 1000;
-        byId('accountSubscriptionPeriod').textContent = Number.isFinite(expiryMs)
-            ? tr`Přístup do: ${new Date(expiryMs).toLocaleDateString(getGoomLanguage() === 'cs' ? 'cs-CZ' : 'en-GB')}`
-                + ' · ' + tr(license.cancelAtPeriodEnd ? 'Automatické obnovení je vypnuto.' : 'Měsíční předplatné.') : '';
+        const formatDate = value => new Date(value).toLocaleDateString(getGoomLanguage() === 'cs' ? 'cs-CZ' : 'en-GB');
+        const periods = [];
+        if (Number.isFinite(paidUntil())) {
+            periods.push(tr`Přístup do: ${formatDate(paidUntil())}` + ' · ' + tr(license.cancelAtPeriodEnd ? 'Automatické obnovení je vypnuto.' : 'Měsíční předplatné.'));
+        }
+        if (grantedUntil() > Date.now()) periods.push(tr`Přístup od správce do: ${formatDate(grantedUntil())}`);
+        byId('accountSubscriptionPeriod').textContent = periods.join(' · ');
         const label = tr('Uživatelský účet');
         const toolbarButton = byId('btnOpenCloudProjectsToolbar');
         toolbarButton.setAttribute('aria-label', label);
@@ -69,9 +72,8 @@
     function announce() {
         render();
         clearTimeout(expiryTimer);
-        const expires = license?.applicationExpiresAt?.[APP_PRODUCT];
-        const expiryMs = expires?.toMillis?.() ?? expires?.seconds * 1000;
-        if (expiryMs > Date.now()) expiryTimer = setTimeout(announce, Math.min(2147483647, expiryMs - Date.now() + 25));
+        const expiryMs = Math.min(...[paidUntil(), grantedUntil()].filter(value => value > Date.now()));
+        if (Number.isFinite(expiryMs)) expiryTimer = setTimeout(announce, Math.min(2147483647, expiryMs - Date.now() + 25));
         document.dispatchEvent(new CustomEvent('goom-account-changed', { detail: { user: window.getFirebaseUser(), profile, licensed: window.hasCloudAccess() } }));
     }
     function fillForm() {
@@ -97,7 +99,8 @@
         const db = await window.getFirebaseDatabase();
         const profileRef = db.collection('users').doc(user.uid);
         const licenseRef = db.collection('cloudLicenses').doc(user.uid);
-        let [storedProfile, storedLicense] = await Promise.all([profileRef.get(), licenseRef.get()]);
+        const grantRef = db.collection('goomProgramGrants').doc(user.uid);
+        let [storedProfile, storedLicense, storedGrant] = await Promise.all([profileRef.get(), licenseRef.get(), grantRef.get().catch(() => null)]);
         if (sessionGeneration !== generation) return;
         if (!storedProfile.exists) {
             const pending = window.pendingAccountRegistration;
@@ -111,6 +114,7 @@
         if (sessionGeneration !== generation) return;
         profile = storedProfile.data();
         license = storedLicense.exists ? storedLicense.data() : null;
+        grant = storedGrant?.exists ? storedGrant.data() : null;
         announce();
         fillForm();
         if (sessionGeneration !== generation) return;
@@ -125,7 +129,16 @@
                 announce();
                 feedback(tr('Údaje účtu nelze načíst. Zkuste to znovu.'), true);
             });
-            unsubscribe = [watch(profileRef, value => { profile = value; }), watch(licenseRef, value => { license = value; })];
+            unsubscribe = [watch(profileRef, value => { profile = value; }), watch(licenseRef, value => { license = value; }),
+                grantRef.onSnapshot(snapshot => {
+                    if (sessionGeneration !== generation) return;
+                    grant = snapshot.exists ? snapshot.data() : null;
+                    announce();
+                }, () => {
+                    if (sessionGeneration !== generation) return;
+                    grant = null;
+                    announce();
+                })];
         }
     }
     window.refreshUserAccount = async () => {
@@ -136,7 +149,7 @@
         const sessionGeneration = generation;
         ready = load(user, sessionGeneration).catch(() => {
             if (sessionGeneration !== generation) return;
-            license = null;
+            license = null; grant = null;
             announce();
             feedback(tr('Údaje účtu nelze načíst. Zkuste to znovu.'), true);
         });
@@ -182,13 +195,13 @@
         const sessionGeneration = generation;
         unsubscribe.forEach(stop => stop()); unsubscribe = [];
         uid = user?.uid || null;
-        profile = null; license = null;
+        profile = null; license = null; grant = null;
         feedback();
         if (!user) byId('userAccountModal').style.display = 'none';
         announce();
         ready = user ? load(user, sessionGeneration).catch(() => {
             if (sessionGeneration !== generation) return;
-            license = null;
+            license = null; grant = null;
             announce();
             feedback(tr('Údaje účtu nelze načíst. Zkuste to znovu.'), true);
         }) : Promise.resolve();
