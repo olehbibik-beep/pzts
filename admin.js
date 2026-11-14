@@ -6,7 +6,8 @@
     };
     const date = new Intl.DateTimeFormat('ru', { dateStyle: 'medium', timeStyle: 'short' });
     const dialog = byId('adminUserDialog');
-    let auth, call, session, selectedUser;
+    let auth, db, session, selectedUser;
+    const pageSize = 25;
     let epoch = 0, pageRequest = 0;
     let query = '', users = [], tokens = [null], pageIndex = 0, nextPage = null;
     let program = 'PZTS';
@@ -58,17 +59,79 @@
         byId('adminUserUid').textContent = '';
     }
 
-    async function request(action, fields = {}) {
-        const result = await call({ action, ...fields });
-        return result.data;
+    function denied() {
+        return Object.assign(new Error('Administrator access required'), { code: 'permission-denied' });
+    }
+
+    async function readSession() {
+        const user = auth.currentUser;
+        if (!user) throw denied();
+        const record = await db.collection('goomAdmins').doc(user.uid).get({ source: 'server' });
+        const role = record.data()?.role;
+        if (!['owner', 'admin'].includes(role)) throw denied();
+        return { uid: user.uid, role, programs: Object.keys(programLabels) };
+    }
+
+    async function readUser(profile) {
+        const uid = profile.id;
+        const collections = ['goomAdmins', 'goomProgramGrants'];
+        const [role, grant] = await Promise.all(collections.map(name => db.collection(name).doc(uid).get({ source: 'server' })));
+        const data = profile.data();
+        const programs = Object.fromEntries(Object.keys(programLabels).map(app => [app, {
+            manualUntil: grant.data()?.expiresAt?.[app]?.toMillis() ?? null
+        }]));
+        return { uid, name: data.displayName || '', email: data.email || '', role: role.data()?.role || 'user', programs };
+    }
+
+    async function readUsers(query, cursor) {
+        const profiles = db.collection('users');
+        if (query && !query.includes('@')) {
+            if (query.length > 128 || query.includes('/') || query === '.' || query === '..') {
+                throw Object.assign(new Error('Invalid UID'), { code: 'invalid-argument' });
+            }
+            const profile = await profiles.doc(query).get({ source: 'server' });
+            return { users: profile.exists ? [await readUser(profile)] : [], nextPage: null };
+        }
+        let list = query ? profiles.where('email', '==', query) : profiles.orderBy(firebase.firestore.FieldPath.documentId());
+        if (cursor) list = list.startAfter(cursor);
+        const page = await list.limit(pageSize).get({ source: 'server' });
+        return { users: await Promise.all(page.docs.map(readUser)), nextPage: !query && page.size === pageSize ? page.docs.at(-1) : null };
+    }
+
+    async function writeChange(action, { uid, role, application, days }) {
+        const actorUid = session.uid;
+        const ref = db.collection(action === 'role' ? 'goomAdmins' : 'goomProgramGrants').doc(uid);
+        const audit = db.collection('goomAdminAudit').doc();
+        const timestamp = firebase.firestore.FieldValue.serverTimestamp;
+        return db.runTransaction(async transaction => {
+            const previous = (await transaction.get(ref)).data();
+            let before, after, data;
+            if (action === 'role') {
+                before = previous?.role || 'user';
+                after = role;
+                if (before === after) return { changed: false };
+                data = { role, updatedBy: actorUid };
+            } else {
+                const expiresAt = { ...previous?.expiresAt };
+                before = expiresAt[application] ?? null;
+                after = days ? firebase.firestore.Timestamp.fromMillis(Date.now() + days * 86_400_000) : null;
+                if (!after && !before) return { changed: false };
+                if (after) expiresAt[application] = after;
+                else delete expiresAt[application];
+                data = { application, expiresAt };
+            }
+            transaction.set(ref, { ...data, updatedAt: timestamp(), auditId: audit.id });
+            transaction.set(audit, { action, actorUid, targetUid: uid, before, after, application: application ?? null, createdAt: timestamp() });
+            return { changed: true };
+        });
     }
 
     function handleError(error, currentEpoch, target) {
         if (currentEpoch !== epoch) return;
-        if (['functions/permission-denied', 'functions/unauthenticated'].includes(error.code)) {
+        if (['permission-denied', 'unauthenticated'].includes(error.code)) {
             // A role or session may have been revoked while this page was open.
             const recheck = async () => {
-                try { await request('session'); }
+                try { await readSession(); }
                 catch {
                     if (currentEpoch !== epoch) return;
                     epoch++;
@@ -97,25 +160,21 @@
         });
         byId('adminPrograms').replaceChildren(...cards);
         byId('adminActiveProgram').textContent = program;
-        byId('adminProgramHint').textContent = `Статус доступа к ${program}. В карточке пользователя доступны все четыре программы.`;
     }
 
     function dateLabel(value) { return value ? date.format(new Date(value)) : '—'; }
 
     function accessLines(user, application) {
         const access = user.programs[application];
-        const lines = [];
-        if (access.stripeUntil > Date.now()) lines.push(`Stripe до ${dateLabel(access.stripeUntil)}`);
-        if (access.manualUntil > Date.now()) lines.push(`Выдан до ${dateLabel(access.manualUntil)}`);
-        return lines.length ? lines : ['Free'];
+        return access.manualUntil > Date.now() ? [`Выдан до ${dateLabel(access.manualUntil)}`] : ['—'];
     }
 
     function renderUsers() {
         const rows = users.map(user => {
             const row = element('tr');
             const account = element('td');
-            const accountState = user.disabled ? 'Отключён' : user.verified ? 'E-mail подтверждён' : 'E-mail не подтверждён';
-            account.append(element('strong', user.name || user.email || user.uid), element('span', user.name && user.email ? `${user.email} · ${accountState}` : accountState, 'subline'));
+            account.append(element('strong', user.name || user.email || user.uid));
+            if (user.name && user.email) account.append(element('span', user.email, 'subline'));
             const access = element('td');
             access.append(...accessLines(user, program).map(text => element('span', text, 'subline')));
             const action = element('td');
@@ -129,7 +188,7 @@
                 dialog.showModal();
             });
             action.append(button);
-            row.append(account, element('td', roleLabels[user.role]), access, element('td', dateLabel(user.lastSignIn)), action);
+            row.append(account, element('td', roleLabels[user.role]), access, action);
             return row;
         });
         byId('adminUsers').replaceChildren(...rows);
@@ -143,7 +202,7 @@
         const revision = ++pageRequest;
         const pageToken = search === query ? tokens[index] : null;
         try {
-            const result = await request('users', { query: search, pageToken });
+            const result = await readUsers(search, pageToken);
             if (currentEpoch !== epoch || revision !== pageRequest) return;
             if (search !== query) tokens = [null];
             query = search;
@@ -155,14 +214,6 @@
             status('');
         } catch (error) {
             if (currentEpoch !== epoch || revision !== pageRequest) return;
-            if (error.code === 'functions/not-found') {
-                query = search;
-                pageIndex = 0;
-                nextPage = null;
-                tokens = [null];
-                users = [];
-                renderUsers();
-            }
             handleError(error, currentEpoch);
         }
     }
@@ -170,7 +221,11 @@
     async function loadAudit() {
         const currentEpoch = epoch;
         try {
-            const { events } = await request('audit');
+            const snapshots = await db.collection('goomAdminAudit').orderBy('createdAt', 'desc').limit(pageSize).get({ source: 'server' });
+            const events = snapshots.docs.map(snapshot => {
+                const entry = snapshot.data();
+                return { ...entry, createdAt: entry.createdAt?.toMillis(), after: entry.after?.toMillis?.() ?? entry.after };
+            });
             if (currentEpoch !== epoch) return;
             const items = events.map(event => {
                 const actor = event.actorEmail || event.actorUid;
@@ -192,13 +247,13 @@
         byId('adminUserUid').textContent = `${user.email || ''} · ${user.uid} · ${roleLabels[user.role]}`;
         const canEdit = user.uid !== session.uid && user.role !== 'owner' && (session.role === 'owner' || user.role === 'user');
         const canEditRole = canEdit && session.role === 'owner';
+        const canGrant = canEdit || (user.uid === session.uid && session.role === 'owner');
         byId('adminRoleForm').hidden = !canEditRole;
         byId('adminRole').value = user.role;
-        byId('adminRole').querySelector('[value="admin"]').disabled = !user.verified || user.disabled;
         const rows = session.programs.map(application => {
             const row = element('section', undefined, 'grant');
             row.append(element('h3', application), element('p', accessLines(user, application).join(' · '), 'muted'));
-            if (!canEdit) return row;
+            if (!canGrant) return row;
             const form = element('form', undefined, 'control-row');
             const label = element('label', 'Дней доступа');
             const input = element('input');
@@ -206,7 +261,6 @@
             label.append(input);
             const grantButton = element('button', 'Выдать Pro', 'primary');
             grantButton.type = 'submit';
-            grantButton.disabled = user.disabled || !user.verified;
             const revoke = element('button', 'Отозвать', 'danger');
             revoke.type = 'button';
             revoke.disabled = !(user.programs[application].manualUntil > Date.now());
@@ -233,8 +287,8 @@
         controls.forEach(control => { control.disabled = true; });
         status('Сохраняем…', false, 'adminUserStatus');
         try {
-            const { changed } = await request(action, { uid, ...fields });
-            const { users: matches } = await request('users', { query: uid });
+            const { changed } = await writeChange(action, { uid, ...fields });
+            const { users: matches } = await readUsers(uid);
             if (currentEpoch !== epoch) return;
             selectedUser = matches[0];
             renderUserDialog();
@@ -256,7 +310,7 @@
         if (!user) { status(''); return; }
         status('Проверяем права доступа…');
         try {
-            const verified = await request('session');
+            const verified = await readSession();
             if (currentEpoch !== epoch) return;
             session = verified;
             byId('adminIdentity').textContent = `${user.email || user.uid} · ${roleLabels[session.role]}`;
@@ -281,7 +335,7 @@
     try {
         if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
         auth = firebase.auth();
-        call = firebase.app().functions('europe-west1').httpsCallable('goomAdmin');
+        db = firebase.firestore();
         auth.onAuthStateChanged(onSession, error => status(readableError(error), true));
     } catch (error) { status(readableError(error), true); return; }
 

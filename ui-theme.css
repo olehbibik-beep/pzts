@@ -312,9 +312,9 @@ button.btn-cad, .toolbar-icon-button, .device-btn, .footer-icon, .ui-select-trig
 /* Three ambient figures instead of twelve; keep them soft and quiet. */
 .modal-blueprint-host { opacity:.25; filter:blur(.8px); }
 .motion-surface[data-modal-open="false"] .modal-blueprint { display:none; }
-.plan-loading { position:absolute; inset:0; z-index:30; display:grid; place-items:center; pointer-events:none; background:rgba(24,26,29,.22); }
+.plan-loading { position:absolute; inset:0; z-index:30; display:grid; place-items:center; pointer-events:none; background:transparent; }
 .plan-loading[hidden] { display:none; }
-.startup-loading { position:fixed; z-index:1000001; pointer-events:auto; background:#252529; }
+.startup-loading { position:fixed; z-index:1000001; pointer-events:auto; }
 .plan-loading-disc { display:grid; place-items:center; width:110px; height:110px; border-radius:50%; background:rgba(255,255,255,.24); }
 .plan-loading img { width:76px; height:76px; object-fit:contain; animation:plan-whale-spin 2.4s linear infinite; will-change:transform; }
 @keyframes plan-whale-spin { to { transform:rotate(-360deg); } }
