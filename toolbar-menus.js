@@ -22,11 +22,30 @@ const toolbarMenuTypes = toolbarMenuDeviceButtons.map(button => ({
 const validToolbarMenuTypes = new Set(toolbarMenuTypes.map(item => item.type));
 const defaultToolbarMenu = {
     id: 'default',
-    name: tr('Основное меню'),
+    name: 'Default',
     deviceTypes: toolbarMenuTypes.map(item => item.type)
 };
+const proToolbarLabels = {
+    panel: 'EZS', expander: 'EXP', abax: 'RF', keypad: 'KEY', pir: 'PIR', pir_wl: 'PIR+',
+    magnet: 'MC', magnet_wl: 'MC+', glassbreak: 'GB', panic: 'SOS', siren: 'SIR'
+};
+const proToolbarMenu = {
+    id: 'pro',
+    name: 'PRO',
+    deviceTypes: defaultToolbarMenu.deviceTypes,
+    icons: Object.fromEntries(Object.entries(proToolbarLabels).map(([type, label]) => {
+        const shape = { x: 200, y: 200, rotation: 0, color: COLORS[type], stroke: 17 };
+        return [type, sanitizeIconShapes([
+            { ...shape, kind: 'roundRect', size: 302, fill: true, fillColor: '#ffffff' },
+            { ...shape, kind: 'text', size: label.length > 3 ? 103 : 124, text: label, fontWeight: 800 }
+        ])];
+    }))
+};
+const builtInToolbarMenus = [defaultToolbarMenu, proToolbarMenu];
+const isBuiltInToolbarMenu = menu => builtInToolbarMenus.some(preset => preset.id === menu.id);
+const canEditToolbarMenus = () => Boolean(window.hasProAccess?.());
 
-let toolbarMenus = [defaultToolbarMenu];
+let toolbarMenus = [...builtInToolbarMenus];
 let activeToolbarMenuId = defaultToolbarMenu.id;
 let editingToolbarMenu = null;
 let editingToolbarMenuIsNew = false;
@@ -34,11 +53,15 @@ let toolbarMenuPreviousActiveId = null;
 let toolbarMenuEditorOriginal = '';
 
 function sanitizeToolbarMenus(value) {
-    if (!Array.isArray(value)) return [defaultToolbarMenu];
-    const seenIds = new Set();
-    const menus = value.slice(0, toolbarMenuLimit).filter(menu => menu && typeof menu === 'object').map((menu, index) => {
+    if (!Array.isArray(value)) return [...builtInToolbarMenus];
+    const seenIds = new Set(builtInToolbarMenus.map(menu => menu.id));
+    const legacyDefaultNames = ['Default', 'Основное меню', 'Hlavní nabídka', 'Main menu'];
+    const menus = value.filter(menu => menu && typeof menu === 'object' && menu.id !== 'pro')
+        .filter(menu => menu.id !== 'default' || Object.keys(menu.icons || {}).length
+            || menu.deviceTypes?.length !== defaultToolbarMenu.deviceTypes.length || !legacyDefaultNames.includes(menu.name))
+        .slice(0, toolbarMenuLimit).map((menu, index) => {
         let id = typeof menu.id === 'string' && menu.id.trim() ? menu.id.trim().slice(0, 80) : `menu-${index + 1}`;
-        if (seenIds.has(id)) id = `${id}-${index + 1}`;
+        while (seenIds.has(id)) id += '-copy';
         seenIds.add(id);
         const deviceTypes = Array.isArray(menu.deviceTypes)
             ? [...new Set(menu.deviceTypes.filter(type => validToolbarMenuTypes.has(type)))]
@@ -57,7 +80,7 @@ function sanitizeToolbarMenus(value) {
         }
         return sanitizedMenu;
     });
-    return menus.length ? menus : [defaultToolbarMenu];
+    return [...builtInToolbarMenus, ...menus];
 }
 
 function loadToolbarMenus() {
@@ -66,12 +89,12 @@ function loadToolbarMenus() {
         if (!stored) return;
         const data = JSON.parse(stored);
         toolbarMenus = sanitizeToolbarMenus(data.menus);
-        activeToolbarMenuId = toolbarMenus.some(menu => menu.id === data.activeMenuId)
-            ? data.activeMenuId
-            : toolbarMenus[0].id;
+        const savedId = data.version !== 2 && data.activeMenuId === 'default'
+            ? toolbarMenus.find(menu => menu.id === 'default-copy')?.id || 'default' : data.activeMenuId;
+        activeToolbarMenuId = toolbarMenus.some(menu => menu.id === savedId) ? savedId : defaultToolbarMenu.id;
     } catch (error) {
         console.error('Не удалось загрузить сохранённые наборы меню:', error);
-        toolbarMenus = [defaultToolbarMenu];
+        toolbarMenus = [...builtInToolbarMenus];
         activeToolbarMenuId = defaultToolbarMenu.id;
     }
 }
@@ -79,9 +102,9 @@ function loadToolbarMenus() {
 function saveToolbarMenus() {
     try {
         localStorage.setItem(toolbarMenuStorageKey, JSON.stringify({
-            version: 1,
+            version: 2,
             activeMenuId: activeToolbarMenuId,
-            menus: toolbarMenus
+            menus: toolbarMenus.filter(menu => !isBuiltInToolbarMenu(menu))
         }));
         return true;
     } catch (error) {
@@ -97,12 +120,10 @@ function getActiveToolbarMenu() {
 
 function applyToolbarMenu(menu, persist = true) {
     if (!menu) return;
-    const menuChanged = activeToolbarMenuId !== menu.id;
+    const cycleButton = document.getElementById('btnCycleToolbarMenu');
+    const menuChanged = cycleButton.dataset.menuId !== menu.id;
     activeToolbarMenuId = menu.id;
-    if (menuChanged && typeof customDeviceIcons !== 'undefined') {
-        customDeviceIcons = menu.icons ? JSON.parse(JSON.stringify(menu.icons)) : {};
-        if (typeof refreshCustomDeviceIcons === 'function') refreshCustomDeviceIcons();
-    }
+    if (menuChanged) applyToolbarMenuIcons(menu);
     const visibleTypes = new Set(menu.deviceTypes);
     toolbarMenuDeviceButtons.forEach(button => {
         button.hidden = !visibleTypes.has(button.dataset.type);
@@ -123,12 +144,19 @@ function applyToolbarMenu(menu, persist = true) {
         selectedTool = 'select';
         document.querySelectorAll('#deviceSelector .device-btn').forEach(button => button.classList.remove('active'));
     }
-    const cycleButton = document.getElementById('btnCycleToolbarMenu');
-    cycleButton.title = tr`Текущий набор: ${menu.name}. Нажмите, чтобы переключить`;
+    cycleButton.dataset.menuId = menu.id;
+    cycleButton.title = canEditToolbarMenus() ? tr`Текущий набор: ${menu.name}. Нажмите, чтобы переключить` : menu.name;
     cycleButton.setAttribute('aria-label', tr`Текущий набор меню: ${menu.name}. Переключить набор`);
+    document.getElementById('activeToolbarMenuName').textContent = menu.name;
+    cycleButton.disabled = !canEditToolbarMenus();
 
     if (persist) saveToolbarMenus();
     if (typeof requestRedraw === 'function') requestRedraw();
+}
+
+function applyToolbarMenuIcons(menu = getActiveToolbarMenu()) {
+    customDeviceIcons = cloneIconShapes(menu?.icons || {});
+    refreshCustomDeviceIcons();
 }
 
 function toolbarMenuButtonContent(type, menu) {
@@ -137,20 +165,6 @@ function toolbarMenuButtonContent(type, menu) {
         : null;
     if (iconDataUrl) return `<img src="${iconDataUrl}" alt="" style="width:22px;height:22px;object-fit:contain;">`;
     return defaultDeviceButtonContent.get(type) || '';
-}
-
-function saveCustomIconsToActiveMenu() {
-    const menu = getActiveToolbarMenu();
-    if (!menu) return;
-    menu.icons = JSON.parse(JSON.stringify(customDeviceIcons));
-    if (editingToolbarMenu?.id === menu.id) editingToolbarMenu.icons = JSON.parse(JSON.stringify(menu.icons));
-    if (toolbarMenuEditorOriginal) {
-        const original = JSON.parse(toolbarMenuEditorOriginal);
-        original.icons = JSON.parse(JSON.stringify(menu.icons));
-        toolbarMenuEditorOriginal = JSON.stringify(original);
-    }
-    saveToolbarMenus();
-    renderToolbarMenuPresets();
 }
 
 function renderToolbarMenuPresets() {
@@ -170,6 +184,7 @@ function renderToolbarMenuPresets() {
         name.maxLength = 32;
         name.className = 'toolbar-menu-preset-name';
         name.value = menu.name;
+        name.readOnly = isBuiltInToolbarMenu(menu);
         name.setAttribute('aria-label', tr`Название меню: ${menu.name}`);
         name.addEventListener('focus', async () => { await selectToolbarMenuForEditing(menu.id, true); });
         name.addEventListener('input', () => {
@@ -177,6 +192,7 @@ function renderToolbarMenuPresets() {
             editingToolbarMenu.name = name.value.slice(0, 32);
             updateToolbarMenuEditorStatus();
         });
+        const preview = editingToolbarMenu?.id === menu.id ? editingToolbarMenu : menu;
         const icons = document.createElement('span');
         icons.className = 'toolbar-menu-preset-icons';
         menu.deviceTypes.forEach(type => {
@@ -187,9 +203,10 @@ function renderToolbarMenuPresets() {
             iconButton.title = tr`Выбрать значок: ${typeInfo?.title || type}`;
             iconButton.setAttribute('aria-label', iconButton.title);
             iconButton.classList.toggle('selected', activeToolbarMenuId === menu.id && iconEditorTarget.value === type);
-            iconButton.innerHTML = toolbarMenuButtonContent(type, menu);
+            iconButton.innerHTML = toolbarMenuButtonContent(type, preview);
             iconButton.addEventListener('click', async event => {
                 event.stopPropagation();
+                document.querySelector('.icon-editor-text-input')?.blur();
                 if (editingToolbarMenu?.id !== menu.id && !await selectToolbarMenuForEditing(menu.id)) return;
                 if (iconEditorDeviceTypes.some(([iconType]) => iconType === type)) {
                     selectIconEditorTarget(type);
@@ -203,12 +220,12 @@ function renderToolbarMenuPresets() {
         removeMenu.textContent = '×';
         removeMenu.title = tr`Удалить меню «${menu.name}»`;
         removeMenu.setAttribute('aria-label', removeMenu.title);
-        removeMenu.disabled = toolbarMenus.length < 2;
+        removeMenu.disabled = isBuiltInToolbarMenu(menu);
         removeMenu.addEventListener('click', () => deleteToolbarMenu(menu.id));
         card.append(indicator, name, icons, removeMenu);
         container.append(card);
     });
-    addMenuButton.disabled = toolbarMenus.length >= toolbarMenuLimit;
+    addMenuButton.disabled = toolbarMenus.length - builtInToolbarMenus.length >= toolbarMenuLimit;
     addMenuButton.title = addMenuButton.disabled ? tr('Можно создать не более 7 меню') : tr('Добавить меню');
     toolbarMenuActions.prepend(addMenuButton);
     updateToolbarMenuRowHighlights();
@@ -232,6 +249,12 @@ function updateToolbarMenuRowHighlights() {
 function updateToolbarMenuEditorStatus() {
     const saveButton = document.getElementById('btnToolbarMenuSave');
     if (!editingToolbarMenu) return;
+    if (isBuiltInToolbarMenu(editingToolbarMenu)) {
+        saveButton.disabled = true;
+        saveButton.textContent = tr('Сохранено');
+        document.getElementById('toolbarMenuEditorStatus').textContent = tr('Vytvořte kopii sady pro úpravy.');
+        return;
+    }
     const changed = editingToolbarMenuIsNew
         || JSON.stringify(editingToolbarMenu) !== toolbarMenuEditorOriginal;
     document.getElementById('toolbarMenuEditorStatus').textContent = changed
@@ -266,15 +289,16 @@ async function selectToolbarMenuForEditing(id, focusName = false) {
     discardUnsavedNewMenu();
     const menu = toolbarMenus.find(item => item.id === id);
     if (!menu) return false;
+    document.querySelector('.icon-editor-text-input')?.blur();
     editingToolbarMenu = JSON.parse(JSON.stringify(menu));
     editingToolbarMenuIsNew = false;
     toolbarMenuEditorOriginal = JSON.stringify(editingToolbarMenu);
     applyToolbarMenu(menu);
     const firstEditableType = menu.deviceTypes.find(type =>
         iconEditorDeviceTypes.some(([iconType]) => iconType === type));
-    if (firstEditableType) selectIconEditorTarget(firstEditableType);
+    selectIconEditorTarget(firstEditableType || iconEditorTarget.value);
     renderToolbarMenuEditor();
-    if (focusName) document.querySelector(`.toolbar-menu-preset[data-menu-id="${id}"] .toolbar-menu-preset-name`)?.focus();
+    if (focusName) document.querySelector(`.toolbar-menu-preset[data-menu-id="${CSS.escape(id)}"] .toolbar-menu-preset-name`)?.focus();
     return true;
 }
 
@@ -305,19 +329,23 @@ document.getElementById('btnIconEditorClose').addEventListener('click', async ev
     document.getElementById('iconEditorModal').style.display = 'none';
 }, true);
 document.getElementById('btnToolbarMenuNew').addEventListener('click', async () => {
-    if (toolbarMenus.length >= toolbarMenuLimit) {
+    if (!canEditToolbarMenus()) return;
+    if (toolbarMenus.length - builtInToolbarMenus.length >= toolbarMenuLimit) {
         showAppAlert(tr('Достигнут лимит в 7 меню.'), tr('Лимит меню'));
         return;
     }
     if (editorHasUnsavedChanges() && !await showAppConfirm(tr('Сохранить текущие изменения перед созданием меню?'))) return;
-    if (editorHasUnsavedChanges()) document.getElementById('btnToolbarMenuSave').click();
+    if (editorHasUnsavedChanges()) {
+        document.getElementById('btnToolbarMenuSave').click();
+        if (editorHasUnsavedChanges()) return;
+    }
     const source = getActiveToolbarMenu();
     toolbarMenuPreviousActiveId = activeToolbarMenuId;
     editingToolbarMenu = {
         id: `menu-${Date.now()}`,
-        name: tr`Меню ${toolbarMenus.length + 1}`,
+        name: tr`Меню ${toolbarMenus.length - builtInToolbarMenus.length + 1}`,
         deviceTypes: [...source.deviceTypes],
-        icons: JSON.parse(JSON.stringify(source.icons || customDeviceIcons))
+        icons: JSON.parse(JSON.stringify(source.icons || {}))
     };
     editingToolbarMenuIsNew = true;
     toolbarMenuEditorOriginal = '';
@@ -325,30 +353,30 @@ document.getElementById('btnToolbarMenuNew').addEventListener('click', async () 
     applyToolbarMenu(editingToolbarMenu, false);
     const firstEditableType = editingToolbarMenu.deviceTypes.find(type =>
         iconEditorDeviceTypes.some(([iconType]) => iconType === type));
-    if (firstEditableType) selectIconEditorTarget(firstEditableType);
+    selectIconEditorTarget(firstEditableType || iconEditorTarget.value);
     renderToolbarMenuEditor();
     document.querySelector(`.toolbar-menu-preset[data-menu-id="${editingToolbarMenu.id}"] .toolbar-menu-preset-name`)?.focus();
 });
 async function deleteToolbarMenu(id) {
     const menu = toolbarMenus.find(item => item.id === id);
-    if (!menu || toolbarMenus.length < 2 || !await showAppConfirm(tr`Удалить меню «${menu.name}»?`)) return;
+    if (!menu || isBuiltInToolbarMenu(menu) || !canEditToolbarMenus() || !await showAppConfirm(tr`Удалить меню «${menu.name}»?`)) return;
     toolbarMenus = toolbarMenus.filter(item => item.id !== id);
-    if (!toolbarMenus.length) toolbarMenus = [{ ...defaultToolbarMenu }];
     const activeMenuWasDeleted = activeToolbarMenuId === id;
     if (activeMenuWasDeleted) activeToolbarMenuId = id;
     if (editingToolbarMenu?.id === id) editingToolbarMenu = JSON.parse(JSON.stringify(getActiveToolbarMenu()));
     applyToolbarMenu(activeMenuWasDeleted ? toolbarMenus[0] : getActiveToolbarMenu(), false);
     editingToolbarMenuIsNew = false;
     toolbarMenuEditorOriginal = JSON.stringify(editingToolbarMenu);
+    selectIconEditorTarget(iconEditorTarget.value);
     saveToolbarMenus();
     renderToolbarMenuEditor();
 }
 document.getElementById('btnToolbarMenuSave').addEventListener('click', () => {
-    if (!editingToolbarMenu) return;
+    if (!editingToolbarMenu || isBuiltInToolbarMenu(editingToolbarMenu) || !canEditToolbarMenus()) return;
     const name = editingToolbarMenu.name.trim();
     if (!name) {
         showAppAlert(tr('Укажите название набора меню.'), tr('Название меню'));
-        document.querySelector(`.toolbar-menu-preset[data-menu-id="${editingToolbarMenu.id}"] .toolbar-menu-preset-name`)?.focus();
+        document.querySelector(`.toolbar-menu-preset[data-menu-id="${CSS.escape(editingToolbarMenu.id)}"] .toolbar-menu-preset-name`)?.focus();
         return;
     }
     if (!editingToolbarMenu.deviceTypes.length) {
@@ -366,22 +394,26 @@ document.getElementById('btnToolbarMenuSave').addEventListener('click', () => {
     toolbarMenuPreviousActiveId = null;
     if (!saveToolbarMenus()) return;
     applyToolbarMenu(editingToolbarMenu, false);
+    applyToolbarMenuIcons(editingToolbarMenu);
     toolbarMenuEditorOriginal = JSON.stringify(editingToolbarMenu);
     renderToolbarMenuEditor();
+    if (isSystemReady) {
+        saveStateToHistory();
+        triggerAutoSave();
+    }
 });
 let isToolbarMenuCycling = false;
 document.getElementById('btnCycleToolbarMenu').addEventListener('click', () => {
-    if (isToolbarMenuCycling) return;
-    if (toolbarMenus.length < 2) {
-        document.getElementById('btnCycleToolbarMenu').title = tr('Создайте дополнительные наборы в редакторе меню');
-        return;
-    }
+    if (isToolbarMenuCycling || !canEditToolbarMenus()) return;
     const activeIndex = toolbarMenus.findIndex(menu => menu.id === activeToolbarMenuId);
     const deviceSelector = document.getElementById('deviceSelector');
     isToolbarMenuCycling = true;
     deviceSelector.classList.add('menu-slide-out');
     setTimeout(() => {
-        applyToolbarMenu(toolbarMenus[(activeIndex + 1) % toolbarMenus.length]);
+        if (canEditToolbarMenus()) {
+            applyToolbarMenu(toolbarMenus[(activeIndex + 1) % toolbarMenus.length]);
+            if (isSystemReady) triggerAutoSave();
+        }
         deviceSelector.classList.remove('menu-slide-out');
         deviceSelector.classList.add('menu-slide-in');
         setTimeout(() => {
@@ -392,4 +424,18 @@ document.getElementById('btnCycleToolbarMenu').addEventListener('click', () => {
 });
 
 loadToolbarMenus();
-applyToolbarMenu(getActiveToolbarMenu(), false);
+applyToolbarMenu(canEditToolbarMenus() ? getActiveToolbarMenu() : defaultToolbarMenu, false);
+let lastToolbarAccess = canEditToolbarMenus();
+document.addEventListener('goom-account-changed', () => {
+    const allowed = canEditToolbarMenus();
+    if (allowed === lastToolbarAccess) return;
+    lastToolbarAccess = allowed;
+    if (allowed) {
+        loadToolbarMenus();
+        applyToolbarMenu(getActiveToolbarMenu(), false);
+    } else {
+        discardUnsavedNewMenu();
+        iconEditorModal.style.display = 'none';
+        applyToolbarMenu(defaultToolbarMenu, false);
+    }
+});

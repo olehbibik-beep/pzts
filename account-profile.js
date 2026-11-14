@@ -2,6 +2,7 @@
     let profile = null;
     let license = null;
     let grant = null;
+    let adminRole = null;
     let uid = null;
     let generation = 0;
     let ready = Promise.resolve();
@@ -51,8 +52,9 @@
         byId('accountCloudInfo').textContent = tr(entitled ? 'PRO je aktivní. Cloudové úložiště je připraveno.' : 'Cloudové úložiště je součástí PRO.');
         const hasKey = entitled && hasPaidAccess();
         byId('accountCloudKeyBlock').hidden = !hasKey;
+        byId('btnAccountCloudProjects').hidden = !entitled;
+        byId('btnAccountAdmin').hidden = !user?.emailVerified || !['owner', 'admin'].includes(adminRole);
         byId('accountCloudKey').value = hasKey ? license.licenseId || `PZTS-PRO-${license.keySuffix}` : '';
-        byId('btnAccountCopyKey').hidden = !entitled;
         byId('btnManageSubscription').hidden = !license?.billingCustomerId;
         const formatDate = value => new Date(value).toLocaleDateString(getGoomLanguage() === 'cs' ? 'cs-CZ' : 'en-GB');
         const periods = [];
@@ -81,10 +83,6 @@
     function fillForm() {
         const user = window.getFirebaseUser();
         byId('accountDisplayName').value = profile?.displayName || user?.displayName || user?.email?.split('@')[0] || '';
-        byId('accountTypeSelect').value = profile?.accountType || 'personal';
-        byId('accountIcoInput').value = profile?.ico || '';
-        byId('accountIcoField').hidden = byId('accountTypeSelect').value !== 'company';
-        window.refreshGoomSelects?.();
     }
 
     function profileData(user, data, createdAt) {
@@ -128,7 +126,10 @@
         const profileRef = db.collection('users').doc(user.uid);
         const licenseRef = db.collection('cloudLicenses').doc(user.uid);
         const grantRef = db.collection('goomProgramGrants').doc(user.uid);
-        let [storedProfile, storedLicense, storedGrant] = await Promise.all([profileRef.get(), licenseRef.get(), grantRef.get().catch(() => null)]);
+        const adminRef = db.collection('goomAdmins').doc(user.uid);
+        let [storedProfile, storedLicense, storedGrant, storedAdmin] = await Promise.all([
+            profileRef.get(), licenseRef.get(), grantRef.get().catch(() => null), adminRef.get({ source: 'server' }).catch(() => null)
+        ]);
         if (sessionGeneration !== generation) return;
         if (!storedProfile.exists) {
             const pending = window.pendingAccountRegistration;
@@ -144,6 +145,7 @@
         void recordEditorVisit();
         license = storedLicense.exists ? storedLicense.data() : null;
         grant = storedGrant?.exists ? storedGrant.data() : null;
+        adminRole = storedAdmin?.data()?.role ?? null;
         announce();
         fillForm();
         if (sessionGeneration !== generation) return;
@@ -167,6 +169,14 @@
                     if (sessionGeneration !== generation) return;
                     grant = null;
                     announce();
+                }), adminRef.onSnapshot(snapshot => {
+                    if (sessionGeneration !== generation || snapshot.metadata?.fromCache) return;
+                    adminRole = snapshot.data()?.role ?? null;
+                    render();
+                }, () => {
+                    if (sessionGeneration !== generation) return;
+                    adminRole = null;
+                    render();
                 })];
         }
     }
@@ -224,7 +234,7 @@
         const sessionGeneration = generation;
         unsubscribe.forEach(stop => stop()); unsubscribe = [];
         uid = user?.uid || null;
-        profile = null; license = null; grant = null;
+        profile = null; license = null; grant = null; adminRole = null;
         feedback();
         if (!user) byId('userAccountModal').style.display = 'none';
         announce();
@@ -241,12 +251,11 @@
     }));
     byId('btnWelcomeProfile').addEventListener('click', window.openAccountPanel);
     byId('btnAccountClose').addEventListener('click', () => { byId('userAccountModal').style.display = 'none'; });
-    byId('accountTypeSelect').addEventListener('change', () => { byId('accountIcoField').hidden = byId('accountTypeSelect').value !== 'company'; });
     byId('accountProfileForm').addEventListener('submit', async event => {
         event.preventDefault();
         byId('btnAccountSave').disabled = true;
         try {
-            await window.saveAccountProfile({ displayName: byId('accountDisplayName').value, accountType: byId('accountTypeSelect').value, ico: byId('accountIcoInput').value });
+            await window.saveAccountProfile({ displayName: byId('accountDisplayName').value, accountType: profile?.accountType, ico: profile?.ico });
             feedback(tr('Údaje účtu byly uloženy.'));
         } catch (error) { feedback(error.code ? tr('Údaje účtu nelze načíst. Zkuste to znovu.') : error.message, true); }
         finally { byId('btnAccountSave').disabled = false; }

@@ -121,12 +121,12 @@ body::after {
 .welcome-controls { inset: 0 0 auto; height: 38px; padding: 0; justify-content: center; align-items: flex-start; gap: 0; z-index: 4; }
 .welcome-back { position: absolute; top: 14px; left: 24px; width: 28px; height: 30px; padding: 4px; border-radius: 0; background: transparent; color: #eee; }
 .welcome-back:hover { color: #c3f665; background: transparent; }
-#welcomeModal .welcome-controls .ui-select { margin: 0; width: 64px; height: 36px; background: #292b2e; border-radius: 0 0 8px 8px; }
-#welcomeModal .welcome-controls .ui-select-trigger { height: 36px; min-height: 36px; border-radius: 0 0 8px 8px; }
-#welcomeModal .welcome-controls .ui-select-trigger[aria-expanded="true"] { border-radius: 0; }
-#welcomeModal .welcome-controls .ui-select-trigger:focus-visible { outline: 1px solid #a8c969; outline-offset: -2px; }
-#welcomeModal .welcome-controls .ui-select.is-open { border-radius: 0; }
-.welcome-controls .language-picker { margin: 0; width: 64px; }
+:is(.welcome-controls, .account-language-controls) .ui-select.language-select { margin: 0; width: 64px; height: 36px; background: #292b2e; border-radius: 0 0 8px 8px; }
+:is(.welcome-controls, .account-language-controls) .ui-select-trigger { height: 36px; min-height: 36px; border-radius: 0 0 8px 8px; }
+:is(.welcome-controls, .account-language-controls) .ui-select-trigger[aria-expanded="true"] { border-radius: 0; }
+:is(.welcome-controls, .account-language-controls) .ui-select-trigger:focus-visible { outline: 1px solid #a8c969; outline-offset: -2px; }
+:is(.welcome-controls, .account-language-controls) .ui-select.is-open { border-radius: 0; }
+:is(.welcome-controls, .account-language-controls) .language-picker { margin: 0; width: 64px; }
 .language-picker { margin-left: 0; }
 .toolbar-row { flex-wrap: nowrap; gap: 12px; }
 #cloudSyncIndicator { flex: 0 1 210px; min-width: 80px; max-width: 210px; }
@@ -160,6 +160,11 @@ body::after {
 .welcome-language-popup .ui-select-option[aria-selected="true"] { background: #34373b; color: #82d322; }
 #loopSelect + .ui-select-trigger { min-width: 135px; }
 .app-tooltip { background: #fff; color: #25282b; }
+.icon-editor-turn { position: absolute; display: flex; justify-content: space-between; width: var(--turn-width, 80px); transform: translate(-50%, -50%); pointer-events: none; z-index: 1; }
+.icon-editor-turn button { pointer-events: auto; touch-action: manipulation; width: 36px; height: 36px; padding: 0; border: 1px solid #73757e; border-radius: 8px; color: #fff; background: #292b2e; font: 24px/1 system-ui; cursor: pointer; }
+.icon-editor-turn button:hover, .icon-editor-turn button:focus-visible { color: #82d322; border-color: #82d322; }
+#iconEditorModal .icon-editor-actions { flex-wrap: wrap; }
+#iconEditorModal .icon-editor-actions button { flex: 0 1 auto; padding: 7px 9px; font-size: 11px; }
 .tablet-device-tools {
     position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%); z-index: 210;
     display: flex; align-items: center; gap: 3px; width: max-content; max-width: calc(100vw - 24px); overflow-x: auto;
@@ -177,7 +182,10 @@ body::after {
 .pro-status.active { color: #a3e6af; }
 .account-card { overflow-anchor: none; scrollbar-gutter: stable; }
 .account-card > .account-header { position: sticky; top: -20px; z-index: 2; margin-bottom: 16px; padding: 6px 0 12px; background: #1c1c1f; }
-#userAccountModal .account-card { width: min(880px, calc(100vw - 40px)); max-width: 880px; padding: 20px 24px; }
+#userAccountModal .account-card { width: min(880px, calc(100vw - 40px)); max-width: 880px; padding: 0 24px 20px; }
+#userAccountModal .account-header { top: 0; padding-top: 26px; gap: 10px; }
+.account-language-controls { position: absolute; inset: 0 auto auto 50%; transform: translateX(-50%); }
+#btnAccountCloudProjects { margin-top: 10px; }
 .account-columns { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 24px; }
 .account-subscription { border-left: 1px solid #45484d; padding-left: 24px; min-width: 0; }
 .account-personal { min-width: 0; }
@@ -243,7 +251,9 @@ body::after {
 @media (max-width: 700px) {
     .account-columns, .pro-columns { gap: 14px; }
     .account-subscription, .pro-columns .pro-offers { padding-left: 14px; }
-    #userAccountModal .account-card, #proUpgradeModal .account-card { padding: 16px; }
+    #userAccountModal .account-card { padding: 0 16px 16px; }
+    #userAccountModal .account-header { padding-top: 42px; }
+    #proUpgradeModal .account-card { padding: 16px; }
     .account-details { grid-template-columns: 65px minmax(0,1fr); }
 }
 @media (max-height: 650px) {
@@ -281,17 +291,12 @@ button.btn-cad, .toolbar-icon-button, .device-btn, .footer-icon, .ui-select-trig
 .plan-output-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
 .plan-output-heading .modal-title { margin: 0; }
 .plan-output-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: var(--plan-panel-gap); }
-.plan-output-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.plan-output-fields label { display: flex; flex-direction: column; gap: 6px; min-width: 0; font-size: 12px; color: #c9cbd0; }
-.plan-output-fields .ui-select { width: 100%; }
-.plan-output-coverage { display: flex; align-items: center; gap: 8px; margin: 16px 0; font-size: 13px; }
-.plan-output-coverage input { accent-color: #82d322; }
-.plan-output-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.plan-output-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .plan-output-actions .btn-cad { justify-content: center; padding: 9px; }
-.plan-output-actions #btnExportBIPS { grid-column: span 2; }
+.plan-output-actions .output-project { grid-column: 1 / -1; }
 .plan-output-preview { border-left: 1px solid #44474c; padding-left: var(--plan-panel-gap); display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 0; }
 #outputPreview { position: static; width: 100%; height: auto; max-height: 400px; object-fit: contain; border-radius: 4px; box-shadow: 0 4px 18px #0005; }
-.plan-output-note, #outputSize, #outputStatus { font-size: 11px; color: #aaaeb6; line-height: 1.5; }
+.plan-output-note, #outputStatus { font-size: 11px; color: #aaaeb6; line-height: 1.5; }
 #outputStatus { min-height: 17px; margin-bottom: 0; }
 #canvasContainer[aria-busy="true"] { cursor: progress; }
 @media (max-width: 700px) {

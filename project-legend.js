@@ -15,7 +15,7 @@ function sanitizeProjectLegend(value) {
             type: entry.type, label: typeof entry.label === 'string' ? entry.label.slice(0, 160) : entry.type,
             // Keep the snapshot even during early startup, before the icon editor has loaded.
             shapes: Array.isArray(entry.shapes) ? entry.shapes.slice(0, 100).filter(s => s && typeof s === 'object').map(s => ({
-                kind:s.kind,x:s.x,y:s.y,size:s.size,rotation:s.rotation,color:s.color,fill:s.fill,stroke:s.stroke,
+                kind:s.kind,x:s.x,y:s.y,size:s.size,rotation:s.rotation,color:s.color,fill:s.fill,fillColor:s.fillColor,stroke:s.stroke,fontWeight:s.fontWeight,
                 text:typeof s.text==='string'?s.text.slice(0,8):''
             })) : []
         }))

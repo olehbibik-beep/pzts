@@ -261,14 +261,14 @@ function drawDevice(ctx, dev, skipSelection = false, theme = 'dark', options = {
     }
 
     ctx.save(); ctx.translate(dev.x, dev.y); ctx.rotate((dev.rotation || 0) * Math.PI / 180);
-    const customIcon = !options.defaultIcon && typeof getCustomDeviceIconImage === 'function' ? getCustomDeviceIconImage(dev.type) : null;
-    if (customIcon && customIcon.complete && customIcon.naturalWidth > 0) {
-        ctx.drawImage(customIcon, -20 * sMult, -20 * sMult, 40 * sMult, 40 * sMult);
+    const customShapes = !options.defaultIcon && typeof getCustomDeviceShapes === 'function' ? getCustomDeviceShapes(dev.type) : null;
+    if (customShapes?.length) {
+        ctx.save();
+        ctx.scale(.1 * sMult, .1 * sMult);
+        ctx.translate(-200, -200);
+        for (const shape of customShapes) drawEditorShape(ctx, shape);
         ctx.restore();
-        return;
-    }
-
-    if (dev.type === 'panel') {
+    } else if (dev.type === 'panel') {
         ctx.fillStyle = "#ffffff"; ctx.fillRect(-20*sMult, -10*sMult, 40*sMult, 20*sMult);
         ctx.strokeStyle = COLORS.panel; ctx.lineWidth = 2 * sMult; ctx.strokeRect(-20*sMult, -10*sMult, 40*sMult, 20*sMult);
         ctx.fillStyle = COLORS.panel; ctx.font = "bold " + (11*sMult) + "px monospace"; ctx.fillText("EZS", 0, 0);

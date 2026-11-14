@@ -111,7 +111,6 @@ async function restoreState(state) {
     updateLoopSelect();
     floors = await loadFloorsImages(state.fData);
     currentFloorIndex = state.currentFloorIndex;
-    if (typeof saveCustomIconsToActiveMenu === 'function') saveCustomIconsToActiveMenu();
     if (typeof refreshCustomDeviceIcons === 'function') refreshCustomDeviceIcons();
     isSystemReady = true; updateProjectLegendButton(); requestRedraw(); triggerAutoSave();
 }
@@ -149,6 +148,7 @@ function getProjectDataPayload() {
         currentMaxLines: currentMaxLines,
         deviceSize: dSize,
         customDeviceIcons,
+        pirCoverageVisible: isPirCoverageVisible(),
         floors: floors.map(f => ({
             name: f.name, imgData: f.imgData, devices: f.devices, cables: f.cables, legend: f.legend,
             showConnections: f.showConnections, wallThreshold: f.wallThreshold, pirRangePixels: f.pirRangePixels,
@@ -203,6 +203,7 @@ async function loadFromDB(options={}) {
     if (data.deviceSize && slider) slider.value = data.deviceSize;
     updateLoopSelect();
     floors = loadedFloors;
+    setPirCoverageVisible(data.pirCoverageVisible !== false);
     currentFloorIndex = Number.isInteger(data.currentFloorIndex) && data.currentFloorIndex >= 0 && data.currentFloorIndex < floors.length
         ? data.currentFloorIndex : 0;
     projectName = data.projectName || tr('Nový projekt');

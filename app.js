@@ -126,13 +126,21 @@ const deviceSizeSlider = document.getElementById('deviceSizeSlider');
 if (deviceSizeSlider) deviceSizeSlider.addEventListener('input', requestRedraw);
 
 const pirToggle = document.getElementById('togglePirCoverage');
+function isPirCoverageVisible() {
+    return pirToggle?.getAttribute('aria-pressed') !== 'false';
+}
+function setPirCoverageVisible(visible) {
+    if (!pirToggle) return;
+    const label = tr(visible ? 'Скрыть зоны PIR' : 'Показать зоны PIR');
+    pirToggle.setAttribute('aria-pressed', String(visible));
+    pirToggle.setAttribute('aria-label', label);
+    pirToggle.title = label;
+}
 if (pirToggle) {
     pirToggle.addEventListener('click', () => {
-        const enabled = pirToggle.getAttribute('aria-pressed') !== 'true';
-        pirToggle.setAttribute('aria-pressed', String(enabled));
-        pirToggle.setAttribute('aria-label', enabled ? tr('Скрыть зоны PIR') : tr('Показать зоны PIR'));
-        pirToggle.title = enabled ? tr('Скрыть зоны PIR') : tr('Показать зоны PIR');
+        setPirCoverageVisible(!isPirCoverageVisible());
         requestRedraw();
+        if (isSystemReady) triggerAutoSave();
     });
 }
 
@@ -295,7 +303,10 @@ if(btnMenuOpenBIPS) {
 }
 
 document.getElementById('btnMenuLoadImg').addEventListener('click', () => { document.getElementById('imageLoader').click(); document.getElementById('mainMenuModal').style.display = 'none'; });
-document.getElementById('btnMenuSave').addEventListener('click', () => { document.getElementById('saveModal').style.display = 'flex'; document.getElementById('mainMenuModal').style.display = 'none'; });
+document.getElementById('btnMenuSave').addEventListener('click', () => {
+    document.getElementById('mainMenuModal').style.display = 'none';
+    openPlanOutput();
+});
 
 // Простые функции для предотвращения ошибок кнопок Экспорта
 function exportToPNG() { return exportPlanFile('png'); }
@@ -304,12 +315,10 @@ function printCurrentFloor() { return printPlanDirect(); }
 document.getElementById('btnMenuPrint').addEventListener('click', () => {
  document.getElementById('mainMenuModal').style.display = 'none'; printCurrentFloor();
 });
-window.addEventListener('afterprint', () => document.getElementById('printPage').replaceChildren());
 document.getElementById('btnExportBIPS').addEventListener('click', () => { exportToTECH(); saveModal.style.display='none'; });
 for (const [id,format] of [['btnExportPNG','png'],['btnExportPDF','pdf'],['btnExportSVG','svg'],['btnExportJPEG','jpeg']]) {
  document.getElementById(id).addEventListener('click', () => exportPlanFile(format));
 }
-document.getElementById('btnPrintPlan').addEventListener('click', () => exportPlanFile('print'));
 
 document.getElementById('bipsLoader').addEventListener('change', (e) => { const f = e.target.files[0]; if(f) importFileContent(f); e.target.value = ''; });
 
@@ -861,8 +870,9 @@ function loadDefaultFloors(showWelcome = false, newProjectName = tr("Nový proje
     resetPlacementTool();
     window.resetActiveCloudProject?.();
     customDeviceIcons = {};
-    if (typeof refreshCustomDeviceIcons === 'function') refreshCustomDeviceIcons();
+    if (typeof applyToolbarMenuIcons === 'function') applyToolbarMenuIcons();
     floors = STANDARD_FLOOR_NAMES.map(createEmptyProjectFloor);
+    setPirCoverageVisible(true);
     let np1Index = floors.findIndex(f => f.name === "1NP");
     currentFloorIndex = np1Index !== -1 ? np1Index : 0;
     
@@ -1141,6 +1151,7 @@ function importFileContent(file, options = {}) {
             isSystemReady = false; requestRedraw(); 
 
             floors = await loadFloorsImages(loadedFloors);
+            setPirCoverageVisible(data?.pirCoverageVisible !== false);
             window.projectOwnerUid=window.getFirebaseUser?.()?.uid||null;
             if (typeof refreshCustomDeviceIcons === 'function') refreshCustomDeviceIcons();
             
