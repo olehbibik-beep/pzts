@@ -7,6 +7,8 @@
     let ready = Promise.resolve();
     let unsubscribe = [];
     let expiryTimer;
+    const visitInterval = 15 * 60 * 1000;
+    const editorVisits = new Map();
     const byId = id => document.getElementById(id);
     const userIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21v-2a8 8 0 0 1 16 0v2"></path></svg>';
 
@@ -94,6 +96,32 @@
         const timestamp = window.firebase.firestore.FieldValue.serverTimestamp();
         return { displayName, email: user.email, accountType, ico, locale: window.getGoomLanguage(), createdAt: createdAt || timestamp, updatedAt: timestamp };
     }
+    async function recordEditorVisit() {
+        const user = window.getFirebaseUser();
+        if (!user || user.uid !== uid || !profile || document.visibilityState !== 'visible') return;
+        const key = `goom-visit:${APP_PRODUCT}:${user.uid}`;
+        let previous = editorVisits.get(key);
+        try { previous ??= Number(sessionStorage.getItem(key)); }
+        catch { /* Session storage can be disabled. */ }
+        const now = Date.now();
+        if (now - (previous || 0) < visitInterval) return;
+        const visitGeneration = generation;
+        editorVisits.set(key, now);
+        try {
+            const db = await window.getFirebaseDatabase();
+            if (visitGeneration !== generation || window.getFirebaseUser()?.uid !== user.uid) return;
+            await db.collection('goomEditorActivity').doc(user.uid).set({
+                lastSeen: window.firebase.firestore.FieldValue.serverTimestamp(),
+                application: APP_PRODUCT
+            });
+            try { sessionStorage.setItem(key, String(now)); }
+            catch { /* The in-memory throttle still applies. */ }
+        } catch {
+            // Older Firestore rules may not allow activity writes yet.
+        }
+    }
+    document.addEventListener('visibilitychange', recordEditorVisit);
+
     async function load(user, sessionGeneration) {
         if (sessionGeneration !== generation || user.uid !== uid) return;
         const db = await window.getFirebaseDatabase();
@@ -113,6 +141,7 @@
         }
         if (sessionGeneration !== generation) return;
         profile = storedProfile.data();
+        void recordEditorVisit();
         license = storedLicense.exists ? storedLicense.data() : null;
         grant = storedGrant?.exists ? storedGrant.data() : null;
         announce();

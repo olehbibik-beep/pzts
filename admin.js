@@ -12,6 +12,12 @@
     let query = '', users = [], tokens = [null], pageIndex = 0, nextPage = null;
     let program = 'PZTS';
     let changing = false;
+    let loaded = false;
+    let visitRequest = 0;
+    const nav = [...document.querySelectorAll('[data-view]')];
+    const viewTitles = { overview: 'Обзор', users: 'Пользователи', access: 'PRO и доступ', activity: 'Активность' };
+    const server = { source: 'server' };
+    const unavailable = Symbol('unavailable');
 
     function element(tag, text, className) {
         const node = document.createElement(tag);
@@ -44,6 +50,7 @@
         session = null;
         selectedUser = null;
         users = [];
+        loaded = false;
         query = '';
         tokens = [null];
         pageIndex = 0;
@@ -53,10 +60,12 @@
         byId('adminWorkspace').hidden = true;
         byId('adminUsers').replaceChildren();
         byId('adminEvents').replaceChildren();
+        byId('adminVisits').replaceChildren();
         if (dialog.open) dialog.close();
         byId('adminUserPrograms').replaceChildren();
         byId('adminUserTitle').textContent = '';
         byId('adminUserUid').textContent = '';
+        byId('adminUserVisit').textContent = '';
     }
 
     function denied() {
@@ -72,30 +81,50 @@
         return { uid: user.uid, role, programs: Object.keys(programLabels) };
     }
 
-    async function readUser(profile) {
+    async function readOptional(read) {
+        try { return await read; }
+        catch (error) {
+            if (error.code === 'permission-denied' || error.code === 'unavailable') return unavailable;
+            throw error;
+        }
+    }
+
+    async function readUser(profile, canReadPurchase) {
         const uid = profile.id;
-        const collections = ['goomAdmins', 'goomProgramGrants'];
-        const [role, grant] = await Promise.all(collections.map(name => db.collection(name).doc(uid).get({ source: 'server' })));
+        const get = name => db.collection(name).doc(uid).get(server);
+        const [role, grant, visit, purchase] = await Promise.all([
+            get('goomAdmins'), get('goomProgramGrants'), readOptional(get('goomEditorActivity')),
+            canReadPurchase ? readOptional(get('cloudLicenses')) : unavailable
+        ]);
         const data = profile.data();
+        const license = purchase === unavailable ? null : purchase.data();
+        const validPurchase = license?.uid === uid && license.plan === 'pro' && license.status === 'active'
+            && license.source === 'stripe' && license.paymentStatus === 'paid' && license.billingMode === 'monthly';
         const programs = Object.fromEntries(Object.keys(programLabels).map(app => [app, {
-            manualUntil: grant.data()?.expiresAt?.[app]?.toMillis() ?? null
+            manualUntil: grant.data()?.expiresAt?.[app]?.toMillis() ?? null,
+            paidUntil: validPurchase && Array.isArray(license.applications) && license.applications.includes(app)
+                ? license.applicationExpiresAt?.[app]?.toMillis?.() ?? null : null
         }]));
-        return { uid, name: data.displayName || '', email: data.email || '', role: role.data()?.role || 'user', programs };
+        return {
+            uid, name: data.displayName || '', email: data.email || '', role: role.data()?.role || 'user',
+            programs, billingAvailable: purchase !== unavailable, visit: visit === unavailable ? unavailable : visit.data()
+        };
     }
 
     async function readUsers(query, cursor) {
         const profiles = db.collection('users');
+        const canReadPurchase = session.role === 'owner';
         if (query && !query.includes('@')) {
             if (query.length > 128 || query.includes('/') || query === '.' || query === '..') {
                 throw Object.assign(new Error('Invalid UID'), { code: 'invalid-argument' });
             }
             const profile = await profiles.doc(query).get({ source: 'server' });
-            return { users: profile.exists ? [await readUser(profile)] : [], nextPage: null };
+            return { users: profile.exists ? [await readUser(profile, canReadPurchase)] : [], nextPage: null };
         }
         let list = query ? profiles.where('email', '==', query) : profiles.orderBy(firebase.firestore.FieldPath.documentId());
         if (cursor) list = list.startAfter(cursor);
         const page = await list.limit(pageSize).get({ source: 'server' });
-        return { users: await Promise.all(page.docs.map(readUser)), nextPage: !query && page.size === pageSize ? page.docs.at(-1) : null };
+        return { users: await Promise.all(page.docs.map(profile => readUser(profile, canReadPurchase))), nextPage: !query && page.size === pageSize ? page.docs.at(-1) : null };
     }
 
     async function writeChange(action, { uid, role, application, days }) {
@@ -159,14 +188,79 @@
             return button;
         });
         byId('adminPrograms').replaceChildren(...cards);
-        byId('adminActiveProgram').textContent = program;
     }
 
     function dateLabel(value) { return value ? date.format(new Date(value)) : '—'; }
 
-    function accessLines(user, application) {
-        const access = user.programs[application];
-        return access.manualUntil > Date.now() ? [`Выдан до ${dateLabel(access.manualUntil)}`] : ['—'];
+    function showView(view) {
+        byId('programTitle').textContent = viewTitles[view];
+        nav.forEach(button => {
+            if (button.dataset.view === view) button.setAttribute('aria-current', 'page');
+            else button.removeAttribute('aria-current');
+        });
+        const activity = view === 'activity';
+        byId('adminPrograms').hidden = activity;
+        byId('adminSummary').hidden = view !== 'overview';
+        byId('adminUserList').hidden = activity;
+        byId('adminVisitsSection').hidden = !activity;
+        byId('adminAuditSection').hidden = !activity;
+        byId('adminTable').dataset.view = view;
+        if (activity) void Promise.all([loadVisits(), loadAudit()]);
+    }
+
+    function paidLabel(user, application) {
+        if (session.role !== 'owner') return 'Только владельцу';
+        if (!user.billingAvailable) return 'Нет данных';
+        const expiry = user.programs[application].paidUntil;
+        return expiry > Date.now() ? `До ${dateLabel(expiry)}` : '—';
+    }
+
+    function visitLabel(visit) {
+        if (visit === unavailable) return 'Нет данных';
+        return visit ? `${dateLabel(visit.lastSeen?.toMillis())} · ${visit.application}` : '—';
+    }
+
+    function renderSummary() {
+        const now = Date.now();
+        let paid = 0, manual = 0, manualOnly = 0, free = 0, recent = 0;
+        let unknown = 0;
+        for (const user of users) {
+            const access = user.programs[program];
+            if (access.manualUntil > now) manual++;
+            if (user.visit?.lastSeen?.toMillis() > now - 7 * 86_400_000) recent++;
+            if (!user.billingAvailable) unknown++;
+            else if (access.paidUntil > now) paid++;
+            else if (access.manualUntil > now) manualOnly++;
+            else free++;
+        }
+        const billingAvailable = loaded && session.role === 'owner' && unknown === 0;
+        const activityAvailable = loaded && users.every(user => user.visit !== unavailable);
+        byId('adminMetrics').replaceChildren(...[
+            ['Пользователи', loaded ? users.length : '—'],
+            ['Оплаченный PRO', billingAvailable ? paid : '—'],
+            ['Ручной доступ', loaded ? manual : '—'],
+            ['Посещали за 7 дней', activityAvailable ? recent : '—']
+        ].map(([label, value]) => {
+            const card = element('div', undefined, 'metric');
+            card.append(element('span', label), element('strong', value));
+            return card;
+        }));
+        byId('adminChartCaption').textContent = session.role !== 'owner'
+            ? `${program} · данные об оплате видит владелец`
+            : `${program} · текущий доступ`;
+        const donut = byId('adminDonut');
+        const paidStop = users.length ? 100 * paid / users.length : 0;
+        const manualStop = users.length ? 100 * (paid + manualOnly) / users.length : 0;
+        donut.style.background = billingAvailable ? `conic-gradient(var(--paid) 0 ${paidStop}%, var(--manual) ${paidStop}% ${manualStop}%, var(--free) ${manualStop}% 100%)` : '';
+        donut.firstElementChild.textContent = billingAvailable ? users.length : '—';
+        byId('adminBreakdown').replaceChildren(...[
+            ['Оплаченный PRO', paid, 'paid'], ['Только ручной доступ', manualOnly, 'manual'], ['Без PRO', free, 'free']
+        ].map(([label, value, color]) => {
+            const item = element('li', label);
+            item.style.setProperty('--dot', `var(--${color})`);
+            item.append(element('strong', billingAvailable ? value : '—'));
+            return item;
+        }));
     }
 
     function renderUsers() {
@@ -175,8 +269,12 @@
             const account = element('td');
             account.append(element('strong', user.name || user.email || user.uid));
             if (user.name && user.email) account.append(element('span', user.email, 'subline'));
+            const manual = user.programs[program].manualUntil;
+            const paid = element('td');
+            const purchase = paidLabel(user, program);
+            paid.append(element('span', purchase, purchase.startsWith('До ') ? 'badge paid' : 'subline'));
             const access = element('td');
-            access.append(...accessLines(user, program).map(text => element('span', text, 'subline')));
+            access.append(element('span', manual > Date.now() ? `До ${dateLabel(manual)}` : '—', manual > Date.now() ? 'badge manual' : 'subline'));
             const action = element('td');
             const button = element('button', 'Открыть');
             button.type = 'button';
@@ -188,13 +286,17 @@
                 dialog.showModal();
             });
             action.append(button);
-            row.append(account, element('td', roleLabels[user.role]), access, action);
+            const role = element('td');
+            role.append(element('span', roleLabels[user.role] || roleLabels.user, 'badge'));
+            row.append(account, role, paid, access, element('td', visitLabel(user.visit), 'activity-column'), action);
             return row;
         });
         byId('adminUsers').replaceChildren(...rows);
         byId('adminPrev').disabled = pageIndex === 0;
         byId('adminNext').disabled = !nextPage;
-        byId('adminPage').textContent = users.length ? query ? `Найдено: ${users.length}` : `Страница ${pageIndex + 1}` : 'Нет пользователей';
+        byId('adminPage').textContent = !loaded ? 'Загружаем…' : users.length ? query ? `Найдено: ${users.length}` : `Страница ${pageIndex + 1}` : 'Нет пользователей';
+        byId('adminUsersHint').textContent = `${program} · аккаунты, которые уже вошли в редактор GooM`;
+        renderSummary();
     }
 
     async function loadUsers(index = pageIndex, search = query) {
@@ -208,6 +310,7 @@
             query = search;
             pageIndex = index;
             users = result.users;
+            loaded = true;
             nextPage = result.nextPage;
             tokens[index + 1] = nextPage;
             renderUsers();
@@ -215,6 +318,26 @@
         } catch (error) {
             if (currentEpoch !== epoch || revision !== pageRequest) return;
             handleError(error, currentEpoch);
+        }
+    }
+
+    async function loadVisits() {
+        const currentEpoch = epoch;
+        const revision = ++visitRequest;
+        const list = byId('adminVisits');
+        try {
+            const snapshots = await readOptional(db.collection('goomEditorActivity').orderBy('lastSeen', 'desc').limit(pageSize).get(server));
+            const items = snapshots === unavailable ? [element('li', 'Данные о посещениях недоступны.', 'muted')] :
+                await Promise.all(snapshots.docs.map(async snapshot => {
+                    const profile = (await db.collection('users').doc(snapshot.id).get(server)).data();
+                    const item = element('li', profile?.displayName || profile?.email || snapshot.id);
+                    item.append(element('span', visitLabel(snapshot.data()), 'subline'));
+                    return item;
+                }));
+            if (currentEpoch !== epoch || revision !== visitRequest) return;
+            list.replaceChildren(...(items.length ? items : [element('li', 'Посещений пока нет.', 'muted')]));
+        } catch (error) {
+            if (revision === visitRequest) handleError(error, currentEpoch);
         }
     }
 
@@ -245,6 +368,7 @@
         const user = selectedUser;
         byId('adminUserTitle').textContent = user.name || user.email || user.uid;
         byId('adminUserUid').textContent = `${user.email || ''} · ${user.uid} · ${roleLabels[user.role]}`;
+        byId('adminUserVisit').textContent = `Последнее посещение редактора · ${visitLabel(user.visit)}`;
         const canEdit = user.uid !== session.uid && user.role !== 'owner' && (session.role === 'owner' || user.role === 'user');
         const canEditRole = canEdit && session.role === 'owner';
         const canGrant = canEdit || (user.uid === session.uid && session.role === 'owner');
@@ -252,7 +376,10 @@
         byId('adminRole').value = user.role;
         const rows = session.programs.map(application => {
             const row = element('section', undefined, 'grant');
-            row.append(element('h3', application), element('p', accessLines(user, application).join(' · '), 'muted'));
+            const manual = user.programs[application].manualUntil;
+            row.append(element('h3', application),
+                element('p', `Оплаченный PRO · ${paidLabel(user, application)}`, 'muted'),
+                element('p', `Ручной доступ · ${manual > Date.now() ? dateLabel(manual) : '—'}`, 'muted'));
             if (!canGrant) return row;
             const form = element('form', undefined, 'control-row');
             const label = element('label', 'Дней доступа');
@@ -288,12 +415,14 @@
         status('Сохраняем…', false, 'adminUserStatus');
         try {
             const { changed } = await writeChange(action, { uid, ...fields });
+            if (currentEpoch !== epoch) return;
             const { users: matches } = await readUsers(uid);
+            if (currentEpoch !== epoch) return;
+            await Promise.all([loadUsers(), loadAudit()]);
             if (currentEpoch !== epoch) return;
             selectedUser = matches[0];
             renderUserDialog();
             status(changed ? 'Изменения сохранены.' : 'Доступ уже настроен так.', false, 'adminUserStatus');
-            await Promise.all([loadUsers(), loadAudit()]);
         } catch (error) { handleError(error, currentEpoch, 'adminUserStatus'); }
         finally {
             controls.forEach(control => { control.disabled = false; });
@@ -315,6 +444,7 @@
             session = verified;
             byId('adminIdentity').textContent = `${user.email || user.uid} · ${roleLabels[session.role]}`;
             program = session.programs[0];
+            showView('overview');
             renderPrograms();
             renderUsers();
             byId('adminWorkspace').hidden = false;
@@ -356,6 +486,8 @@
     byId('adminPrev').addEventListener('click', () => { if (pageIndex > 0) void loadUsers(pageIndex - 1); });
     byId('adminNext').addEventListener('click', () => { if (nextPage) void loadUsers(pageIndex + 1); });
     byId('adminRefreshAudit').addEventListener('click', loadAudit);
+    byId('adminRefreshVisits').addEventListener('click', loadVisits);
+    nav.forEach(button => button.addEventListener('click', () => showView(button.dataset.view)));
     byId('adminCloseDialog').addEventListener('click', () => dialog.close());
     dialog.addEventListener('cancel', event => { if (changing) event.preventDefault(); });
     byId('adminRoleForm').addEventListener('submit', event => {

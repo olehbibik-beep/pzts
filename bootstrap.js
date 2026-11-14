@@ -1,6 +1,6 @@
 (() => {
     // Change this version whenever publishing application files together.
-    const version = '20261114-loading-27';
+    const version = '20261114-dashboard-28';
     let started = false;
     function loadScript(src) {
         return new Promise((resolve, reject) => {
