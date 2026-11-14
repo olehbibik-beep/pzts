@@ -1,6 +1,6 @@
 (() => {
     // Change this version whenever publishing application files together.
-    const version = '20261110-whale-25';
+    const version = '20261114-admin-link-26';
     let started = false;
     function loadScript(src) {
         return new Promise((resolve, reject) => {
