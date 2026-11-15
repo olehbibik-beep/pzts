@@ -8,7 +8,7 @@
         byId('accountProStatus').classList.toggle('active', active);
         byId('btnUpdatePro').hidden = active;
         byId('btnProPurchase').hidden = active;
-        document.getElementById('btnOpenToolbarMenuEditor').classList.toggle('pro-lock', !active);
+        document.getElementById('btnOpenToolbarMenuEditor').classList.toggle('pro-lock', !active && !window.hasAdminAccess?.());
         if (active) byId('proPurchaseStatus').textContent = tr('PRO je aktivní.');
     }
     window.requestProUpgrade = () => {

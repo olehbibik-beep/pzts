@@ -1,6 +1,6 @@
 (() => {
     // Change this version whenever publishing application files together.
-    const version = '20261114-icon-editor-30';
+    const version = '20261115-icon-template-34';
     let started = false;
     function loadScript(src) {
         return new Promise((resolve, reject) => {

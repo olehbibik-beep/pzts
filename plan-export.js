@@ -1,28 +1,50 @@
 let planExportBusy = false;
-let planPrintURL;
+const planPrintURLs = [];
 async function printPlanDirect(){
-    const floor=floors[currentFloorIndex];
-    if(!floor||!isSystemReady||planExportBusy)return;
+    if(!isSystemReady||planExportBusy)return;
+    const printFloors = floors.filter(floor => floor.image || floor.legend?.visible && floor.legend.entries?.length
+        || floor.devices.some(device => showDeactivatedDevices || device.type !== 'deactivated'));
+    if (!printFloors.length) {
+        showAppAlert(tr('Projekt neobsahuje žádné podlaží k tisku.'), tr('Ошибка печати'));
+        return;
+    }
+    const printedProjectName = projectName;
     planExportBusy=true;container.setAttribute('aria-busy','true');
     try{
+        clearPrintPage();
         await new Promise(requestAnimationFrame);
-        const {theme,coverage}=planOutputOptions(floor);
-        const bounds=getPlanOutputBounds(floor,coverage);
-        const ratio=Math.min(6000/Math.max(bounds.width,bounds.height),Math.sqrt(PLAN_MAX_PIXELS/(bounds.width*bounds.height)));
-        const width=Math.max(1,Math.round(bounds.width*ratio)),height=Math.max(1,Math.round(bounds.height*ratio));
-        let image;
-        if(floor.pdfSource)image=await rasterizePlanPdf(floor,width*floor.image.width/bounds.width);
-        else if(floor.rasterSource)image=await rasterizePlanImage(floor,width*floor.image.width/bounds.width);
-        const target=new SVGPlanContext(width,height);
         if (!window.hasProAccess?.()) await emptyCanvasLogo.decode().catch(() => {});
-        drawPlanOutput(target,floor,{bounds,widthMM:bounds.width,heightMM:bounds.height,margin:0,options:{theme,coverage}},image);
-        if(planPrintURL)URL.revokeObjectURL(planPrintURL);
-        planPrintURL=URL.createObjectURL(new Blob([target.toSVG()],{type:'image/svg+xml;charset=utf-8'}));
-        const preview=await loadPlanImage(planPrintURL);preview.alt=`${projectName} – ${floor.name}`;
-        let style=document.getElementById('planPrintStyle');if(!style){style=document.createElement('style');style.id='planPrintStyle';document.head.appendChild(style);}
-        style.textContent='@media print{@page{size:auto;margin:8mm}html,body{margin:0!important;padding:0!important;border:0!important;box-shadow:none!important;width:auto!important;height:auto!important;overflow:visible!important;background:#fff!important}#printPage{position:fixed!important;inset:0!important;width:auto!important;height:auto!important;background:#fff!important;print-color-adjust:exact;-webkit-print-color-adjust:exact}#printPage img{width:100%;height:100%;max-width:100%!important;max-height:100%!important;object-fit:contain}}';
-        document.getElementById('printPage').replaceChildren(preview);
-        await preview.decode();
+        const sheets = document.createDocumentFragment();
+        for (const floor of printFloors) {
+            const options = planOutputOptions(floor);
+            const bounds = getPlanOutputBounds(floor, options.coverage);
+            const ratio = Math.min(6000 / Math.max(bounds.width, bounds.height),
+                Math.sqrt(PLAN_MAX_PIXELS / (bounds.width * bounds.height)));
+            const width = Math.max(1, Math.round(bounds.width * ratio));
+            const height = Math.max(1, Math.round(bounds.height * ratio));
+            const image = await rasterizePlanOutputSource(floor, width, bounds);
+            const target = new SVGPlanContext(width, height);
+            drawPlanOutput(target, floor, { bounds, widthMM: bounds.width, heightMM: bounds.height, margin: 0, options }, image);
+            const url = URL.createObjectURL(new Blob([target.toSVG()], { type: 'image/svg+xml;charset=utf-8' }));
+            planPrintURLs.push(url);
+            const preview = await loadPlanImage(url);
+            preview.className = 'plan-print-image';
+            preview.alt = `${printedProjectName} – ${floor.name}`;
+            await preview.decode();
+
+            const sheet = document.createElement('section');
+            sheet.className = 'plan-print-sheet';
+            const header = document.createElement('header');
+            header.className = 'plan-print-header';
+            const title = document.createElement('strong');
+            title.textContent = printedProjectName;
+            const floorName = document.createElement('span');
+            floorName.textContent = floor.name;
+            header.append(title, floorName);
+            sheet.append(header, preview);
+            sheets.append(sheet);
+        }
+        document.getElementById('printPage').replaceChildren(sheets);
         await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
         window.print();
     }catch(error){console.error(error);clearPrintPage();showAppAlert(error.message,tr('Ошибка печати'));}
@@ -30,7 +52,8 @@ async function printPlanDirect(){
 }
 function clearPrintPage(){
     document.getElementById('printPage').replaceChildren();
-    if(planPrintURL){URL.revokeObjectURL(planPrintURL);planPrintURL=null;}
+    for (const url of planPrintURLs) URL.revokeObjectURL(url);
+    planPrintURLs.length = 0;
 }
 window.addEventListener('afterprint',clearPrintPage);
 function planOutputOptions(floor) {
@@ -97,9 +120,7 @@ async function makePlanOutput(floor,options=planOutputOptions(floor),svg=false){
     const layout=planOutputLayout(floor,options);
     const width=Math.round(layout.widthMM/25.4*options.dpi),height=Math.round(layout.heightMM/25.4*options.dpi);
     if(width*height>PLAN_MAX_PIXELS)throw new Error(tr('Výstup je příliš velký.'));
-    let image;
-    if(floor.pdfSource)image=await rasterizePlanPdf(floor,width*floor.image.width/layout.bounds.width);
-    else if(floor.rasterSource)image=await rasterizePlanImage(floor,width*floor.image.width/layout.bounds.width);
+    const image = await rasterizePlanOutputSource(floor, width, layout.bounds);
     if (!window.hasProAccess?.()) await emptyCanvasLogo.decode().catch(() => {});
     if(svg){
         const target=new SVGPlanContext(width,height);drawPlanOutput(target,floor,layout,image);
@@ -107,6 +128,12 @@ async function makePlanOutput(floor,options=planOutputOptions(floor),svg=false){
     }
     const raster=document.createElement('canvas');raster.width=width;raster.height=height;
     drawPlanOutput(raster.getContext('2d'),floor,layout,image);return {raster,layout};
+}
+function rasterizePlanOutputSource(floor, width, bounds) {
+    if (!floor.image) return;
+    const requestedWidth = width * floor.image.width / bounds.width;
+    if (floor.pdfSource) return rasterizePlanPdf(floor, requestedWidth);
+    if (floor.rasterSource) return rasterizePlanImage(floor, requestedWidth);
 }
 function downloadPlanBlob(blob,extension,floor){
     const url=URL.createObjectURL(blob),link=document.createElement('a');
@@ -116,7 +143,7 @@ function downloadPlanBlob(blob,extension,floor){
 async function exportPlanFile(format){
     if(planExportBusy||!isSystemReady||!floors[currentFloorIndex])return;
     planExportBusy=true;const floor=floors[currentFloorIndex],options=planOutputOptions(floor);
-    const buttons=[...document.querySelectorAll('#saveModal button:not(:disabled):not([data-save-cloud-project])')];buttons.forEach(b=>b.disabled=true);
+    const buttons=[...document.querySelectorAll('#saveModal button:not(:disabled)')];buttons.forEach(b=>b.disabled=true);
     const status=document.getElementById('outputStatus');status.textContent=tr('Příprava výstupu…');saveModal.setAttribute('aria-busy','true');
     try{
         await new Promise(requestAnimationFrame);

@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GOOM</title>
-    <script src="i18n.js?v=20261114-icon-editor-30"></script>
+    <link rel="icon" type="image/png" href="Logo2.png">
+    <link rel="icon" type="image/png" href="Logo.png" media="(prefers-color-scheme: dark)">
+    <script src="i18n.js?v=20261115-icon-template-34"></script>
     <script src="device-support.js?v=20261114-loading-27"></script>
     <style>
         :root {
@@ -218,12 +220,16 @@
         #cloudSyncIndicator[data-state="syncing"] { color: #7dd3fc; }
         #cloudSyncIndicator[data-state="error"], #cloudSyncIndicator[data-state="conflict"] { color: #fca5a5; }
         .cloud-projects-content { box-sizing: border-box; max-width: 720px; max-height: min(720px, calc(100vh - 40px)); overflow: auto; }
-        #cloudProjectsModal { z-index: 400; }
+        #cloudProjectsModal { z-index: 400; justify-content: flex-end; padding: 12px; box-sizing: border-box; }
+        #cloudProjectsModal .cloud-projects-content { width: min(470px, 100%); max-height: 100%; padding: 18px; }
+        #btnCloudProjectsClose { flex: none; align-self: flex-start; }
+        .project-location-icon { width: 16px; height: 16px; flex: none; color: #b5b6bf; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+        .cloud-project-row.current { border-color: #82d322; }
+        #cloudProjectCount { color: #a1a1aa; font: 12px system-ui; white-space: nowrap; }
         .cloud-projects-header, .cloud-projects-toolbar, .cloud-project-row, .cloud-project-actions { display: flex; align-items: center; gap: 12px; }
         .cloud-projects-header, .cloud-projects-toolbar { justify-content: space-between; }
         .cloud-projects-header { margin-bottom: 12px; }
         .cloud-projects-header .modal-title { margin: 0; }
-        #cloudProjectsUser { color: #a1a1aa; font-size: 12px; overflow-wrap: anywhere; }
         #cloudProjectsStatus { min-height: 20px; margin: 0 0 12px; color: #a1a1aa; font-size: 12px; overflow-wrap: anywhere; }
         #cloudProjectsList { display: flex; flex-direction: column; gap: 8px; max-height: 52vh; overflow-y: auto; }
         .cloud-project-row { justify-content: space-between; padding: 12px; border: 1px solid #35353d; border-radius: 8px; }
@@ -283,11 +289,16 @@
         }
         #printPage { display: none; }
         @media print {
-            @page { margin: 10mm; }
+            @page { size: auto; margin: 8mm; }
+            html, body { display: block; margin: 0 !important; padding: 0; width: auto !important; height: auto !important; overflow: visible; background: #fff; border: 0; box-shadow: none; }
             body > :not(#printPage) { display: none !important; }
             body::after { display: none !important; }
-            #printPage { display: flex !important; position: fixed; inset: 0; align-items: center; justify-content: center; background: #fff; }
-            #printPage img { display: block; max-width: 100%; max-height: 100%; object-fit: contain; }
+            #printPage { display: block; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+            .plan-print-sheet { display: grid; grid-template-rows: auto minmax(0, 1fr); height: 99vh; break-inside: avoid; break-after: page; }
+            .plan-print-sheet:last-child { break-after: auto; }
+            .plan-print-header { display: flex; justify-content: space-between; gap: 8mm; padding: 0 0 3mm; color: #181a1d; font-size: 10pt; overflow-wrap: anywhere; }
+            .plan-print-header span { flex: none; }
+            .plan-print-image { display: block; width: 100%; height: 100%; object-fit: contain; }
         }
         #mainMenuModal .main-menu-content { box-sizing: border-box; max-width: 680px; width: min(680px, calc(100vw - 40px)); }
         .main-menu-layout {
@@ -350,18 +361,10 @@
         .icon-editor-canvas-controls .icon-editor-tools { flex-direction: row; }
         .icon-editor-text-input { position: absolute; z-index: 2; width: min(160px, 80%); min-width: 44px; box-sizing: border-box; padding: 4px 6px !important; border: 1px solid #0ea5e9 !important; border-radius: 3px !important; background: rgba(255,255,255,.94) !important; color: #18181b !important; text-align: center; font-weight: 700; transform: translate(-50%, -50%); }
         #iconEditorModal .icon-editor-field { gap: 4px; margin-bottom: 7px; }
-        .toolbar-menu-cycle { width: 86px; min-width: 86px; height: 34px; justify-content: center; gap: 4px; padding: 5px !important; border: 0 !important; background: transparent !important; color: #3f4249; box-shadow: none !important; }
-        .toolbar-menu-cycle svg { width: 14px; height: 14px; flex: none; }
-        #activeToolbarMenuName { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
-        .toolbar-menu-cycle:disabled { opacity: 1; }
-        .toolbar-menu-cycle:hover { color: #22c55e !important; background: transparent !important; }
-        #deviceSelector.menu-slide-out { animation: toolbarMenuSlideOut 140ms ease-in forwards; }
-        #deviceSelector.menu-slide-in { animation: toolbarMenuSlideIn 200ms cubic-bezier(0.2, 0.75, 0.25, 1) both; }
-        @keyframes toolbarMenuSlideOut { to { opacity: 0; transform: translateY(-14px); } }
-        @keyframes toolbarMenuSlideIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
-        @media (prefers-reduced-motion: reduce) {
-            #deviceSelector.menu-slide-out, #deviceSelector.menu-slide-in { animation-duration: 1ms; }
-        }
+        .toolbar-menu-cycle { width: 32px; min-width: 32px; height: 34px; justify-content: center; border: 0 !important; background: transparent !important; box-shadow: none !important; }
+        .toolbar-menu-cycle:not(:disabled):hover { color: #15803d !important; }
+        .toolbar-menu-cycle:disabled { opacity: .35; cursor: default; }
+        #activeToolbarMenuName { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; font-weight: 650; color: #3f4249; padding-inline: 6px; }
         #deviceSelector .device-btn[hidden], #deviceSelector .menu-divider[hidden] { display: none !important; }
         #iconEditorCanvas { position: relative; top: auto; left: auto; display: block; width: min(100%, 360px); aspect-ratio: 1; background-color: #f4f4f5; background-image: linear-gradient(45deg, #e4e4e7 25%, transparent 25%), linear-gradient(-45deg, #e4e4e7 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e4e4e7 75%), linear-gradient(-45deg, transparent 75%, #e4e4e7 75%); background-size: 20px 20px; background-position: 0 0, 0 10px, 10px -10px, -10px 0; border: 1px solid #52525b; border-radius: 6px; cursor: crosshair; touch-action: none; }
         .icon-editor-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; color: var(--text-muted); font-size: 12px; }
@@ -449,7 +452,7 @@
 
 
     </style>
-    <link rel="stylesheet" href="ui-theme.css?v=20261114-icon-editor-30">
+    <link rel="stylesheet" href="ui-theme.css?v=20261115-icon-template-34">
 </head>
 <body>
     <div id="deviceSupportNotice" role="alert">
@@ -482,6 +485,8 @@
             <button id="btnOpenCloudProjectsToolbar" class="toolbar-icon-button" type="button" data-open-account title="Uživatelský účet" aria-label="Uživatelský účet">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21v-2a8 8 0 0 1 16 0v2"></path></svg>
             </button>
+            <svg id="projectLocationLocal" class="project-location-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8m-4-4v4"/></svg>
+            <svg id="projectLocationCloud" class="project-location-icon" viewBox="0 0 24 24" aria-hidden="true" hidden><path d="M6 18a4 4 0 0 1-1-7.9 6 6 0 0 1 11.6-1.4A4.7 4.7 0 0 1 18 18Z"/></svg>
             <span id="cloudSyncIndicator" role="status" aria-live="polite"></span>
 
             <div class="toolbar-section" style="margin-left: auto; gap: 12px;">
@@ -522,12 +527,11 @@
         <div class="sliding-row-container">
             <div class="toolbar-row" style="padding: 10px 20px; justify-content: center;">
                 <div class="device-selector-group" id="deviceSelector">
-                    <button id="btnCycleToolbarMenu" class="btn-cad toolbar-menu-cycle" type="button" data-menu-id="default" title="Přepnout sadu nabídek" aria-label="Přepnout sadu nabídek">
-                        <span id="activeToolbarMenuName" data-user-content>Default</span>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg>
+                    <button id="btnCycleToolbarMenu" class="btn-cad toolbar-menu-cycle" type="button" data-menu-id="default" aria-label="Přepnout sadu nabídek">
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
                     </button>
                     <select id="loopSelect" style="margin: 0 4px; width: 128px;" title="Vyberte Sběrnici"></select>
-                    <div class="menu-divider"></div>
+                    <div class="device-set-window"><div class="device-set-tools" id="deviceSetTools">
 
                     <button class="device-btn" data-type="panel" title="Ústředna EZS"><svg width="24" height="24" viewBox="0 0 32 32"><rect x="1" y="8" width="30" height="16" fill="#ffffff" stroke="#0ea5e9" stroke-width="2"/><text x="16" y="19" font-size="9" fill="#0ea5e9" font-family="monospace" font-weight="bold" text-anchor="middle">EZS</text></svg></button>
                     <button class="device-btn" data-type="expander" title="Expandér zón/výstupů (EXP)"><svg width="24" height="24" viewBox="0 0 32 32"><rect x="4" y="4" width="24" height="24" fill="#ffffff" stroke="#0ea5e9" stroke-width="2"/><text x="16" y="20" font-size="9" fill="#0ea5e9" font-family="monospace" font-weight="bold" text-anchor="middle">EXP</text></svg></button>
@@ -556,11 +560,11 @@
                         <button class="device-btn" type="button" data-type="plainText" title="Přidat text na výkres" aria-label="Přidat text na výkres">Abc</button>
                         <button class="device-btn" type="button" data-type="textNode" title="Přidat textovou poznámku" aria-label="Přidat textovou poznámku">Abc*</button>
                     </div>
-                    <div class="menu-divider"></div>
-                    
+                    </div></div>
                     <button id="btnToggleConnections" class="btn-cad" style="padding: 6px 10px;" title="Skrýt / Zobrazit čáry kabelů">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                     </button>
+                    <span id="activeToolbarMenuName" data-user-content>Default</span>
                     </div>
                 </div>
             </div>
@@ -730,22 +734,16 @@
     </div>
 
     <div id="cloudProjectsModal" class="modal">
-        <div class="modal-content cloud-projects-content">
+        <div class="modal-content cloud-projects-content" role="dialog" aria-modal="true" aria-labelledby="cloudProjectsTitle">
             <div class="cloud-projects-header">
-                <div>
-                    <div class="modal-title">Cloudové projekty</div>
-                    <div id="cloudProjectsUser"></div>
-                </div>
-                <button id="btnCloudProjectsClose" class="btn-cad" type="button" aria-label="Zavřít cloudové projekty">Zavřít</button>
+                <button id="btnCloudProjectsClose" class="btn-cad icon-editor-close" type="button" aria-label="Zavřít cloudové projekty">×</button>
+                <svg class="project-location-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 18a4 4 0 0 1-1-7.9 6 6 0 0 1 11.6-1.4A4.7 4.7 0 0 1 18 18Z"/></svg>
+                <h2 class="modal-title" id="cloudProjectsTitle">Cloudové projekty</h2>
+                <span id="cloudProjectCount"></span>
             </div>
             <p id="cloudProjectsStatus" role="status" aria-live="polite"></p>
             <div class="cloud-projects-toolbar">
-                <button id="btnCloudSaveCurrent" class="btn-cad" type="button" data-save-cloud-project style="background:#22c55e;color:#121214;font-weight:bold;" hidden>Uložit aktuální projekt</button>
-                <div style="display:flex;gap:8px;">
-                    <button id="btnCloudAccount" class="btn-cad" type="button">Uživatelský účet</button>
-                    <button id="btnCloudRefresh" class="btn-cad" type="button">Obnovit</button>
-                    <button id="btnCloudSignOut" class="btn-cad" type="button">Odhlásit se</button>
-                </div>
+                <button id="btnCloudSaveCurrent" class="btn-cad" type="button" data-save-cloud-project style="background:#22c55e;color:#121214;font-weight:bold;" hidden>Uložit kopii do cloudu</button>
             </div>
             <div id="cloudProjectsList"></div>
         </div>
@@ -799,10 +797,6 @@
                 <button id="btnMenuSave" class="btn-cad" style="width: 100%; justify-content: flex-start;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
                     Uložit / Export
-                </button>
-                <button id="btnMenuCloud" class="btn-cad" type="button" data-open-cloud-projects hidden>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6 18a4 4 0 0 1-1-7.9 6 6 0 0 1 11.6-1.4A4.7 4.7 0 0 1 18 18Z"/></svg>
-                    Cloudové projekty
                 </button>
                 <button id="btnMenuPrint" class="btn-cad" style="width: 100%; justify-content: flex-start;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
@@ -868,19 +862,25 @@
                     <div class="icon-editor-selection" id="iconEditorSelection" aria-live="polite"></div>
                 </div>
                 <div class="icon-editor-shape-tools">
-                    <div class="icon-editor-tools" aria-label="Přidat tvar">
+                    <button class="btn-cad icon-shape-scroll" type="button" data-shape-scroll="-1" aria-label="Posunout tvary nahoru" aria-controls="iconEditorShapeList" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg></button>
+                    <div class="icon-editor-tools icon-editor-shape-list" id="iconEditorShapeList" role="group" aria-label="Přidat tvar">
                         <button class="btn-cad" type="button" data-icon-shape="circle" title="Kruh" aria-label="Kruh"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle></svg></button>
                         <button class="btn-cad" type="button" data-icon-shape="rect" title="Čtverec" aria-label="Čtverec"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16"></rect></svg></button>
+                        <button class="btn-cad" type="button" data-icon-shape="rectangle" title="Obdélník" aria-label="Obdélník"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12"/></svg></button>
                         <button class="btn-cad" type="button" data-icon-shape="roundRect" title="Zaoblený čtverec" aria-label="Zaoblený čtverec"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"></rect></svg></button>
+                        <button class="btn-cad" type="button" data-icon-shape="roundedRectangle" title="Zaoblený obdélník" aria-label="Zaoblený obdélník"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="3"/></svg></button>
+                        <button class="btn-cad" type="button" data-icon-shape="ellipse" title="Ovál" aria-label="Ovál"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="9" ry="5"/></svg></button>
+                        <button class="btn-cad" type="button" data-icon-shape="capsule" title="Kapsle" aria-label="Kapsle"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="10" rx="5"/></svg></button>
                         <button class="btn-cad" type="button" data-icon-shape="triangle" title="Trojúhelník" aria-label="Trojúhelník"><svg viewBox="0 0 24 24"><path d="M12 4 21 20H3Z"></path></svg></button>
                         <button class="btn-cad" type="button" data-icon-shape="diamond" title="Kosočtverec" aria-label="Kosočtverec"><svg viewBox="0 0 24 24"><path d="m12 3 9 9-9 9-9-9z"></path></svg></button>
                         <button class="btn-cad" type="button" data-icon-shape="line" title="Čára" aria-label="Čára"><svg viewBox="0 0 24 24"><path d="M4 20 20 4"></path></svg></button>
                         <button class="btn-cad" type="button" data-icon-shape="text" title="Text" aria-label="Text"><svg viewBox="0 0 24 24"><path d="M5 5h14M12 5v14M8 19h8"></path></svg></button>
-                        <button class="btn-cad" type="button" data-icon-shape="ellipse" title="Elipsa" aria-label="Elipsa"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="9" ry="5"/></svg></button>
                         <button class="btn-cad" type="button" data-icon-shape="hexagon" title="Šestiúhelník" aria-label="Šestiúhelník"><svg viewBox="0 0 24 24"><path d="M7 4h10l5 8-5 8H7l-5-8Z"/></svg></button>
+                        <button class="btn-cad" type="button" data-icon-shape="octagon" title="Osmiúhelník" aria-label="Osmiúhelník"><svg viewBox="0 0 24 24"><path d="M8 3h8l5 5v8l-5 5H8l-5-5V8Z"/></svg></button>
                         <button class="btn-cad" type="button" data-icon-shape="arc" title="Oblouk" aria-label="Oblouk"><svg viewBox="0 0 24 24"><path d="M4 16a8 8 0 0 1 16 0"/></svg></button>
                         <button class="btn-cad" type="button" data-icon-shape="arrow" title="Šipka" aria-label="Šipka"><svg viewBox="0 0 24 24"><path d="M3 12h17m-6-6 6 6-6 6"/></svg></button>
                     </div>
+                    <button class="btn-cad icon-shape-scroll" type="button" data-shape-scroll="1" aria-label="Posunout tvary dolů" aria-controls="iconEditorShapeList"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
                 </div>
                 <div>
                     <span class="icon-editor-color-label">Barva</span>
@@ -904,12 +904,17 @@
                     <label class="icon-editor-field" id="iconEditorWeightField" hidden>Tloušťka textu
                         <input id="iconEditorWeight" type="range" min="100" max="900" step="100" value="700">
                     </label>
-                    <label class="icon-editor-field">Použít ikonu jako šablonu
-                        <select id="iconEditorTemplate"></select>
-                    </label>
+                    <section class="icon-template" aria-labelledby="iconTemplateTitle">
+                        <button id="btnIconEditorTemplate" class="icon-template-preview" type="button" aria-label="Použít šablonu" title="Použít šablonu" disabled>
+                            <img id="iconTemplateImage" alt="" hidden><span id="iconTemplateEmpty" aria-hidden="true">—</span>
+                        </button>
+                        <div>
+                            <h3 id="iconTemplateTitle">Šablona</h3>
+                            <button id="btnSaveIconTemplate" class="btn-cad" type="button">Uložit šablonu</button>
+                        </div>
+                    </section>
                     <div class="icon-editor-actions">
                         <button id="btnIconEditorDuplicate" class="btn-cad" type="button">Duplikovat tvar</button>
-                        <button id="btnIconEditorTemplate" class="btn-cad" type="button">Použít šablonu</button>
                         <button id="btnIconEditorDelete" class="btn-cad" type="button" title="Odstranit tvar">Odstranit</button>
                         <button id="btnIconEditorClear" class="btn-cad" type="button">Vymazat</button>
                         <button id="btnIconEditorReset" class="btn-cad" type="button" title="Obnovit výchozí ikonu">Obnovit výchozí</button>
@@ -926,8 +931,7 @@
                 <div class="plan-output-options">
                     <div class="modal-text">Celé podlaží, nezávisle na přiblížení obrazovky.</div>
                     <div class="plan-output-actions">
-                        <button id="btnExportBIPS" class="btn-cad output-project" type="button">Uložit Projekt (.TECH)</button>
-                        <button id="btnOutputCloud" class="btn-cad output-project" type="button" data-save-cloud-project hidden>Uložit do cloudu</button>
+                        <button id="btnExportBIPS" class="btn-cad output-project" type="button"><svg class="project-location-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8m-4-4v4"/></svg>Uložit Projekt (.TECH)</button>
                         <button id="btnExportPNG" class="btn-cad" type="button">PNG</button>
                         <button id="btnExportJPEG" class="btn-cad" type="button">JPG</button>
                         <button id="btnExportSVG" class="btn-cad" type="button">SVG</button>
@@ -1017,6 +1021,6 @@
         <button type="button" data-tablet-action="delete" class="tool-danger">×</button>
         <button type="button" data-tablet-action="undo">↶</button>
     </div>
-    <script src="bootstrap.js?v=20261114-icon-editor-30"></script>
+    <script src="bootstrap.js?v=20261115-icon-template-34"></script>
 </body>
 </html>

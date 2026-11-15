@@ -48,7 +48,10 @@
     function sync(root) {
         const open = !root.hidden && (root.classList.contains('app-dialog-backdrop')
             ? root.style.display !== 'none' : ['flex','block','grid'].includes(root.style.display));
-        root.dataset.modalOpen = String(open);
+        const state = String(open);
+        if (root.dataset.modalOpen === state) return;
+        root.dataset.modalOpen = state;
+        if (open) window.clearGoomTooltips?.();
     }
     roots.forEach(root => { root.classList.add('motion-surface'); sync(root); });
     let contentAnimation;

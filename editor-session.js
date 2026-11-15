@@ -16,7 +16,7 @@ async function restoreEditorAfterReload(user) {
         if(!await loadFromDB({requireUid:user.uid}))return;
         if(window.getFirebaseUser?.()?.uid!==user.uid)return;
         isSystemReady=true;changeFloor();applySavedPlanViewport(saved.viewport);saveStateToHistory();
-        document.getElementById('welcomeModal').style.display='none';triggerAutoSave({skipCloudSync:true});requestRedraw();
+        document.getElementById('welcomeModal').style.display='none';triggerAutoSave();requestRedraw();
     }catch(error){console.warn('Resume after reload:',error);showWelcomeScreen();}
 }
 document.addEventListener('goom-auth-state-changed', event => {
@@ -24,4 +24,4 @@ document.addEventListener('goom-auth-state-changed', event => {
     reloadResumeAttempted = true;
     window.initialEditorResume = restoreEditorAfterReload(event.detail.user);
 });
-window.addEventListener('pagehide',()=>{if(typeof stopDeviceRotation==='function')stopDeviceRotation();if(isSystemReady)saveToDB({skipCloudSync:true});});
+window.addEventListener('pagehide',()=>{if(typeof stopDeviceRotation==='function')stopDeviceRotation();if(isSystemReady)saveToDB();});

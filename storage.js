@@ -127,11 +127,10 @@ function initDB() {
     });
 }
 
-function triggerAutoSave(options = {}) {
+function triggerAutoSave() {
     if (autoSaveTimer) clearTimeout(autoSaveTimer);
     autoSaveTimer = setTimeout(() => {
-        saveToDB(options);
-        if (!options.skipCloudSync) window.scheduleCloudSync?.();
+        saveToDB();
     }, 1500);
 }
 
@@ -157,16 +156,13 @@ function getProjectDataPayload() {
     };
 }
 
-function saveToDB(options = {}) {
+function saveToDB() {
     if(!isSystemReady || isExporting || !db) return;
     try {
         const projectData = getProjectDataPayload();
         let tx = db.transaction(STORE_NAME, 'readwrite');
         let store = tx.objectStore(STORE_NAME);
         store.put(projectData, 'latest_save');
-        tx.oncomplete = () => {
-            if (!options.skipCloudSync) window.scheduleCloudSync?.();
-        };
         tx.onerror = () => {
             console.error('Ошибка локального автосохранения:', tx.error);
             window.setCloudSyncStatus?.(tr('Ошибка локального сохранения'), 'error');

@@ -16,6 +16,8 @@ function sanitizeProjectLegend(value) {
             // Keep the snapshot even during early startup, before the icon editor has loaded.
             shapes: Array.isArray(entry.shapes) ? entry.shapes.slice(0, 100).filter(s => s && typeof s === 'object').map(s => ({
                 kind:s.kind,x:s.x,y:s.y,size:s.size,rotation:s.rotation,color:s.color,fill:s.fill,fillColor:s.fillColor,stroke:s.stroke,fontWeight:s.fontWeight,
+                ...(Number.isFinite(s.height) ? {height:s.height} : {}),
+                ...(s.kind==='stockIcon' ? {stockType:s.stockType} : {}),
                 text:typeof s.text==='string'?s.text.slice(0,8):''
             })) : []
         }))

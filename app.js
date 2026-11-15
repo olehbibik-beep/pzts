@@ -33,6 +33,7 @@ function moveAppTooltip(target) {
 function showAppTooltip(target) {
     const text = target.getAttribute('data-tooltip');
     if (!text || activeTooltipTarget === target || suppressedTooltipTarget === target) return;
+    if (document.querySelector('[data-modal-open="true"]') && !target.closest('[data-modal-open="true"]')) return;
     activeTooltipTarget = target;
     appTooltip.textContent = text;
     appTooltip.style.display = 'block';
@@ -46,7 +47,7 @@ function hideAppTooltip(target) {
 }
 
 window.clearGoomTooltips = event => {
-    suppressedTooltipTarget = activeTooltipTarget || (event?.target instanceof Element ? event.target.closest('[data-tooltip]') : null);
+    suppressedTooltipTarget = activeTooltipTarget || (event?.target instanceof Element ? event.target.closest('[data-tooltip]') : null) || suppressedTooltipTarget;
     activeTooltipTarget = null;
     appTooltip.style.display = 'none';
     const tooltip = document.getElementById('deviceTooltip');
@@ -311,9 +312,8 @@ document.getElementById('btnMenuSave').addEventListener('click', () => {
 // Простые функции для предотвращения ошибок кнопок Экспорта
 function exportToPNG() { return exportPlanFile('png'); }
 function exportToPDF() { return exportPlanFile('pdf'); }
-function printCurrentFloor() { return printPlanDirect(); }
 document.getElementById('btnMenuPrint').addEventListener('click', () => {
- document.getElementById('mainMenuModal').style.display = 'none'; printCurrentFloor();
+ document.getElementById('mainMenuModal').style.display = 'none'; void printPlanDirect();
 });
 document.getElementById('btnExportBIPS').addEventListener('click', () => { exportToTECH(); saveModal.style.display='none'; });
 for (const [id,format] of [['btnExportPNG','png'],['btnExportPDF','pdf'],['btnExportSVG','svg'],['btnExportJPEG','jpeg']]) {
@@ -1099,7 +1099,7 @@ document.getElementById('imageLoader').addEventListener('change', async function
  try {
   await new Promise(requestAnimationFrame);
   const imported=await importPlanSource(file,floor);
-  if(imported){Object.assign(floor,imported);isSystemReady=true;changeFloor();saveStateToHistory();triggerAutoSave();
+  if(imported){window.resetActiveCloudProject?.();Object.assign(floor,imported);isSystemReady=true;changeFloor();saveStateToHistory();triggerAutoSave();
    if(imported.vectorPlan?.unsupported.length)showAppAlert(tr`Nepodporované prvky DXF: ${imported.vectorPlan.unsupported.join(', ')}`,tr('Import DXF'));
   }
  } catch(error){console.error(error);showAppAlert(error.message,tr('Chyba načítání výkresu'));}
@@ -1116,7 +1116,6 @@ function importFileContent(file, options = {}) {
             if (!text || text.trim() === "") throw new Error(tr("Soubor je prázdný."));
 
             const data = JSON.parse(text);
-            window.resetActiveCloudProject?.();
             let loadedFloors = [];
             
             if (Array.isArray(data)) {
@@ -1133,6 +1132,9 @@ function importFileContent(file, options = {}) {
                 throw new Error(tr("Neznámá struktura dat v souboru."));
             }
             
+            const preparedFloors = await loadFloorsImages(loadedFloors);
+            if (options.canApply && !options.canApply()) { resolve(false); return; }
+            window.resetActiveCloudProject?.();
             if (data && data.currentMaxLines) currentMaxLines = data.currentMaxLines;
             customDeviceIcons = data && data.customDeviceIcons && typeof data.customDeviceIcons === 'object' ? data.customDeviceIcons : {};
             let slider = document.getElementById('deviceSizeSlider');
@@ -1148,9 +1150,7 @@ function importFileContent(file, options = {}) {
             if (pInput) pInput.value = projectName;
 
             updateLoopSelect();
-            isSystemReady = false; requestRedraw(); 
-
-            floors = await loadFloorsImages(loadedFloors);
+            floors = preparedFloors;
             setPirCoverageVisible(data?.pirCoverageVisible !== false);
             window.projectOwnerUid=window.getFirebaseUser?.()?.uid||null;
             if (typeof refreshCustomDeviceIcons === 'function') refreshCustomDeviceIcons();
@@ -1161,7 +1161,7 @@ function importFileContent(file, options = {}) {
             isSystemReady = true; 
             changeFloor(); 
             saveStateToHistory(); 
-            triggerAutoSave(options);
+            triggerAutoSave();
             document.getElementById('welcomeModal').style.display = 'none';
             resolve(true);
 

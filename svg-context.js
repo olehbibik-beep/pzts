@@ -21,14 +21,20 @@ class SVGPlanContext {
     closePath(){this.path+='Z';}
     quadraticCurveTo(a,b,x,y){this.path+=`Q${a} ${b} ${x} ${y}`;this.last={x,y};}
     bezierCurveTo(a,b,c,d,x,y){this.path+=`C${a} ${b} ${c} ${d} ${x} ${y}`;this.last={x,y};}
-    arc(x,y,r,start,end,ccw=false){
+    arc(x,y,r,start,end,ccw=false){this.ellipse(x,y,r,r,0,start,end,ccw);}
+    ellipse(x,y,rx,ry,rotation,start,end,ccw=false){
         const tau=Math.PI*2,raw=end-start;
         let span=ccw?-((start-end)%tau+tau)%tau:((end-start)%tau+tau)%tau;
         if(Math.abs(raw)>=tau-1e-8)span=ccw?-tau:tau;
-        const sx=x+r*Math.cos(start),sy=y+r*Math.sin(start);
+        const cosine=Math.cos(rotation),sine=Math.sin(rotation);
+        const point=angle=>{
+            const dx=rx*Math.cos(angle),dy=ry*Math.sin(angle);
+            return [x+cosine*dx-sine*dy,y+sine*dx+cosine*dy];
+        };
+        const [sx,sy]=point(start);
         if(this.last)this.lineTo(sx,sy);else this.moveTo(sx,sy);
         const count=Math.max(1,Math.ceil(Math.abs(span)/Math.PI));
-        for(let i=1;i<=count;i++){const a=start+span*i/count;const ex=x+r*Math.cos(a),ey=y+r*Math.sin(a);this.path+=`A${r} ${r} 0 0 ${ccw?0:1} ${ex} ${ey}`;this.last={x:ex,y:ey};}
+        for(let i=1;i<=count;i++){const [ex,ey]=point(start+span*i/count);this.path+=`A${rx} ${ry} ${rotation*180/Math.PI} 0 ${ccw?0:1} ${ex} ${ey}`;this.last={x:ex,y:ey};}
     }
     roundRect(x,y,w,h,r){r=Math.min(Number(r)||0,w/2,h/2);this.moveTo(x+r,y);this.lineTo(x+w-r,y);this.quadraticCurveTo(x+w,y,x+w,y+r);this.lineTo(x+w,y+h-r);this.quadraticCurveTo(x+w,y+h,x+w-r,y+h);this.lineTo(x+r,y+h);this.quadraticCurveTo(x,y+h,x,y+h-r);this.lineTo(x,y+r);this.quadraticCurveTo(x,y,x+r,y);this.closePath();}
     emitPath(d,fill,stroke){this.elements.push(`<path d="${this.escape(d)}" ${this.transformAttribute()} fill="${fill?this.escape(this.fillStyle):'none'}" stroke="${stroke?this.escape(this.strokeStyle):'none'}" stroke-width="${this.lineWidth}" stroke-linecap="${this.lineCap}" stroke-linejoin="${this.lineJoin}"${this.dash.length?` stroke-dasharray="${this.dash.join(' ')}"`:''}/>`);}

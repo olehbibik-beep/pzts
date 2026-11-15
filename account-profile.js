@@ -30,6 +30,10 @@
     window.hasProAccess = () => Boolean(window.getFirebaseUser()?.emailVerified && uid === window.getFirebaseUser()?.uid
         && (hasPaidAccess() || grantedUntil() > Date.now()));
     window.hasCloudAccess = window.hasProAccess;
+    window.hasAdminAccess = () => {
+        const user = window.getFirebaseUser();
+        return Boolean(user?.emailVerified && user.uid === uid && ['owner', 'admin'].includes(adminRole));
+    };
 
     function feedback(message = '', error = false) {
         byId('accountFeedback').textContent = message;
@@ -53,7 +57,7 @@
         const hasKey = entitled && hasPaidAccess();
         byId('accountCloudKeyBlock').hidden = !hasKey;
         byId('btnAccountCloudProjects').hidden = !entitled;
-        byId('btnAccountAdmin').hidden = !user?.emailVerified || !['owner', 'admin'].includes(adminRole);
+        byId('btnAccountAdmin').hidden = !window.hasAdminAccess();
         byId('accountCloudKey').value = hasKey ? license.licenseId || `PZTS-PRO-${license.keySuffix}` : '';
         byId('btnManageSubscription').hidden = !license?.billingCustomerId;
         const formatDate = value => new Date(value).toLocaleDateString(getGoomLanguage() === 'cs' ? 'cs-CZ' : 'en-GB');
@@ -172,11 +176,11 @@
                 }), adminRef.onSnapshot(snapshot => {
                     if (sessionGeneration !== generation || snapshot.metadata?.fromCache) return;
                     adminRole = snapshot.data()?.role ?? null;
-                    render();
+                    announce();
                 }, () => {
                     if (sessionGeneration !== generation) return;
                     adminRole = null;
-                    render();
+                    announce();
                 })];
         }
     }
@@ -219,6 +223,7 @@
     };
     window.openAccountPanel = async () => {
         if (!window.getFirebaseUser()) { showWelcomeScreen(); return; }
+        window.clearGoomTooltips?.();
         const wasOpen = byId('userAccountModal').style.display === 'flex';
         byId('userAccountModal').style.display = 'flex';
         if (!wasOpen) byId('userAccountModal').querySelector('.account-card').scrollTop = 0;

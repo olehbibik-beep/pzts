@@ -16,12 +16,14 @@ const iconEditorCanvas = document.getElementById('iconEditorCanvas');
 const iconEditorCtx = iconEditorCanvas.getContext('2d');
 const iconEditorModal = document.getElementById('iconEditorModal');
 const iconEditorTarget = document.getElementById('iconEditorTarget');
-const iconEditorTemplate = document.getElementById('iconEditorTemplate');
 const iconEditorTurn = document.getElementById('iconEditorTurn');
-const iconEditorShapeKinds = new Set(['circle', 'rect', 'roundRect', 'triangle', 'diamond', 'line', 'text', 'ellipse', 'hexagon', 'arc', 'arrow']);
+const iconShapeHeightRatios = new Map([['rectangle', .64], ['roundedRectangle', .64], ['ellipse', .62], ['capsule', .48]]);
+const iconEditorShapeKinds = new Set(['circle', 'rect', 'roundRect', 'triangle', 'diamond', 'line', 'text', 'hexagon', 'octagon', 'arc', 'arrow', 'stockIcon', ...iconShapeHeightRatios.keys()]);
+const iconEditorStockTypes = new Set(iconEditorDeviceTypes.map(([type]) => type));
 const iconEditorOpenShapes = new Set(['line', 'arc', 'arrow']);
-const canChangeIcon = () => Boolean(window.hasProAccess?.() && typeof editingToolbarMenu !== 'undefined'
-    && editingToolbarMenu && !isBuiltInToolbarMenu(editingToolbarMenu));
+const iconTemplateKey = 'goom-icon-editor-template-v1';
+let iconTemplateShapes = loadIconEditorTemplate();
+const canChangeIcon = () => typeof canEditToolbarPreset === 'function' && canEditToolbarPreset(editingToolbarMenu);
 let iconEditorShapes = [];
 let iconEditorSelectedIndex = -1;
 let iconEditorHistory = [];
@@ -106,11 +108,14 @@ function buildIconEditorColorPalette() {
 
 function sanitizeIconShapes(shapes) {
     if (!Array.isArray(shapes)) return [];
-    return shapes.slice(0, 100).filter(shape => shape && iconEditorShapeKinds.has(shape.kind)).map(shape => ({
+    return shapes.slice(0, 100).filter(shape => shape && iconEditorShapeKinds.has(shape.kind)
+        && (shape.kind !== 'stockIcon' || iconEditorStockTypes.has(shape.stockType))).map(shape => ({
         kind: shape.kind,
         x: Number.isFinite(shape.x) ? Math.min(400, Math.max(0, shape.x)) : 200,
         y: Number.isFinite(shape.y) ? Math.min(400, Math.max(0, shape.y)) : 200,
         size: Number.isFinite(shape.size) ? Math.min(400, Math.max(10, shape.size)) : 90,
+        ...(iconShapeHeightRatios.has(shape.kind) && Number.isFinite(shape.height) ? { height: Math.min(400, Math.max(10, shape.height)) } : {}),
+        ...(shape.kind === 'stockIcon' ? { stockType: shape.stockType } : {}),
         rotation: Number.isFinite(shape.rotation) ? Math.max(-180, Math.min(180, shape.rotation)) : 0,
         color: /^#[0-9a-f]{6}$/i.test(shape.color) ? shape.color : '#22c55e',
         fill: shape.fill === true,
@@ -121,45 +126,31 @@ function sanitizeIconShapes(shapes) {
     }));
 }
 
+function iconShapeHeight(shape) {
+    return shape.height ?? shape.size * (iconShapeHeightRatios.get(shape.kind) ?? 1);
+}
+
 function iconShapeLines(kind, half) {
     switch (kind) {
         case 'triangle': return [[0, -half], [half, half], [-half, half]];
         case 'diamond': return [[0, -half], [half, 0], [0, half], [-half, 0]];
         case 'hexagon': return [[-half / 2, -half * .86], [half / 2, -half * .86], [half, 0], [half / 2, half * .86], [-half / 2, half * .86], [-half, 0]];
+        case 'octagon': {
+            const corner = half * (Math.SQRT2 - 1);
+            return [[-corner,-half], [corner,-half], [half,-corner], [half,corner],
+                [corner,half], [-corner,half], [-half,corner], [-half,-corner]];
+        }
         case 'line': return [[-half, 0], [half, 0]];
         case 'arrow': return [[-half, 0], [half, 0], [half * .49, -half * .53], [half, 0], [half * .49, half * .53]];
     }
 }
 
-function escapeIconXml(value) {
-    return String(value).replace(/[&<>"']/g, char => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;'
-    })[char]);
-}
-
 function getCustomDeviceIconSvg(type, iconMap = customDeviceIcons) {
     const shapes = sanitizeIconShapes(iconMap[type]);
     if (!shapes.length) return null;
-    const elements = shapes.map(shape => {
-        const half = shape.size / 2;
-        const fill = shape.fill && !iconEditorOpenShapes.has(shape.kind) ? shape.fillColor || shape.color : 'none';
-        const stroke = shape.kind === 'text' ? 'none' : shape.color;
-        const attrs = `fill="${fill}" stroke="${stroke}" stroke-width="${shape.stroke}" stroke-linecap="round" stroke-linejoin="round"`;
-        let geometry;
-        if (shape.kind === 'circle') geometry = `<circle cx="0" cy="0" r="${half}" ${attrs}/>`;
-        else if (shape.kind === 'ellipse') geometry = `<ellipse cx="0" cy="0" rx="${half}" ry="${half * .62}" ${attrs}/>`;
-        else if (shape.kind === 'rect') geometry = `<rect x="${-half}" y="${-half}" width="${shape.size}" height="${shape.size}" ${attrs}/>`;
-        else if (shape.kind === 'roundRect') geometry = `<rect x="${-half}" y="${-half}" width="${shape.size}" height="${shape.size}" rx="${shape.size * 0.14}" ${attrs}/>`;
-        else if (shape.kind === 'arc') geometry = `<path d="M ${-half} 0 A ${half} ${half} 0 0 1 ${half} 0" ${attrs}/>`;
-        else if (shape.kind === 'text') geometry = `<text x="0" y="0" fill="${shape.color}" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-weight="${shape.fontWeight}" font-size="${Math.max(10, shape.size * .75)}">${escapeIconXml(shape.text)}</text>`;
-        else {
-            const points = iconShapeLines(shape.kind, half).map(point => point.join(' ')).join(' ');
-            const tag = iconEditorOpenShapes.has(shape.kind) ? 'polyline' : 'polygon';
-            geometry = `<${tag} points="${points}" ${attrs}/>`;
-        }
-        return `<g transform="translate(${shape.x} ${shape.y}) rotate(${shape.rotation})">${geometry}</g>`;
-    }).join('');
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">${elements}</svg>`;
+    const context = new SVGPlanContext(400, 400);
+    for (const shape of shapes) drawEditorShape(context, shape);
+    return context.toSVG();
 }
 
 function getCustomDeviceIconDataUrl(type, iconMap = customDeviceIcons) {
@@ -192,6 +183,11 @@ function drawEditorShape(ctx, shape) {
     ctx.save();
     ctx.translate(shape.x, shape.y);
     ctx.rotate(shape.rotation * Math.PI / 180);
+    if (shape.kind === 'stockIcon') {
+        drawDevice(ctx, { type: shape.stockType, x: 0, y: 0 }, true, 'dark', { baseSize: shape.size / 4, defaultIcon: true });
+        ctx.restore();
+        return;
+    }
     ctx.lineWidth = shape.stroke;
     ctx.strokeStyle = shape.color;
     ctx.fillStyle = shape.fillColor || shape.color;
@@ -199,14 +195,14 @@ function drawEditorShape(ctx, shape) {
     ctx.lineCap = 'round';
     ctx.beginPath();
     if (shape.kind === 'circle') ctx.arc(0, 0, half, 0, Math.PI * 2);
-    else if (shape.kind === 'ellipse') {
-        ctx.save();
-        ctx.scale(1, .62);
-        ctx.arc(0, 0, half, 0, Math.PI * 2);
-        ctx.restore();
+    else if (shape.kind === 'ellipse') ctx.ellipse(0, 0, half, iconShapeHeight(shape) / 2, 0, 0, Math.PI * 2);
+    else if (['rect', 'roundRect', 'rectangle', 'roundedRectangle', 'capsule'].includes(shape.kind)) {
+        const height = iconShapeHeight(shape);
+        const lowerSide = Math.min(shape.size, height);
+        const radius = shape.kind === 'capsule' ? lowerSide / 2
+            : ['roundRect', 'roundedRectangle'].includes(shape.kind) ? lowerSide * .14 : 0;
+        ctx.roundRect(-half, -height / 2, shape.size, height, radius);
     }
-    else if (shape.kind === 'rect') ctx.rect(-half, -half, shape.size, shape.size);
-    else if (shape.kind === 'roundRect') ctx.roundRect(-half, -half, shape.size, shape.size, shape.size * 0.14);
     else if (shape.kind === 'arc') ctx.arc(0, 0, half, Math.PI, Math.PI * 2);
     else if (shape.kind === 'text') {
         ctx.fillStyle = shape.color;
@@ -235,7 +231,8 @@ function redrawIconEditor() {
             iconEditorCtx.strokeStyle = '#0ea5e9';
             iconEditorCtx.lineWidth = 1.5;
             iconEditorCtx.setLineDash([5, 4]);
-            iconEditorCtx.strokeRect(shape.x - shape.size / 2 - 7, shape.y - shape.size / 2 - 7, shape.size + 14, shape.size + 14);
+            const height = iconShapeHeight(shape);
+            iconEditorCtx.strokeRect(shape.x - shape.size / 2 - 7, shape.y - height / 2 - 7, shape.size + 14, height + 14);
             iconEditorCtx.restore();
         }
     });
@@ -251,19 +248,23 @@ function updateIconEditorControls() {
     const editable = canChangeIcon();
     const disabled = !shape || !editable;
     const text = shape?.kind === 'text';
-    const fillable = shape && !text && !iconEditorOpenShapes.has(shape.kind);
-    ['iconEditorColor', 'iconEditorSize', 'btnIconEditorDelete', 'btnIconEditorDuplicate']
+    const stock = shape?.kind === 'stockIcon';
+    const fillable = shape && !text && !stock && !iconEditorOpenShapes.has(shape.kind);
+    ['iconEditorSize', 'btnIconEditorDelete', 'btnIconEditorDuplicate']
         .forEach(id => { document.getElementById(id).disabled = disabled; });
+    document.getElementById('iconEditorColor').disabled = disabled || stock;
     for (const id of ['iconEditorFill', 'iconEditorFillColor']) document.getElementById(id).disabled = disabled || !fillable;
-    document.getElementById('iconEditorStroke').disabled = disabled || text;
+    document.getElementById('iconEditorStroke').disabled = disabled || text || stock;
     document.getElementById('iconEditorWeight').disabled = disabled || !text;
     document.getElementById('iconEditorWeightField').hidden = !text;
     document.getElementById('btnIconEditorClear').disabled = !editable || !iconEditorShapes.length;
     document.getElementById('btnIconEditorReset').disabled = !editable;
     document.getElementById('btnIconEditorUndo').disabled = !editable || iconEditorHistoryIndex <= 0;
-    document.getElementById('btnIconEditorTemplate').disabled = !editable || !iconEditorTemplate.value;
+    document.getElementById('btnIconEditorTemplate').disabled = !editable || !iconTemplateShapes.length;
+    document.getElementById('btnSaveIconTemplate').disabled = !iconEditorStockTypes.has(iconEditorTarget.value)
+        || typeof canEditToolbarMenus !== 'function' || !canEditToolbarMenus();
     document.querySelectorAll('[data-icon-shape]').forEach(button => { button.disabled = !editable; });
-    document.querySelectorAll('.icon-editor-color-swatch').forEach(button => { button.disabled = !editable; });
+    document.querySelectorAll('.icon-editor-color-swatch').forEach(button => { button.disabled = !editable || stock; });
     iconEditorTurn.hidden = disabled || iconEditorDrawingShape || iconEditorDragging;
     if (!shape) return;
     if (!iconEditorTurn.hidden) {
@@ -295,7 +296,6 @@ function saveIconEditorChanges() {
     editingToolbarMenu.icons ||= {};
     if (shapes.length) editingToolbarMenu.icons[target] = shapes;
     else delete editingToolbarMenu.icons[target];
-    refreshIconEditorTemplates();
     updateIconEditorControls();
     renderToolbarMenuEditor();
 }
@@ -372,7 +372,12 @@ function updateIconEditorDrawPreview(event) {
     } else {
         shape.x = (x + iconEditorDrawAnchor.x) / 2;
         shape.y = (y + iconEditorDrawAnchor.y) / 2;
-        shape.size = Math.min(400, Math.max(10, Math.max(Math.abs(dx), Math.abs(dy))));
+        if (iconShapeHeightRatios.has(shape.kind)) {
+            shape.size = Math.max(10, Math.abs(dx));
+            shape.height = Math.max(10, Math.abs(dy));
+        } else {
+            shape.size = Math.max(10, Math.abs(dx), Math.abs(dy));
+        }
     }
     iconEditorDragChanged = iconEditorDragChanged || Math.abs(dx) + Math.abs(dy) > 2;
     redrawIconEditor();
@@ -389,7 +394,6 @@ function selectIconEditorTarget(type) {
     iconEditorHistory = [];
     iconEditorHistoryIndex = -1;
     pushIconEditorHistory();
-    refreshIconEditorTemplates();
     document.getElementById('iconEditorCurrentType').textContent =
         iconEditorDeviceTypes.find(([deviceType]) => deviceType === type)?.[1] || type;
     redrawIconEditor();
@@ -397,7 +401,7 @@ function selectIconEditorTarget(type) {
 }
 
 function openIconEditor(preferredType) {
-    if (!window.hasProAccess?.()) { window.requestProUpgrade?.(); return; }
+    if (!canEditToolbarMenus()) { window.requestProUpgrade?.(); return; }
     const selected = floors[currentFloorIndex]?.devices.find(device => activeDeviceIds.has(device.id));
     const selectedType = selected && iconEditorDeviceTypes.some(([type]) => type === selected.type) ? selected.type : selectedTool;
     const target = preferredType || (iconEditorDeviceTypes.some(([type]) => type === selectedType) ? selectedType : 'pir');
@@ -441,7 +445,12 @@ iconEditorCanvas.addEventListener('pointerdown', event => {
     iconEditorSelectedIndex = -1;
     for (let i = iconEditorShapes.length - 1; i >= 0; i--) {
         const shape = iconEditorShapes[i];
-        if (Math.hypot(shape.x - x, shape.y - y) <= Math.max(14, shape.size * 0.65)) {
+        const angle = shape.rotation * Math.PI / 180;
+        const dx = x - shape.x, dy = y - shape.y;
+        const localX = dx * Math.cos(angle) + dy * Math.sin(angle);
+        const localY = -dx * Math.sin(angle) + dy * Math.cos(angle);
+        if (Math.abs(localX) <= Math.max(14, shape.size / 2 + 6)
+            && Math.abs(localY) <= Math.max(14, iconShapeHeight(shape) / 2 + 6)) {
             iconEditorSelectedIndex = i;
             iconEditorDragOffset = { x: shape.x - x, y: shape.y - y };
             iconEditorDragging = true;
@@ -528,7 +537,8 @@ document.getElementById('btnIconEditorClear').addEventListener('click', () => {
 
 document.getElementById('btnIconEditorReset').addEventListener('click', () => {
     if (!canChangeIcon()) return;
-    iconEditorShapes = [];
+    const preset = builtInToolbarMenus.find(menu => menu.id === editingToolbarMenu.id);
+    iconEditorShapes = sanitizeIconShapes(preset?.icons?.[iconEditorTarget.value]);
     iconEditorSelectedIndex = -1;
     pushIconEditorHistory();
     redrawIconEditor();
@@ -544,7 +554,11 @@ iconEditorControlIds.forEach(id => {
         if (id === 'iconEditorColor') shape.color = control.value;
         else if (id === 'iconEditorFillColor') { shape.fillColor = control.value; shape.fill = true; }
         else if (id === 'iconEditorFill') shape.fill = control.checked;
-        else if (id === 'iconEditorSize') shape.size = Number(control.value);
+        else if (id === 'iconEditorSize') {
+            const size = Number(control.value);
+            if (shape.height !== undefined) shape.height = Math.max(10, Math.min(400, shape.height * size / shape.size));
+            shape.size = size;
+        }
         else if (id === 'iconEditorStroke') shape.stroke = Number(control.value);
         else if (id === 'iconEditorWeight') shape.fontWeight = Number(control.value);
         redrawIconEditor();
@@ -577,30 +591,42 @@ document.getElementById('btnIconEditorDuplicate').addEventListener('click', () =
     saveIconEditorChanges();
 });
 
-function refreshIconEditorTemplates() {
-    const selected = iconEditorTemplate.value;
-    const options = [];
-    for (const menu of toolbarMenus) {
-        const icons = menu.id === editingToolbarMenu?.id ? editingToolbarMenu.icons : menu.icons;
-        for (const [type, label] of iconEditorDeviceTypes) {
-            if (!icons?.[type]?.length || (menu.id === editingToolbarMenu?.id && type === iconEditorTarget.value)) continue;
-            const value = JSON.stringify([menu.id, type]);
-            options.push(new Option(`${menu.name} · ${tr(label)}`, value));
-        }
-    }
-    iconEditorTemplate.replaceChildren(...options);
-    if (options.some(option => option.value === selected)) iconEditorTemplate.value = selected;
-    window.refreshGoomSelects?.();
+function loadIconEditorTemplate() {
+    try { return sanitizeIconShapes(JSON.parse(localStorage.getItem(iconTemplateKey))); }
+    catch { return []; }
 }
-iconEditorTemplate.addEventListener('change', updateIconEditorControls);
+
+function renderIconEditorTemplate() {
+    const preview = document.getElementById('iconTemplateImage');
+    const url = getCustomDeviceIconDataUrl('template', { template: iconTemplateShapes });
+    if (url) preview.src = url;
+    else preview.removeAttribute('src');
+    preview.hidden = !url;
+    document.getElementById('iconTemplateEmpty').hidden = Boolean(url);
+    document.getElementById('btnSaveIconTemplate').textContent = tr(url ? 'Přepsat šablonu' : 'Uložit šablonu');
+    updateIconEditorControls();
+}
+
+document.getElementById('btnSaveIconTemplate').addEventListener('click', () => {
+    if (!canEditToolbarMenus() || !iconEditorStockTypes.has(iconEditorTarget.value)) return;
+    const snapshot = sanitizeIconShapes(iconEditorShapes.length ? iconEditorShapes : [
+        { kind: 'stockIcon', stockType: iconEditorTarget.value, size: 290 }
+    ]);
+    try { localStorage.setItem(iconTemplateKey, JSON.stringify(snapshot)); }
+    catch {
+        showAppAlert(tr('Šablonu nelze uložit v tomto prohlížeči.'));
+        return;
+    }
+    iconTemplateShapes = snapshot;
+    renderIconEditorTemplate();
+});
+
 document.getElementById('btnIconEditorTemplate').addEventListener('click', async () => {
-    if (!canChangeIcon() || !iconEditorTemplate.value) return;
+    if (!canChangeIcon() || !iconTemplateShapes.length) return;
     const target = iconEditorTarget.value;
     const targetMenu = editingToolbarMenu;
-    const [id, type] = JSON.parse(iconEditorTemplate.value);
-    const source = id === targetMenu.id ? targetMenu : toolbarMenus.find(menu => menu.id === id);
-    const shapes = sanitizeIconShapes(source?.icons?.[type]);
-    if (!shapes.length || (iconEditorShapes.length && !await showAppConfirm(tr('Nahradit ikonu šablonou?')))) return;
+    const shapes = cloneIconShapes(iconTemplateShapes);
+    if (iconEditorShapes.length && !await showAppConfirm(tr('Nahradit ikonu šablonou?'))) return;
     if (!canChangeIcon() || targetMenu !== editingToolbarMenu || target !== iconEditorTarget.value) return;
     iconEditorShapes = shapes;
     iconEditorSelectedIndex = -1;
@@ -608,3 +634,27 @@ document.getElementById('btnIconEditorTemplate').addEventListener('click', async
     redrawIconEditor();
     saveIconEditorChanges();
 });
+
+window.addEventListener('storage', event => {
+    if (event.key !== iconTemplateKey && event.key !== null) return;
+    iconTemplateShapes = loadIconEditorTemplate();
+    renderIconEditorTemplate();
+});
+window.addEventListener('goom-language-changed', renderIconEditorTemplate);
+renderIconEditorTemplate();
+
+const iconShapeList = document.getElementById('iconEditorShapeList');
+const iconShapeScrollButtons = [...document.querySelectorAll('[data-shape-scroll]')];
+function updateIconShapeScroll() {
+    const atTop = iconShapeList.scrollTop <= 1;
+    const atBottom = iconShapeList.clientHeight + iconShapeList.scrollTop >= iconShapeList.scrollHeight - 1;
+    iconShapeScrollButtons.forEach(button => {
+        button.disabled = !iconShapeList.clientHeight || (Number(button.dataset.shapeScroll) < 0 ? atTop : atBottom);
+    });
+}
+iconShapeScrollButtons.forEach(button => button.addEventListener('click', () => {
+    iconShapeList.scrollBy({ top: Number(button.dataset.shapeScroll) * iconShapeList.clientHeight * .8,
+        behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+}));
+iconShapeList.addEventListener('scroll', updateIconShapeScroll, { passive: true });
+new ResizeObserver(updateIconShapeScroll).observe(iconShapeList);

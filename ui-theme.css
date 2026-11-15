@@ -165,6 +165,19 @@ body::after {
 .icon-editor-turn button:hover, .icon-editor-turn button:focus-visible { color: #82d322; border-color: #82d322; }
 #iconEditorModal .icon-editor-actions { flex-wrap: wrap; }
 #iconEditorModal .icon-editor-actions button { flex: 0 1 auto; padding: 7px 9px; font-size: 11px; }
+.icon-editor-shape-list { max-height: min(238px, 36dvh); overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding-block: 2px; }
+.icon-editor-shape-list button { flex: none; width: 100%; min-width: 0; }
+.icon-editor-shape-tools :is(.icon-editor-shape-list, .icon-shape-scroll) { width: 100%; }
+#iconEditorModal .icon-shape-scroll { justify-content: center; padding: 4px; }
+.icon-shape-scroll svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.icon-shape-scroll:disabled { opacity: .3; }
+.icon-template { display: flex; gap: 10px; width: fit-content; align-items: center; padding: 6px 10px 6px 6px; border: 1px solid #45484d; border-radius: 8px; }
+.icon-template h3 { margin: 0 0 5px; font-size: 12px; }
+#iconEditorModal #btnSaveIconTemplate { padding: 5px 9px; font-size: 11px; }
+.icon-template-preview { display: grid; place-items: center; width: 50px; height: 50px; padding: 5px; border: 1px solid #a3a3aa; border-radius: 6px; background: #ededf0; color: #55565c; cursor: pointer; }
+.icon-template-preview:not(:disabled):hover { border-color: #82d322; }
+.icon-template-preview:disabled { cursor: default; }
+.icon-template-preview img { width: 100%; height: 100%; object-fit: contain; }
 .tablet-device-tools {
     position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%); z-index: 210;
     display: flex; align-items: center; gap: 3px; width: max-content; max-width: calc(100vw - 24px); overflow-x: auto;
@@ -182,7 +195,7 @@ body::after {
 .pro-status.active { color: #a3e6af; }
 .account-card { overflow-anchor: none; scrollbar-gutter: stable; }
 .account-card > .account-header { position: sticky; top: -20px; z-index: 2; margin-bottom: 16px; padding: 6px 0 12px; background: #1c1c1f; }
-#userAccountModal .account-card { width: min(880px, calc(100vw - 40px)); max-width: 880px; padding: 0 24px 20px; }
+#userAccountModal .account-card { width: min(880px, calc(100vw - 40px)); max-width: 880px; padding: 0 24px 20px; background: #1c1c1f; }
 #userAccountModal .account-header { top: 0; padding-top: 26px; gap: 10px; }
 .account-language-controls { position: absolute; inset: 0 auto auto 50%; transform: translateX(-50%); }
 #btnAccountCloudProjects { margin-top: 10px; }
@@ -209,7 +222,18 @@ body::after {
 *::-webkit-scrollbar-button { display: none; }
 .sliding-row-container > .toolbar-row { padding: 3px 8px !important; }
 .sliding-row-container { transition: none; }
-.sliding-row-container .device-selector-group { padding: 2px 4px; gap: 3px; }
+.sliding-row-container .device-selector-group {
+    display: grid; grid-template-columns: 32px auto minmax(0, 1fr) auto 86px;
+    width: min(100%, 945px); box-sizing: border-box; padding: 2px 4px; gap: 3px;
+}
+.device-set-window { overflow: hidden; min-width: 0; }
+.device-set-tools { display: flex; align-items: center; gap: 3px; min-height: 32px; overflow-x: auto; scrollbar-width: none; }
+.device-set-tools > * { flex-shrink: 0; }
+.device-set-tools::-webkit-scrollbar { display: none; }
+#deviceSelector #btnCycleToolbarMenu { color: #3f4249; }
+@media (max-width: 700px) {
+    .sliding-row-container .device-selector-group { grid-template-columns: 32px auto minmax(0, 1fr) auto 62px; }
+}
 .sliding-row-container .device-btn { padding: 3px; }
 .text-tools { display: flex; border: 1px solid #d4d4d8; border-radius: 999px; color: #3f3f46; }
 .text-tools[hidden] { display: none; }
@@ -280,8 +304,6 @@ body::after {
 button.btn-cad, .toolbar-icon-button, .device-btn, .footer-icon, .ui-select-trigger, .ui-select-option { transition: background-color 160ms var(--ui-ease), color 160ms var(--ui-ease), border-color 160ms var(--ui-ease), opacity 160ms var(--ui-ease); }
 .arrow-tab { transition: background-color 160ms var(--ui-ease), color 160ms var(--ui-ease); }
 .sliding-row-container { transition: max-height 220ms var(--ui-ease); }
-@keyframes toolbarMenuSlideOut { to { opacity: 0; } }
-@keyframes toolbarMenuSlideIn { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
     .modal-blueprint path, .modal-blueprint circle { animation: none !important; stroke-dashoffset: 0; stroke-dasharray: none; opacity: .1; }
     .motion-surface, .ui-select-popup, .welcome-art-space img, .sliding-row-container, .arrow-tab, .ui-select-option { transition: none; }

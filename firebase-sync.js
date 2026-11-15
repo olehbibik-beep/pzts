@@ -1,445 +1,289 @@
 const cloudProjectsModal = document.getElementById('cloudProjectsModal');
 const cloudProjectsList = document.getElementById('cloudProjectsList');
-const cloudSyncStatusElement = document.getElementById('cloudProjectsStatus');
 const cloudSyncIndicator = document.getElementById('cloudSyncIndicator');
-
-const cloudPointerPrefix = 'goom.cloudProject.';
+const cloudProjectLimit = 5;
+// Older releases ordered by updatedAt, so their lists ignore this internal document.
+const cloudListLock = '!goom-cloud-list';
 let cloudUser = null;
 let cloudProjectId = null;
-let cloudProjectRevision = 0;
-let cloudSyncTimer = null;
-let activeCloudSync = null;
-let cloudSyncPending = false;
-let cloudAccessActive = false;
-
-function createCloudId() {
-    return crypto.randomUUID();
-}
+let cloudWorkspace = 0;
+let cloudActionInProgress = false;
+let cloudListRequest = 0;
+let visibleCloudProjects = [];
 
 function setCloudSyncStatus(message, state = 'idle') {
-    if (cloudSyncStatusElement) cloudSyncStatusElement.textContent = message;
-    if (cloudSyncIndicator) {
-        cloudSyncIndicator.textContent = message;
-        cloudSyncIndicator.dataset.state = state;
-        cloudSyncIndicator.title = message;
+    for (const element of [cloudSyncIndicator, document.getElementById('cloudProjectsStatus')]) {
+        element.textContent = message;
+        element.dataset.state = state;
     }
+    cloudSyncIndicator.title = message;
+    document.getElementById('projectLocationCloud').toggleAttribute('hidden', !cloudProjectId);
+    document.getElementById('projectLocationLocal').toggleAttribute('hidden', Boolean(cloudProjectId));
 }
-
-function getCloudPointerKey(userId) {
-    return `${cloudPointerPrefix}${userId}`;
-}
-
-function saveCloudPointer(projectId, revision) {
-    cloudProjectId = projectId;
-    cloudProjectRevision = revision;
-    if (!cloudUser) return;
-    localStorage.setItem(getCloudPointerKey(cloudUser.uid), JSON.stringify({ projectId, revision }));
-}
-
-function loadCloudPointer(user) {
-    cloudProjectId = null;
-    cloudProjectRevision = 0;
-    if (!user) return;
-    const serialized = localStorage.getItem(getCloudPointerKey(user.uid));
-    if (!serialized) return;
-    try {
-        const pointer = JSON.parse(serialized);
-        if (typeof pointer.projectId === 'string' && Number.isInteger(pointer.revision)) {
-            cloudProjectId = pointer.projectId;
-            cloudProjectRevision = pointer.revision;
-        }
-    } catch (error) {
-        console.error('Не удалось прочитать локальную привязку облачного проекта:', error);
-        localStorage.removeItem(getCloudPointerKey(user.uid));
-    }
-}
-
-window.resetActiveCloudProject = () => {
-    if (cloudUser) localStorage.removeItem(getCloudPointerKey(cloudUser.uid));
-    cloudProjectId = null;
-    cloudProjectRevision = 0;
-};
-
 window.setCloudSyncStatus = setCloudSyncStatus;
 
-function hasProjectContent() {
-    return floors.some(floor =>
-        Boolean(floor.imgData) || floor.devices.length > 0 || floor.cables.length > 0 || Boolean(floor.legend?.visible)
-    ) || Object.keys(customDeviceIcons || {}).length > 0;
-}
+window.resetActiveCloudProject = () => {
+    cloudWorkspace++;
+    cloudProjectId = null;
+    setCloudSyncStatus(tr('Místní ukládání'));
+};
 
 function getCloudProjectCollection(firestore, userId) {
     return firestore.collection('users').doc(userId).collection('projects');
 }
 
-async function getCloudServices() {
-    if (!window.getFirebaseServices) throw new Error(tr('Модуль Firebase не загружен.'));
-    if (!window.hasCloudAccess?.()) throw new Error(tr('Cloudové úložiště je součástí PRO.'));
+function readCloudRows(collection) {
+    return collection.get({ source: 'server' }).then(snapshot => {
+        const rows = [];
+        snapshot.forEach(doc => {
+            if (doc.id !== cloudListLock) rows.push({ ...doc.data(), id: doc.id });
+        });
+        return rows.sort((a, b) => cloudRowDate(a) - cloudRowDate(b) || a.id.localeCompare(b.id));
+    });
+}
+
+function cloudRowDate(project) {
+    return project.createdAt?.toMillis?.() || project.updatedAt?.toMillis?.() || 0;
+}
+
+function cloudOperationMessage(error, action) {
+    if (error.code === 'goom/cloud-limit') return tr('V cloudu je už 5 projektů. Nejdříve některý odstraňte.');
+    if (error.code === 'storage/unauthorized') return tr(action === 'open'
+        ? 'Firebase Storage nepovolil otevření tohoto projektu.'
+        : 'Firebase Storage nepovolil uložení projektu. Obraťte se na správce.');
+    if (error.code === 'storage/object-not-found') return tr('Soubor tohoto projektu v cloudu chybí.');
+    if (error.code === 'storage/retry-limit-exceeded' || error instanceof TypeError)
+        return tr('Cloudový soubor se nepodařilo stáhnout. Zkontrolujte připojení a zkuste to znovu.');
+    return error.message;
+}
+
+async function getCloudServices(userId) {
+    if (cloudUser?.uid !== userId || !window.hasCloudAccess?.()) throw new Error(tr('Cloudové úložiště je součástí PRO.'));
     return window.getFirebaseServices();
 }
 
-async function syncProjectToCloud(manual = false) {
-    if (!await window.ensureCloudAccess?.()) {
-        if (manual) await window.openAccountPanel?.();
+async function saveCloudProject(userId) {
+    if (!isSystemReady || !floors.length) {
+        showAppAlert(tr('Дождитесь загрузки проекта и повторите попытку.'), tr('Облачные проекты'));
         return false;
     }
-    if (!cloudUser) {
-        setCloudSyncStatus(tr('Войдите через Google для синхронизации'), 'signed-out');
-        if (manual) showAppAlert(tr('Сначала войдите через Google.'), tr('Облачные проекты'));
-        return false;
+    const workspace = cloudWorkspace;
+    const { firestore, storage } = await getCloudServices(userId);
+    const collection = getCloudProjectCollection(firestore, userId);
+    const limitError = () => Object.assign(new Error('Cloud project limit'), { code: 'goom/cloud-limit' });
+    if ((await readCloudRows(collection)).length >= cloudProjectLimit) throw limitError();
+    if (!projectName || projectName === tr('Nový projekt')) {
+        const name = await showAppPrompt(tr('Введите название для сохранения в облаке:'), tr('Сохранить проект'));
+        if (!name || workspace !== cloudWorkspace || userId !== cloudUser?.uid) return false;
+        projectName = name;
+        document.getElementById('projectNameInput').value = name;
+        triggerAutoSave();
     }
-    const userId = cloudUser.uid;
-    if (!isSystemReady || !Array.isArray(floors) || floors.length === 0) {
-        if (manual) showAppAlert(tr('Дождитесь загрузки проекта и повторите попытку.'), tr('Облачные проекты'));
-        return false;
-    }
-    if (!manual && !cloudProjectId && !hasProjectContent()) return false;
-
-    // Автоматически называем проект, если он "Nový projekt" при ручном сохранении
-    if (manual && (!projectName || projectName === tr('Nový projekt'))) {
-        const newName = await showAppPrompt(tr('Введите название для сохранения в облаке:'), tr('Сохранить проект'));
-        if (!newName) return false;
-        projectName = newName;
-        const pInput = document.getElementById('projectNameInput');
-        if (pInput) pInput.value = newName;
-    }
-
-    if (activeCloudSync) {
-        if (!manual) {
-            cloudSyncPending = true;
-            return false;
-        }
-        await activeCloudSync;
-        if (activeCloudSync) return activeCloudSync;
-    }
-    if (cloudUser?.uid !== userId || !window.hasCloudAccess?.()) return false;
-
-    activeCloudSync = (async () => {
-        setCloudSyncStatus(tr('Синхронизация…'), 'syncing');
-        let uploadedPath = null;
-        let uploadCompleted = false;
-        let uploadedObjectIsReferenced = false;
-        let storage = null;
-        try {
-            const services = await getCloudServices();
-            if (cloudUser?.uid !== userId) return false;
-            const { firestore } = services;
-            storage = services.storage;
-            const payload = getProjectDataPayload();
-            const serialized = JSON.stringify(payload);
-            const currentId = cloudProjectId || createCloudId();
-            const expectedRevision = cloudProjectId ? cloudProjectRevision : 0;
-            const projectRef = getCloudProjectCollection(firestore, userId).doc(currentId);
-            uploadedPath = `users/${userId}/projects/${currentId}/${createCloudId()}.json`;
-            await storage.ref(uploadedPath).putString(serialized, 'raw', {
-                contentType: 'application/json; charset=utf-8'
-            });
-            uploadCompleted = true;
-
-            const result = await firestore.runTransaction(async transaction => {
-                const snapshot = await transaction.get(projectRef);
-                const current = snapshot.exists ? snapshot.data() : null;
-                const revisionMatches = current
-                    ? current.revision === expectedRevision
-                    : expectedRevision === 0;
-                const now = window.firebase.firestore.FieldValue.serverTimestamp();
-
-                if (revisionMatches) {
-                    const revision = (current?.revision || 0) + 1;
-                    transaction.set(projectRef, {
-                        name: payload.projectName || tr('Без названия'),
-                        revision,
-                        storagePath: uploadedPath,
-                        sizeBytes: new TextEncoder().encode(serialized).length,
-                        createdAt: current?.createdAt || now,
-                        updatedAt: now
-                    });
-                    return {
-                        projectId: currentId,
-                        revision,
-                        previousPath: current?.storagePath || null,
-                        conflict: false
-                    };
-                }
-
-                const conflictId = createCloudId();
-                const conflictRef = getCloudProjectCollection(firestore, userId).doc(conflictId);
-                const conflictSnapshot = await transaction.get(conflictRef);
-                if (conflictSnapshot.exists) throw new Error(tr('Не удалось создать копию конфликта. Повторите сохранение.'));
-                transaction.set(conflictRef, {
-                    name: tr`${payload.projectName || tr('Без названия')} (копия)`,
-                    revision: 1,
-                    storagePath: uploadedPath,
-                    sizeBytes: new TextEncoder().encode(serialized).length,
-                    conflictOf: currentId,
-                    createdAt: now,
-                    updatedAt: now
-                });
-                return { projectId: conflictId, revision: 1, previousPath: null, conflict: true };
-            });
-
-            uploadedObjectIsReferenced = true;
-            if (cloudUser?.uid !== userId) return false;
-            saveCloudPointer(result.projectId, result.revision);
-            if (result.previousPath && result.previousPath !== uploadedPath) {
-                try {
-                    await storage.ref(result.previousPath).delete();
-                } catch (error) {
-                    if (error.code !== 'storage/object-not-found') {
-                        console.error('Не удалось удалить прежнюю версию проекта из Firebase Storage:', error);
-                        setCloudSyncStatus(tr('Проект сохранён, но старая версия не удалена'), 'error');
-                        return true;
-                    }
-                }
-            }
-
-            setCloudSyncStatus(
-                result.conflict ? tr('Изменения разошлись: сохранена отдельная копия') : tr('Облако: сохранено'),
-                result.conflict ? 'conflict' : 'saved'
-            );
-            if (cloudProjectsModal?.style.display === 'flex') await refreshCloudProjects({ keepSaveStatus: true });
-            return true;
-        } catch (error) {
-            console.error('Ошибка синхронизации с Firebase:', error);
-            if (cloudUser?.uid !== userId) return false;
-            const message = error.code === 'storage/unauthorized'
-                ? tr('Firebase Storage nepovolil uložení projektu. Obraťte se na správce.')
-                : error.message;
-            setCloudSyncStatus(tr`Ошибка облака: ${message}`, 'error');
-            if (manual) showAppAlert(message, tr('Не удалось сохранить проект в облако'));
-            return false;
-        } finally {
-            if (uploadCompleted && !uploadedObjectIsReferenced) {
-                try {
-                    await storage.ref(uploadedPath).delete();
-                } catch (cleanupError) {
-                    if (cleanupError.code !== 'storage/object-not-found') {
-                        console.error('Не удалось очистить незавершённую загрузку Firebase Storage:', cleanupError);
-                    }
-                }
-            }
-        }
-    })();
-
+    if (workspace !== cloudWorkspace || userId !== cloudUser?.uid) return false;
+    const payload = getProjectDataPayload();
+    const serialized = JSON.stringify(payload);
+    const id = crypto.randomUUID();
+    const storagePath = `users/${userId}/projects/${id}/project.json`;
+    const file = storage.ref(storagePath);
+    const lock = collection.doc(cloudListLock);
+    await file.putString(serialized, 'raw', { contentType: 'application/json; charset=utf-8' });
     try {
-        return await activeCloudSync;
-    } finally {
-        activeCloudSync = null;
-        if (cloudSyncPending) {
-            cloudSyncPending = false;
-            scheduleCloudSync();
+        await firestore.runTransaction(async transaction => {
+            await transaction.get(lock);
+            if ((await readCloudRows(collection)).length >= cloudProjectLimit) throw limitError();
+            const now = window.firebase.firestore.FieldValue.serverTimestamp();
+            transaction.set(collection.doc(id), {
+                name: payload.projectName || tr('Без названия'), revision: 1, storagePath,
+                sizeBytes: new TextEncoder().encode(serialized).length, createdAt: now, updatedAt: now
+            });
+            transaction.set(lock, { nonce: id });
+        });
+    } catch (error) {
+        // Only clean up on a known rejection. A network error may leave commit status unknown.
+        if (['goom/cloud-limit', 'permission-denied'].includes(error.code)) {
+            await file.delete().catch(cleanupError => console.warn('Cloud upload cleanup:', cleanupError));
         }
+        throw error;
+    }
+    if (workspace === cloudWorkspace && userId === cloudUser?.uid) cloudProjectId = id;
+    return true;
+}
+
+function renderCloudProjects() {
+    cloudProjectsList.replaceChildren();
+    document.getElementById('cloudProjectCount').textContent = `${visibleCloudProjects.length} / ${cloudProjectLimit}`;
+    if (!visibleCloudProjects.length) {
+        cloudProjectsList.textContent = tr('В облаке пока нет проектов.');
+        return;
+    }
+    for (const project of visibleCloudProjects) {
+        const row = document.createElement('article');
+        row.className = 'cloud-project-row';
+        row.classList.toggle('current', project.id === cloudProjectId);
+        const details = document.createElement('div');
+        details.className = 'cloud-project-details';
+        const name = document.createElement('strong');
+        name.setAttribute('data-user-content', '');
+        name.textContent = project.name || tr('Без названия');
+        const date = document.createElement('span');
+        date.textContent = cloudRowDate(project) ? new Date(cloudRowDate(project)).toLocaleString(window.getGoomLocale()) : '';
+        details.append(name, date);
+        const actions = document.createElement('div');
+        actions.className = 'cloud-project-actions';
+        const open = document.createElement('button');
+        open.type = 'button';
+        open.className = 'btn-cad';
+        open.textContent = tr(project.id === cloudProjectId ? 'Otevřeno' : 'Открыть');
+        open.disabled = project.id === cloudProjectId;
+        open.addEventListener('click', () => runCloudAction('open', userId => openCloudProject(userId, project), open));
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'btn-cad cloud-project-delete';
+        remove.textContent = tr('Удалить');
+        remove.addEventListener('click', () => runCloudAction('delete', userId => deleteCloudProject(userId, project), remove));
+        actions.append(open, remove);
+        row.append(details, actions);
+        cloudProjectsList.appendChild(row);
     }
 }
 
-function scheduleCloudSync() {
-    if (!cloudUser || !window.hasCloudAccess?.()) return;
-    if (cloudSyncTimer) clearTimeout(cloudSyncTimer);
-    cloudSyncTimer = setTimeout(() => {
-        cloudSyncTimer = null;
-        syncProjectToCloud(false);
-    }, 2500);
+async function refreshCloudProjects(userId) {
+    const request = ++cloudListRequest;
+    const { firestore } = await getCloudServices(userId);
+    const rows = await readCloudRows(getCloudProjectCollection(firestore, userId));
+    if (request !== cloudListRequest || userId !== cloudUser?.uid) return;
+    visibleCloudProjects = rows;
+    renderCloudProjects();
 }
 
-window.scheduleCloudSync = scheduleCloudSync;
+async function openCloudProject(userId, project) {
+    if (project.id === cloudProjectId) return false;
+    const workspace = cloudWorkspace;
+    if (isSystemReady && !await showAppConfirm(tr`Открыть «${project.name || tr('Без названия')}»? Текущий проект будет заменён.`, tr('Открыть облачный проект'))) return false;
+    const { storage } = await getCloudServices(userId);
+    const downloadURL = await storage.ref(project.storagePath).getDownloadURL();
+    const response = await fetch(downloadURL);
+    if (!response.ok) {
+        if (response.status === 404) throw Object.assign(new Error('Missing cloud object'), { code: 'storage/object-not-found' });
+        if (response.status === 401 || response.status === 403) throw Object.assign(new Error('Cloud download denied'), { code: 'storage/unauthorized' });
+        throw new Error(tr('Не удалось загрузить файл проекта из Firebase Storage.'));
+    }
+    const blob = await response.blob();
+    if (workspace !== cloudWorkspace || userId !== cloudUser?.uid) return false;
+    const imported = await importFileContent(new File([blob], `${project.name || 'project'}.TECH`, { type: 'application/json' }), {
+        canApply: () => workspace === cloudWorkspace && userId === cloudUser?.uid && window.hasCloudAccess?.()
+    });
+    if (!imported || userId !== cloudUser?.uid) return false;
+    cloudProjectId = project.id;
+    cloudProjectsModal.style.display = 'none';
+    setCloudSyncStatus(tr('Облачный проект открыт'), 'saved');
+    return true;
+}
 
-async function refreshCloudProjects({ keepSaveStatus = false } = {}) {
-    if (!cloudUser || !await window.ensureCloudAccess?.()) return;
+async function deleteCloudProject(userId, project) {
+    if (!await showAppConfirm(tr`Удалить «${project.name || tr('Без названия')}» из облака?`, tr('Удалить проект'))) return false;
+    const { firestore, storage } = await getCloudServices(userId);
+    const collection = getCloudProjectCollection(firestore, userId);
+    const ref = collection.doc(project.id);
+    const lock = collection.doc(cloudListLock);
+    const path = await firestore.runTransaction(async transaction => {
+        await transaction.get(lock);
+        const snapshot = await transaction.get(ref);
+        if (!snapshot.exists) return null;
+        transaction.delete(ref);
+        transaction.set(lock, { nonce: crypto.randomUUID() });
+        return snapshot.data().storagePath;
+    });
+    if (cloudProjectId === project.id && userId === cloudUser?.uid) window.resetActiveCloudProject();
+    if (path) await storage.ref(path).delete().catch(error => {
+        if (error.code !== 'storage/object-not-found') console.warn('Cloud file cleanup:', error);
+    });
+    await refreshCloudProjects(userId);
+    return true;
+}
+
+async function runCloudAction(action, operation, button) {
     const userId = cloudUser?.uid;
-    if (!userId) return;
-    if (!keepSaveStatus) setCloudSyncStatus(tr('Загружаю список проектов…'), 'syncing');
+    if (!userId || !window.hasCloudAccess?.() || cloudActionInProgress) return;
+    const titles = {
+        save: 'Не удалось сохранить проект в облако',
+        open: 'Не удалось открыть облачный проект',
+        delete: 'Не удалось удалить облачный проект',
+        list: 'Облачные проекты'
+    };
+    cloudActionInProgress = true;
+    if (button) button.disabled = true;
+    const progress = tr(action === 'save' ? 'Ukládání kopie…' : action === 'delete' ? 'Odstraňování projektu…'
+        : action === 'open' ? 'Загружаю проект…' : 'Загружаю список проектов…');
+    const previous = { text: cloudSyncIndicator.textContent, state: cloudSyncIndicator.dataset.state };
+    setCloudSyncStatus(progress, 'syncing');
     try {
-        const { firestore } = await getCloudServices();
-        const snapshot = await getCloudProjectCollection(firestore, userId)
-            .orderBy('updatedAt', 'desc')
-            .get();
-        if (cloudUser?.uid !== userId) return;
-        cloudProjectsList.replaceChildren();
-        if (snapshot.empty) {
-            cloudProjectsList.textContent = tr('В облаке пока нет проектов.');
-        } else {
-            snapshot.forEach(documentSnapshot => {
-                const metadata = documentSnapshot.data();
-                const row = document.createElement('article');
-                row.className = 'cloud-project-row';
-                const details = document.createElement('div');
-                details.className = 'cloud-project-details';
-                const name = document.createElement('strong');
-                name.setAttribute('data-user-content', '');
-                name.textContent = metadata.name || tr('Без названия');
-                const updated = document.createElement('span');
-                const date = metadata.updatedAt?.toDate?.();
-                updated.textContent = date ? tr`Изменён: ${date.toLocaleString(window.getGoomLocale())}` : tr('Дата изменения неизвестна');
-                details.append(name, updated);
-
-                const actions = document.createElement('div');
-                actions.className = 'cloud-project-actions';
-                const openButton = document.createElement('button');
-                openButton.type = 'button';
-                openButton.className = 'btn-cad';
-                openButton.textContent = tr('Открыть');
-                openButton.addEventListener('click', () =>
-                    openCloudProject(documentSnapshot.id, metadata)
-                );
-                const deleteButton = document.createElement('button');
-                deleteButton.type = 'button';
-                deleteButton.className = 'btn-cad cloud-project-delete';
-                deleteButton.textContent = tr('Удалить');
-                deleteButton.addEventListener('click', () =>
-                    deleteCloudProject(documentSnapshot.id, metadata)
-                );
-                actions.append(openButton, deleteButton);
-                row.append(details, actions);
-                cloudProjectsList.appendChild(row);
-            });
+        const success = await operation(userId);
+        if (userId !== cloudUser?.uid) return;
+        if (action === 'save' && success) {
+            setCloudSyncStatus(tr('Облако: сохранено'), 'saved');
+            if (cloudProjectsModal.style.display === 'flex') await refreshCloudProjects(userId).catch(error => console.warn('Cloud project list:', error));
+        } else if (action === 'delete' && success) {
+            setCloudSyncStatus(tr('Projekt byl odstraněn z cloudu.'), 'saved');
+        } else if (action === 'list') {
+            setCloudSyncStatus(tr(cloudProjectId ? 'Облачный проект открыт' : 'Místní ukládání'));
+        } else if (action !== 'open' || !success) {
+            setCloudSyncStatus(previous.text, previous.state);
         }
-        if (!keepSaveStatus) setCloudSyncStatus(tr`Проектов в облаке: ${snapshot.size}`, 'saved');
     } catch (error) {
-        console.error('Не удалось загрузить список проектов из Firebase:', error);
-        if (cloudUser?.uid === userId && !keepSaveStatus) setCloudSyncStatus(tr`Ошибка списка: ${error.message}`, 'error');
-    }
-}
-
-async function openCloudProject(projectId, metadata) {
-    if (!await window.ensureCloudAccess?.()) { await window.openAccountPanel?.(); return; }
-    if (!await showAppConfirm(tr`Открыть «${metadata.name || tr('Без названия')}»? Текущий проект будет заменён.`, tr('Открыть облачный проект'))) return;
-    setCloudSyncStatus(tr('Загружаю проект…'), 'syncing');
-    try {
-        const { storage } = await getCloudServices();
-        const downloadURL = await storage.ref(metadata.storagePath).getDownloadURL();
-        const response = await fetch(downloadURL);
-        if (!response.ok) throw new Error(tr('Не удалось загрузить файл проекта из Firebase Storage.'));
-        const payload = await response.json();
-        const imported = await importFileContent(
-            new File([JSON.stringify(payload)], `${metadata.name || 'project'}.bips`, { type: 'application/json' }),
-            { skipCloudSync: true }
-        );
-        if (!imported) {
-            setCloudSyncStatus(tr('Не удалось открыть данные проекта'), 'error');
-            return;
-        }
-        saveCloudPointer(projectId, metadata.revision);
-        cloudProjectsModal.style.display = 'none';
-        setCloudSyncStatus(tr('Облачный проект открыт'), 'saved');
-    } catch (error) {
-        console.error('Не удалось открыть облачный проект:', error);
-        setCloudSyncStatus(tr`Ошибка открытия: ${error.message}`, 'error');
-        showAppAlert(error.message, tr('Не удалось открыть облачный проект'));
-    }
-}
-
-async function deleteCloudProject(projectId, metadata) {
-    if (!await window.ensureCloudAccess?.()) { await window.openAccountPanel?.(); return; }
-    if (!await showAppConfirm(tr`Удалить «${metadata.name || tr('Без названия')}» из облака?`, tr('Удалить проект'))) return;
-    try {
-        const { firestore, storage } = await getCloudServices();
-        await getCloudProjectCollection(firestore, cloudUser.uid).doc(projectId).delete();
-        try {
-            await storage.ref(metadata.storagePath).delete();
-        } catch (error) {
-            if (error.code !== 'storage/object-not-found') throw error;
-        }
-        if (projectId === cloudProjectId) window.resetActiveCloudProject();
-        await refreshCloudProjects();
-    } catch (error) {
-        console.error('Не удалось удалить облачный проект:', error);
-        setCloudSyncStatus(tr`Ошибка удаления: ${error.message}`, 'error');
-        showAppAlert(error.message, tr('Не удалось удалить облачный проект'));
+        if (userId !== cloudUser?.uid) return;
+        console.warn('Cloud project:', error);
+        const message = cloudOperationMessage(error, action);
+        setCloudSyncStatus(message, 'error');
+        if (action !== 'list') showAppAlert(message, tr(titles[action]));
+    } finally {
+        cloudActionInProgress = false;
+        if (button) button.disabled = false;
     }
 }
 
 async function openCloudProjects() {
-    cloudUser = await window.ensureFirebaseSession();
     if (!await window.ensureCloudAccess?.()) { await window.openAccountPanel?.(); return; }
-    if (!cloudUser) {
-        showAppAlert(tr('Войдите через Google, чтобы открыть облачные проекты.'), tr('Облачные проекты'));
-        return;
-    }
+    if (!cloudUser) return;
     cloudProjectsModal.style.display = 'flex';
-    document.getElementById('btnCloudSaveCurrent').hidden = !isSystemReady;
-    const userLabel = document.getElementById('cloudProjectsUser');
-    if (userLabel) userLabel.textContent = cloudUser.displayName || cloudUser.email || tr('Google-пользователь');
-    await refreshCloudProjects();
+    const save = document.getElementById('btnCloudSaveCurrent');
+    save.hidden = !isSystemReady;
+    renderCloudProjects();
+    await runCloudAction('list', refreshCloudProjects, save);
 }
 window.openCloudProjects = openCloudProjects;
 
-document.querySelectorAll('[data-open-cloud-projects]').forEach(button => {
-    button.addEventListener('click', () => {
-        document.getElementById('mainMenuModal').style.display = 'none';
-        void openCloudProjects();
-    });
-});
 document.getElementById('btnCloudProjectsClose').addEventListener('click', () => {
     cloudProjectsModal.style.display = 'none';
 });
-document.getElementById('btnCloudRefresh').addEventListener('click', refreshCloudProjects);
-document.getElementById('btnCloudAccount').addEventListener('click', () => {
-    cloudProjectsModal.style.display = 'none';
-    window.openAccountPanel();
-});
-const manualCloudButtons = [...document.querySelectorAll('[data-save-cloud-project]')];
-manualCloudButtons.forEach(button => button.addEventListener('click', async () => {
-    manualCloudButtons.forEach(control => { control.disabled = true; });
-    const fromExport = button.id === 'btnOutputCloud';
-    const outputStatus = document.getElementById('outputStatus');
-    if (fromExport) outputStatus.textContent = tr('Синхронизация…');
-    try {
-        const saved = await syncProjectToCloud(true);
-        if (fromExport) outputStatus.textContent = saved || cloudSyncIndicator.dataset.state === 'error' ? cloudSyncIndicator.textContent : '';
-    } finally {
-        manualCloudButtons.forEach(control => { control.disabled = false; });
-    }
-}));
-document.getElementById('btnCloudSignOut').addEventListener('click', async () => {
-    try {
-        const auth = await getFirebaseAuth();
-        await auth.signOut();
-    } catch (error) {
-        console.error('Ошибка выхода из Google-аккаунта:', error);
-        showAppAlert(error.message, tr('Не удалось выйти из аккаунта'));
-    }
-});
-
-document.addEventListener('goom-auth-state-changed', event => {
-    cloudUser = event.detail.user;
-    if (!cloudUser) {
-        if (cloudSyncTimer) clearTimeout(cloudSyncTimer);
-        cloudSyncTimer = null;
-        cloudProjectId = null;
-        cloudProjectRevision = 0;
-        setCloudSyncStatus(tr('Войдите через Google для синхронизации'), 'signed-out');
-        return;
-    }
-    setCloudSyncStatus(tr(window.hasCloudAccess?.() ? 'Synchronizace je připravena' : 'Místní ukládání'), 'idle');
+document.querySelectorAll('[data-save-cloud-project]').forEach(button => {
+    button.addEventListener('click', () => runCloudAction('save', saveCloudProject, button));
 });
 
 document.addEventListener('goom-account-changed', event => {
     const { user, licensed } = event.detail;
-    document.getElementById('btnMenuCloud').hidden = !licensed;
-    document.getElementById('btnOutputCloud').hidden = !licensed;
-    if (!licensed) {
-        cloudAccessActive = false;
-        if (cloudSyncTimer) clearTimeout(cloudSyncTimer);
-        cloudSyncTimer = null;
-        cloudProjectId = null;
-        cloudProjectRevision = 0;
-        cloudProjectsModal.style.display = 'none';
-        setCloudSyncStatus(tr('Místní ukládání'), 'idle');
-        return;
+    if (cloudUser?.uid !== user?.uid) {
+        cloudUser = user;
+        cloudListRequest++;
+        visibleCloudProjects = [];
+        window.resetActiveCloudProject();
     }
-    if (cloudAccessActive && cloudUser?.uid === user.uid) return;
-    cloudAccessActive = true;
-    cloudUser = user;
-    loadCloudPointer(cloudUser);
-    setCloudSyncStatus(tr('Synchronizace je připravena'), 'idle');
-    scheduleCloudSync();
+    if (!licensed) {
+        cloudProjectId = null;
+        setCloudSyncStatus(tr('Místní ukládání'));
+        visibleCloudProjects = [];
+        cloudListRequest++;
+        cloudProjectsModal.style.display = 'none';
+    }
 });
 
+cloudUser = window.getFirebaseUser?.();
+setCloudSyncStatus(tr('Místní ukládání'));
+window.addEventListener('goom-language-changed', () => {
+    if (cloudProjectsModal.style.display === 'flex') renderCloudProjects();
+});
 if (FIREBASE_CONFIG.apiKey) {
     getFirebaseAuth().catch(error => {
-        console.error('Не удалось подключить Firebase:', error);
         setCloudSyncStatus(tr`Firebase недоступен: ${error.message}`, 'error');
     });
-} else {
-    setCloudSyncStatus(tr('Настройте Firebase для синхронизации'), 'error');
 }
