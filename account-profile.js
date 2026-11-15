@@ -3,6 +3,8 @@
     let license = null;
     let grant = null;
     let adminRole = null;
+    let companyTeam = null;
+    let companyTeamDirty = false;
     let uid = null;
     let generation = 0;
     let ready = Promise.resolve();
@@ -11,6 +13,8 @@
     const visitInterval = 15 * 60 * 1000;
     const editorVisits = new Map();
     const byId = id => document.getElementById(id);
+    const companySeatForm = byId('companySeatForm');
+    const companySeatInputs = [...companySeatForm.querySelectorAll('input[type="email"]')];
     const userIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21v-2a8 8 0 0 1 16 0v2"></path></svg>';
 
     function normalizeIco(value) { return String(value || '').replace(/\s/g, ''); }
@@ -24,11 +28,17 @@
     const millis = value => value?.toMillis?.() ?? value?.seconds * 1000;
     const paidUntil = () => millis(license?.applicationExpiresAt?.[APP_PRODUCT]);
     const grantedUntil = () => millis(grant?.expiresAt?.[APP_PRODUCT]);
+    const companyUntil = () => {
+        const seat = license?.companySeat;
+        const email = window.getFirebaseUser()?.email?.trim().toLowerCase();
+        return seat && seat.email === email ? millis(seat.applicationExpiresAt?.[APP_PRODUCT]) : 0;
+    };
     const hasPaidAccess = () => license?.status === 'active' && license.uid === uid && license.plan === 'pro'
-        && license.paymentStatus === 'paid' && license.source === 'stripe' && license.billingMode === 'monthly'
+        && license.paymentStatus === 'paid' && license.source === 'stripe' && ['monthly', 'annual'].includes(license.billingMode)
         && license.applications?.includes(APP_PRODUCT) && paidUntil() > Date.now();
+    window.hasOwnPaidPro = hasPaidAccess;
     window.hasProAccess = () => Boolean(window.getFirebaseUser()?.emailVerified && uid === window.getFirebaseUser()?.uid
-        && (hasPaidAccess() || grantedUntil() > Date.now()));
+        && (hasPaidAccess() || grantedUntil() > Date.now() || companyUntil() > Date.now()));
     window.hasCloudAccess = window.hasProAccess;
     window.hasAdminAccess = () => {
         const user = window.getFirebaseUser();
@@ -45,6 +55,8 @@
         const company = profile?.accountType === 'company';
         const entitled = window.hasCloudAccess();
         byId('accountName').textContent = profile?.displayName || user?.displayName || '';
+        byId('accountProBadge').hidden = !entitled;
+        byId('welcomeProBadge').hidden = !entitled;
         byId('accountEmail').textContent = user?.email || '';
         byId('accountTypeLabel').textContent = tr(company ? 'Firma' : 'Osobní účet');
         byId('accountIcoLabel').hidden = !company;
@@ -55,6 +67,7 @@
         byId('btnAccountRefresh').textContent = tr(user?.emailVerified ? 'Obnovit údaje' : 'E-mail jsem ověřil(a)');
         byId('accountCloudInfo').textContent = tr(entitled ? 'PRO je aktivní. Cloudové úložiště je připraveno.' : 'Cloudové úložiště je součástí PRO.');
         const hasKey = entitled && hasPaidAccess();
+        companySeatForm.hidden = !company || !hasKey;
         byId('accountCloudKeyBlock').hidden = !hasKey;
         byId('btnAccountCloudProjects').hidden = !entitled;
         byId('btnAccountAdmin').hidden = !window.hasAdminAccess();
@@ -63,9 +76,12 @@
         const formatDate = value => new Date(value).toLocaleDateString(getGoomLanguage() === 'cs' ? 'cs-CZ' : 'en-GB');
         const periods = [];
         if (Number.isFinite(paidUntil())) {
-            periods.push(tr`Přístup do: ${formatDate(paidUntil())}` + ' · ' + tr(license.cancelAtPeriodEnd ? 'Automatické obnovení je vypnuto.' : 'Měsíční předplatné.'));
+            const mode = license.applicationBillingModes?.[APP_PRODUCT] || license.billingMode;
+            periods.push(tr`Přístup do: ${formatDate(paidUntil())}` + ' · ' + tr(license.cancelAtPeriodEnd
+                ? 'Automatické obnovení je vypnuto.' : mode === 'annual' ? 'Roční předplatné.' : 'Měsíční předplatné.'));
         }
         if (grantedUntil() > Date.now()) periods.push(tr`Přístup od správce do: ${formatDate(grantedUntil())}`);
+        if (companyUntil() > Date.now()) periods.push(tr`Firemní přístup do: ${formatDate(companyUntil())}`);
         byId('accountSubscriptionPeriod').textContent = periods.join(' · ');
         const label = tr('Uživatelský účet');
         const toolbarButton = byId('btnOpenCloudProjectsToolbar');
@@ -80,13 +96,17 @@
     function announce() {
         render();
         clearTimeout(expiryTimer);
-        const expiryMs = Math.min(...[paidUntil(), grantedUntil()].filter(value => value > Date.now()));
+        const expiryMs = Math.min(...[paidUntil(), grantedUntil(), companyUntil()].filter(value => value > Date.now()));
         if (Number.isFinite(expiryMs)) expiryTimer = setTimeout(announce, Math.min(2147483647, expiryMs - Date.now() + 25));
         document.dispatchEvent(new CustomEvent('goom-account-changed', { detail: { user: window.getFirebaseUser(), profile, licensed: window.hasCloudAccess() } }));
     }
     function fillForm() {
         const user = window.getFirebaseUser();
         byId('accountDisplayName').value = profile?.displayName || user?.displayName || user?.email?.split('@')[0] || '';
+    }
+    function fillCompanySeatForm() {
+        if (companyTeamDirty) return;
+        companySeatInputs.forEach((input, index) => { input.value = companyTeam?.members?.[index]?.email || ''; });
     }
 
     function profileData(user, data, createdAt) {
@@ -131,6 +151,7 @@
         const licenseRef = db.collection('cloudLicenses').doc(user.uid);
         const grantRef = db.collection('goomProgramGrants').doc(user.uid);
         const adminRef = db.collection('goomAdmins').doc(user.uid);
+        const teamRef = db.collection('proCompanyTeams').doc(user.uid);
         let [storedProfile, storedLicense, storedGrant, storedAdmin] = await Promise.all([
             profileRef.get(), licenseRef.get(), grantRef.get().catch(() => null), adminRef.get({ source: 'server' }).catch(() => null)
         ]);
@@ -181,7 +202,14 @@
                     if (sessionGeneration !== generation) return;
                     adminRole = null;
                     announce();
-                })];
+                }), teamRef.onSnapshot(snapshot => {
+                    if (sessionGeneration !== generation) return;
+                    companyTeam = snapshot.data() || null;
+                    fillCompanySeatForm();
+                }, () => {})];
+        }
+        if (user.emailVerified && !(companyUntil() > Date.now())) {
+            void window.claimCompanyProSeat().catch(() => {});
         }
     }
     window.refreshUserAccount = async () => {
@@ -240,6 +268,9 @@
         unsubscribe.forEach(stop => stop()); unsubscribe = [];
         uid = user?.uid || null;
         profile = null; license = null; grant = null; adminRole = null;
+        companyTeam = null; companyTeamDirty = false;
+        byId('companySeatStatus').hidden = true;
+        fillCompanySeatForm();
         feedback();
         if (!user) byId('userAccountModal').style.display = 'none';
         announce();
@@ -264,6 +295,36 @@
             feedback(tr('Údaje účtu byly uloženy.'));
         } catch (error) { feedback(error.code ? tr('Údaje účtu nelze načíst. Zkuste to znovu.') : error.message, true); }
         finally { byId('btnAccountSave').disabled = false; }
+    });
+    companySeatForm.addEventListener('input', () => {
+        companyTeamDirty = true;
+        byId('companySeatStatus').hidden = true;
+    });
+    companySeatForm.addEventListener('submit', async event => {
+        event.preventDefault();
+        if (companySeatForm.hidden) return;
+        const operationGeneration = generation;
+        const button = byId('btnSaveCompanySeats');
+        const status = byId('companySeatStatus');
+        const emails = companySeatInputs.map(input => input.value.trim()).filter(Boolean);
+        button.disabled = true;
+        companySeatInputs.forEach(input => { input.disabled = true; });
+        try {
+            const result = await window.callProBilling('goomCompanySeats', { action: 'save', emails });
+            if (generation !== operationGeneration) return;
+            companyTeam = result;
+            companyTeamDirty = false;
+            fillCompanySeatForm();
+            status.textContent = tr('Firemní přístupy byly uloženy.');
+        } catch (error) {
+            if (generation !== operationGeneration) return;
+            status.textContent = tr(error.code?.endsWith('already-exists') ? 'Některý e-mail už patří k jiné firmě.'
+                : error.code?.endsWith('invalid-argument') ? 'Zadejte různé e-maily kolegů.' : 'Firemní přístupy se nepodařilo uložit.');
+        } finally {
+            button.disabled = false;
+            companySeatInputs.forEach(input => { input.disabled = false; });
+            if (generation === operationGeneration) status.hidden = false;
+        }
     });
     byId('btnAccountVerifyEmail').addEventListener('click', async () => {
         try {

@@ -3,7 +3,7 @@
 // ==========================================
 function genId() { return Math.random().toString(36).substr(2, 9); }
 
-function getSnappedCoords(x, y, floor, scale, skipDeviceId = null, connectedD1 = null, connectedD2 = null, showDeac) {
+function getSnappedCoords(x, y, floor, scale, skipDeviceId = null, connectedD1 = null, connectedD2 = null, showDeac, movingIds) {
     let resX = x, resY = y; let snapDist = 15 / scale;
     let gX = null, gY = null; 
     let snappedX = false, snappedY = false;
@@ -17,7 +17,7 @@ function getSnappedCoords(x, y, floor, scale, skipDeviceId = null, connectedD1 =
 
     if (!snappedX || !snappedY) {
         for (let dev of floor.devices) {
-            if (dev.id === skipDeviceId) continue;
+            if (dev.id === skipDeviceId || movingIds?.has(dev.id)) continue;
             if (!showDeac && dev.type === 'deactivated') continue; 
             if (!snappedX && Math.abs(x - dev.x) < snapDist) { resX = dev.x; snappedX = true; }
             if (!snappedY && Math.abs(y - dev.y) < snapDist) { resY = dev.y; snappedY = true; }

@@ -4,9 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GOOM</title>
-    <link rel="icon" type="image/png" href="Logo2.png">
-    <link rel="icon" type="image/png" href="Logo.png" media="(prefers-color-scheme: dark)">
-    <script src="i18n.js?v=20261115-icon-template-34"></script>
+    <link rel="icon" type="image/png" href="Logo2.png?v=20261115-35">
+    <script src="i18n.js?v=20261115-pro-team-36"></script>
     <script src="device-support.js?v=20261114-loading-27"></script>
     <style>
         :root {
@@ -452,7 +451,7 @@
 
 
     </style>
-    <link rel="stylesheet" href="ui-theme.css?v=20261115-icon-template-34">
+    <link rel="stylesheet" href="ui-theme.css?v=20261115-pro-team-36">
 </head>
 <body>
     <div id="deviceSupportNotice" role="alert">
@@ -516,6 +515,9 @@
                 </button>
                 <button id="btnOpenToolbarMenuEditor" class="toolbar-icon-button" type="button" title="Upravit nabídky a ikony" aria-label="Upravit nabídky a ikony">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h10M18 5h2M4 12h2M10 12h10M4 19h10M18 19h2"></path><circle cx="16" cy="5" r="2"></circle><circle cx="8" cy="12" r="2"></circle><circle cx="16" cy="19" r="2"></circle></svg>
+                </button>
+                <button id="btnDetectorSearch" class="toolbar-icon-button" type="button" title="Najít detektor" aria-label="Najít detektor" aria-haspopup="dialog" hidden>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg>
                 </button>
             </div>
         </div>
@@ -620,7 +622,7 @@
                     </div>
                     <p id="googleAuthMessage" role="status" aria-live="polite" hidden></p>
                     <div id="googleAuthStatus" class="welcome-auth-status" aria-live="polite">
-                        <span id="googleAuthUser"></span>
+                        <div class="pro-name"><span id="googleAuthUser"></span><img id="welcomeProBadge" class="pro-badge" src="PRO.png" alt="PRO" hidden></div>
                         <button id="btnGoogleSignOut" class="btn-cad welcome-signout" type="button">Odhlásit se</button>
                     </div>
                     <button id="btnWelcomeContinue" class="btn-cad" type="button" hidden style="background: #0ea5e9; color: #fff;">Přejít k projektům</button>
@@ -685,7 +687,7 @@
                 <button id="btnAccountClose" class="btn-cad" type="button">Zavřít</button>
             </div>
             <div class="account-columns"><div class="account-personal"><dl class="account-details">
-                <dt>Jméno</dt><dd id="accountName" data-user-content></dd>
+                <dt>Jméno</dt><dd class="pro-name"><span id="accountName" data-user-content></span><img id="accountProBadge" class="pro-badge" src="PRO.png" alt="PRO" hidden></dd>
                 <dt>E-mail</dt><dd id="accountEmail" data-user-content></dd>
                 <dt>Typ účtu</dt><dd id="accountTypeLabel"></dd>
                 <dt id="accountIcoLabel" hidden>IČO</dt><dd id="accountIcoValue" data-user-content hidden></dd>
@@ -709,9 +711,19 @@
             <div class="pro-card">
                 <h3>UPDATE PRO</h3>
                 <p id="accountProStatus" class="pro-status"></p>
-                <button id="btnUpdatePro" class="btn-cad auth-primary" type="button">UPDATE PRO</button>
+                <button id="btnUpdatePro" class="btn-cad auth-primary" type="button">Ceník PRO</button>
             </div>
-            <p id="accountSubscriptionPeriod" class="account-note"></p><button id="btnManageSubscription" class="btn-cad" type="button" hidden>Spravovat předplatné</button></div></div><p id="accountFeedback" role="status" aria-live="polite" hidden></p>
+            <p id="accountSubscriptionPeriod" class="account-note"></p><button id="btnManageSubscription" class="btn-cad" type="button" hidden>Spravovat předplatné</button>
+            <form id="companySeatForm" class="company-seat-form account-form" hidden>
+                <h3>Firemní přístupy PRO</h3>
+                <p class="account-note">Až tři kolegové získají PRO po přihlášení s ověřeným e-mailem. Přístup končí s vaším předplatným.</p>
+                <input class="account-input" type="email" maxlength="254" aria-label="E-mail kolegy 1" placeholder="E-mail kolegy 1">
+                <input class="account-input" type="email" maxlength="254" aria-label="E-mail kolegy 2" placeholder="E-mail kolegy 2">
+                <input class="account-input" type="email" maxlength="254" aria-label="E-mail kolegy 3" placeholder="E-mail kolegy 3">
+                <button id="btnSaveCompanySeats" class="btn-cad" type="submit">Uložit přístupy</button>
+                <p id="companySeatStatus" class="account-note" role="status" hidden></p>
+            </form>
+            </div></div><p id="accountFeedback" role="status" aria-live="polite" hidden></p>
             <div class="account-actions">
                 <a id="btnAccountAdmin" class="btn-cad" href="./admin.html" target="_blank" rel="noopener" hidden>Admin</a>
                 <button id="btnAccountSignOut" class="btn-cad" type="button">Odhlásit se</button>
@@ -725,10 +737,11 @@
             <div class="pro-columns"><div><p class="account-note">Rozšiřte svůj účet o nástroje PRO.</p>
             <ul class="pro-features"><li>Cloudové ukládání plánů</li><li>Editor nabídek a ikon</li><li>Tipy při plánování</li></ul></div>
             <div class="pro-offers">
-                <label class="pro-offer"><input type="radio" name="proOffer" value="single" checked><span><strong>PZTS PRO — 39 € / měsíc</strong><small>Měsíční předplatné PZTS</small></span></label>
-                <label class="pro-offer"><input type="radio" name="proOffer" value="suite"><span><strong>PRO Suite — 99 € / měsíc</strong><small>Měsíčně: PZTS, EPS, CCTV a SK</small></span></label>
+                <label class="pro-offer"><input type="radio" name="proOffer" value="monthly" checked><span><strong>Měsíční předplatné PZTS</strong><span class="pro-price"><small data-pro-price="monthly" data-currency="EUR"></small><b aria-hidden="true">—</b><strong data-pro-price="monthly" data-currency="CZK"></strong></span></span></label>
+                <label class="pro-offer"><input type="radio" name="proOffer" value="annual"><span><strong>Roční předplatné PZTS</strong><span class="pro-price"><small data-pro-price="annual" data-currency="EUR"></small><b aria-hidden="true">—</b><strong data-pro-price="annual" data-currency="CZK"></strong></span><small>Sleva 12 % oproti 12 měsíčním platbám</small></span></label>
             </div>
-            </div><p class="account-note">Předplatné se obnovuje každý měsíc od data nákupu. Automatické obnovení můžete zrušit v účtu.</p><p id="proPurchaseStatus" class="pro-status" role="status" aria-live="polite"></p>
+            </div><p class="account-note">Platba v EUR. Ceny v Kč jsou orientační podle kurzu ČNB.</p>
+            <p class="account-note">Předplatné se obnovuje po zvoleném období. Automatické obnovení můžete zrušit v účtu.</p><p id="proPurchaseStatus" class="pro-status" role="status" aria-live="polite"></p>
             <button id="btnProPurchase" class="btn-cad auth-primary" type="button">Koupit PRO</button>
         </section>
     </div>
@@ -809,6 +822,25 @@
 
     <div id="printPage" aria-hidden="true"></div>
 
+    <div id="detectorSearchModal" class="modal">
+        <div class="modal-content detector-search-card" role="dialog" aria-modal="true" aria-labelledby="detectorSearchTitle">
+            <div class="detector-search-header">
+                <button id="btnCloseDetectorSearch" class="icon-editor-close" type="button" aria-label="Zavřít">×</button>
+                <h2 id="detectorSearchTitle">Najít detektor</h2>
+            </div>
+            <form id="detectorSearchForm" class="detector-search-form">
+                <label for="detectorSearchBus">Sběrnice
+                    <input id="detectorSearchBus" type="number" min="1" step="1" inputmode="numeric" required>
+                </label>
+                <label for="detectorSearchNumber">Číslo detektoru
+                    <input id="detectorSearchNumber" type="number" min="1" step="1" inputmode="numeric" required>
+                </label>
+                <button class="btn-cad" type="submit">Najít</button>
+            </form>
+            <p id="detectorSearchStatus" role="status" hidden></p>
+            <ul id="detectorSearchResults" class="detector-search-results" hidden></ul>
+        </div>
+    </div>
     <div id="detectionSettingsModal" class="modal">
         <div class="modal-content" style="max-width: 430px;">
             <div class="modal-title">Rozpoznání stěn a PIR</div>
@@ -1021,6 +1053,6 @@
         <button type="button" data-tablet-action="delete" class="tool-danger">×</button>
         <button type="button" data-tablet-action="undo">↶</button>
     </div>
-    <script src="bootstrap.js?v=20261115-icon-template-34"></script>
+    <script src="bootstrap.js?v=20261115-pro-team-36"></script>
 </body>
 </html>

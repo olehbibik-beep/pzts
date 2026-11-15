@@ -256,6 +256,13 @@ body::after {
 .pro-offer span { display: flex; flex-direction: column; gap: 5px; }
 .pro-offer strong { color: #fff; font-size: 14px; }
 .pro-offer small { color: #c4c4cc; font-size: 12px; }
+.pro-name { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; }
+.pro-badge { width: 46px; height: auto; flex: 0 0 auto; }
+.pro-offer .pro-price { flex-direction: row; align-items: baseline; gap: 6px; }
+.pro-price b { color: var(--text-muted); font-weight: 400; }
+.pro-price strong { font-size: clamp(16px, 2vw, 23px); }
+.company-seat-form { margin-top: 18px; padding-top: 14px; border-top: 1px solid #45484d; gap: 7px; }
+.company-seat-form h3, .company-seat-form p { margin: 0 0 4px; }
 @media (max-width: 1100px) and (min-width: 600px) {
     .toolbar-row { flex-wrap: wrap; gap: 8px 12px; }
     .toolbar-row > .toolbar-section { flex: 1 0 100%; justify-content: flex-end; }
@@ -448,3 +455,13 @@ button.btn-cad, .toolbar-icon-button, .device-btn, .footer-icon, .ui-select-trig
     #overviewStage { grid-template-columns:minmax(138px,27%) minmax(0,1fr); padding:16px; gap:12px; min-height:510px; }
     .overview-heading h2 { font-size:17px; }
 }
+.detector-search-card { width: min(440px, calc(100vw - 32px)); padding: 20px 22px; }
+.detector-search-header { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.detector-search-header h2 { margin: 0; font-size: 18px; }
+.detector-search-form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; align-items: end; gap: 10px; }
+.detector-search-form label { display: grid; gap: 6px; color: var(--text-muted); font-size: 12px; }
+.detector-search-form input { width: 100%; height: 40px; box-sizing: border-box; padding: 7px 8px; border: 1px solid #52525b; border-radius: 6px; color: var(--text-main); background: #171719; font: inherit; font-size: 15px; }
+.detector-search-form button { min-height: 40px; }
+.detector-search-card :focus-visible { outline: 2px solid #82d322; outline-offset: 2px; }
+.detector-search-results { list-style: none; margin: 8px 0 0; padding: 0; }
+.detector-search-results .btn-cad { width: 100%; margin-top: 4px; }

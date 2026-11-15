@@ -44,6 +44,9 @@ function zoomPlanAt(x,y,delta){
     const nextScale=Math.max(.005,Math.min(128,current.scale*Math.exp(-delta*.0015)));
     const ratio=nextScale/current.scale;
     const next={scale:nextScale,offsetX:x-(x-current.offsetX)*ratio,offsetY:y-(y-current.offsetY)*ratio};
+    animatePlanCamera(next);
+}
+function animatePlanCamera(next){
     if(planReducedMotion.matches){cancelWheelCamera();({scale,offsetX,offsetY}=next);requestRedraw();return;}
     wheelCamera=next;
     if(wheelFrame)return;

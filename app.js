@@ -455,12 +455,11 @@ window.addEventListener('keydown', (e) => {
         let hPanel = document.getElementById('helpPanel');
         if (hPanel && hPanel.classList.contains('open')) { hPanel.classList.remove('open'); modalClosed = true; }
         if (modalClosed) { editingDevice = null; pendingTextFloor = null; return; }
+        clearDetectorSearchHighlight();
         selectedTool = 'select';
         document.querySelectorAll('#deviceSelector .device-btn[data-type]').forEach(b => b.classList.remove('active'));
         activeDeviceIds.clear();
-        isSelecting = false; isPanning = false; isDragging = false;
-        draggedDevice = null; draggedHandle = null; clickedCableId = null; isClickingText = false;
-        snapGuideX = null; snapGuideY = null;
+        clearCanvasDrag();
         requestRedraw(); return; 
     }
 
@@ -550,10 +549,94 @@ container.addEventListener('wheel', e => {
 
 const canvasTouchPoints = new Map();
 let canvasTouchGesture = null;
+let canvasDragPointer = null;
+let deviceGroupDrag = null;
+let selectionPointer = null;
+let selectionPanFrame = 0;
+
+function updateSelectionCorner(rect) {
+    const x = Math.max(0, Math.min(rect.width, selectionPointer.x - rect.left));
+    const y = Math.max(0, Math.min(rect.height, selectionPointer.y - rect.top));
+    selEndX = (x - offsetX) / scale;
+    selEndY = (y - offsetY) / scale;
+    requestRedraw();
+}
+
+function continueSelectionAtEdge(now) {
+    selectionPanFrame = 0;
+    if (!isSelecting || !selectionPointer?.moved) return;
+    const rect = container.getBoundingClientRect();
+    const edge = Math.min(48, rect.width / 4, rect.height / 4);
+    if (edge <= 0) return;
+    const speed = (position, length) => {
+        const proximity = Math.max(0, 1 - position / edge) - Math.max(0, 1 - (length - position) / edge);
+        return 820 * Math.max(-1, Math.min(1, proximity));
+    };
+    const velocityX = speed(selectionPointer.x - rect.left, rect.width);
+    const velocityY = speed(selectionPointer.y - rect.top, rect.height);
+    if (!velocityX && !velocityY) {
+        selectionPointer.lastFrame = 0;
+        return;
+    }
+    const elapsed = Math.min(32, selectionPointer.lastFrame ? now - selectionPointer.lastFrame : 16) / 1000;
+    selectionPointer.lastFrame = now;
+    offsetX += velocityX * elapsed;
+    offsetY += velocityY * elapsed;
+    updateSelectionCorner(rect);
+    selectionPanFrame = requestAnimationFrame(continueSelectionAtEdge);
+}
+
+function stopSelectionPan() {
+    cancelAnimationFrame(selectionPanFrame);
+    selectionPanFrame = 0;
+    selectionPointer = null;
+}
+
+function moveDraggedDevices(floor, x, y, freeMove) {
+    const drag = deviceGroupDrag;
+    if (!drag.devices) {
+        drag.ids = activeDeviceIds.has(draggedDevice.id) ? new Set(activeDeviceIds) : new Set([draggedDevice.id]);
+        const devicesById = new Map(floor.devices.map(device => [device.id, device]));
+        drag.devices = floor.devices.filter(device => drag.ids.has(device.id));
+        drag.cables = floor.cables.flatMap(cable => {
+            if (!drag.ids.has(cable.fromId) && !drag.ids.has(cable.toId)) return [];
+            const from = devicesById.get(cable.fromId), to = devicesById.get(cable.toId);
+            return from && to && from.type !== 'textNode' && to.type !== 'textNode' ? [{ cable, from, to }] : [];
+        });
+    }
+    x += drag.grabX;
+    y += drag.grabY;
+    const snap = freeMove ? { x, y, guideX: null, guideY: null }
+        : getSnappedCoords(x, y, floor, scale, draggedDevice.id, null, null, showDeactivatedDevices, drag.ids);
+    snapGuideX = snap.guideX;
+    snapGuideY = snap.guideY;
+    const deltaX = snap.x - draggedDevice.x;
+    const deltaY = snap.y - draggedDevice.y;
+    if (!deltaX && !deltaY) return;
+    drag.changed = true;
+    for (const device of drag.devices) {
+        device.x += deltaX;
+        device.y += deltaY;
+    }
+    for (const { cable, from, to } of drag.cables) {
+        if (!Number.isFinite(cable.h1x)) {
+            recalcCableHandles(cable, from, to);
+        } else {
+            for (let index = 1; index <= 3; index++) {
+                cable[`h${index}x`] += deltaX;
+                cable[`h${index}y`] += deltaY;
+            }
+        }
+        cable.isCustom = true;
+    }
+}
 
 function clearCanvasDrag() {
     finishProjectLegendDrag();
-    if (isDragging) { saveStateToHistory(); triggerAutoSave(); }
+    if (deviceGroupDrag?.changed || draggedHandle) { saveStateToHistory(); triggerAutoSave(); }
+    stopSelectionPan();
+    canvasDragPointer = null;
+    deviceGroupDrag = null;
     isSelecting = false; isDragging = false; isPanning = false;
     draggedDevice = null; draggedHandle = null; clickedCableId = null; isClickingText = false;
     snapGuideX = null; snapGuideY = null;
@@ -576,11 +659,14 @@ container.addEventListener('pointerdown', (e) => {
         if (canvasTouchGesture) return;
     }
     if (!e.isPrimary) return;
-    if (e.pointerType === 'pen') container.setPointerCapture(e.pointerId);
     let rect = container.getBoundingClientRect();
     let mX = e.clientX - rect.left; let mY = e.clientY - rect.top;
 
     if (isOverviewMode) return;
+    if (![0, 1, 2].includes(e.button)) return;
+    clearDetectorSearchHighlight();
+    canvasDragPointer = e.pointerId;
+    container.setPointerCapture(e.pointerId);
 
     const canvasX = (mX - offsetX) / scale; const canvasY = (mY - offsetY) / scale;
     clickStartX = e.clientX; clickStartY = e.clientY;
@@ -637,10 +723,19 @@ container.addEventListener('pointerdown', (e) => {
         let foundCableId = null;
         if (!foundHandle && !foundDevice && floor.showConnections) { foundCableId = hitTestCables(canvasX, canvasY, floor, showDeactivatedDevices); }
 
-        if (foundHandle) { draggedHandle = foundHandle; isDragging = true; } 
-        else if (foundDevice) { draggedDevice = foundDevice; isDragging = true; } 
+        const grabbingGroup = foundDevice && activeDeviceIds.size > 1 && activeDeviceIds.has(foundDevice.id);
+        if (foundHandle && !grabbingGroup) { draggedHandle = foundHandle; isDragging = true; }
+        else if (foundDevice) {
+            draggedDevice = foundDevice;
+            deviceGroupDrag = { grabX: foundDevice.x - canvasX, grabY: foundDevice.y - canvasY, canMove: !isClickingText || grabbingGroup };
+            isDragging = true;
+        }
         else if (foundCableId) { clickedCableId = foundCableId; } 
-        else { isSelecting = true; selStartX = canvasX; selStartY = canvasY; selEndX = canvasX; selEndY = canvasY; }
+        else {
+            isSelecting = true;
+            selStartX = selEndX = canvasX; selStartY = selEndY = canvasY;
+            selectionPointer = { x: e.clientX, y: e.clientY, moved: false, lastFrame: 0 };
+        }
     }
 });
 
@@ -660,6 +755,7 @@ container.addEventListener('pointermove', (e) => {
         }
     }
     if (!e.isPrimary || !isSystemReady) return;
+    if (canvasDragPointer !== null && e.pointerId !== canvasDragPointer) return;
     let rect = container.getBoundingClientRect();
     let mX = e.clientX - rect.left; let mY = e.clientY - rect.top;
 
@@ -675,31 +771,15 @@ container.addEventListener('pointermove', (e) => {
     if (isPanning) { 
         offsetX = e.clientX - startPanX; offsetY = e.clientY - startPanY; 
         requestRedraw();
-    } else if (isSelecting) { selEndX = canvasX; selEndY = canvasY; requestRedraw(); 
+    } else if (isSelecting) {
+        selectionPointer.x = e.clientX;
+        selectionPointer.y = e.clientY;
+        selectionPointer.moved ||= Math.hypot(e.clientX - clickStartX, e.clientY - clickStartY) >= 5;
+        updateSelectionCorner(rect);
+        if (selectionPointer.moved && !selectionPanFrame) selectionPanFrame = requestAnimationFrame(continueSelectionAtEdge);
     } else if (isDragging) {
-        if (draggedDevice && !isClickingText) { 
-            let snap = getSnappedCoords(canvasX, canvasY, floors[currentFloorIndex], scale, draggedDevice.id, null, null, showDeactivatedDevices);
-            if (e.altKey) { snap.x = canvasX; snap.y = canvasY; snapGuideX = null; snapGuideY = null; }
-            else { snapGuideX = snap.guideX; snapGuideY = snap.guideY; }
-
-            const deltaX = snap.x - draggedDevice.x;
-            const deltaY = snap.y - draggedDevice.y;
-            draggedDevice.x = snap.x; draggedDevice.y = snap.y;
-            const devicesById=new Map(floors[currentFloorIndex].devices.map(device=>[device.id,device]));
-            floors[currentFloorIndex].cables.forEach(c => {
-                if (c.fromId === draggedDevice.id || c.toId === draggedDevice.id) {
-                    const d1=devicesById.get(c.fromId),d2=devicesById.get(c.toId);
-                    if (!d1 || !d2 || d1.type === 'textNode' || d2.type === 'textNode') return;
-                    if (c.h1x === undefined || !Number.isFinite(c.h1x)) {
-                        recalcCableHandles(c, d1, d2);
-                    }
-                    for (let handleIndex = 1; handleIndex <= 3; handleIndex++) {
-                        c[`h${handleIndex}x`] += deltaX;
-                        c[`h${handleIndex}y`] += deltaY;
-                    }
-                    c.isCustom = true;
-                }
-            });
+        if (deviceGroupDrag?.canMove && (deviceGroupDrag.devices || Math.hypot(e.clientX - clickStartX, e.clientY - clickStartY) >= 5)) {
+            moveDraggedDevices(floors[currentFloorIndex], canvasX, canvasY, e.altKey);
             requestRedraw();
         } else if (draggedHandle) {
             const targetObj = draggedHandle.cable;
@@ -734,7 +814,11 @@ container.addEventListener('pointerleave', () => {
 });
 
 window.addEventListener('pointerup', (e) => {
-    if (finishProjectLegendDrag(e)) { canvasTouchPoints.delete(e.pointerId); return; }
+    if (finishProjectLegendDrag(e)) {
+        canvasTouchPoints.delete(e.pointerId);
+        canvasDragPointer = null;
+        return;
+    }
     if (e.pointerType === 'touch') {
         canvasTouchPoints.delete(e.pointerId);
         if (canvasTouchGesture) {
@@ -742,9 +826,10 @@ window.addEventListener('pointerup', (e) => {
             return;
         }
     }
-    if (!e.isPrimary || !isSystemReady) return;
+    if (!e.isPrimary || e.pointerId !== canvasDragPointer) return;
+    canvasDragPointer = null;
+    if (!isSystemReady || isOverviewMode) { clearCanvasDrag(); return; }
     const dist = Math.hypot(e.clientX - clickStartX, e.clientY - clickStartY);
-    if (isOverviewMode) return;
 
     const canvasX = (e.clientX - container.getBoundingClientRect().left - offsetX) / scale; 
     const canvasY = (e.clientY - container.getBoundingClientRect().top - offsetY) / scale;
@@ -753,8 +838,13 @@ window.addEventListener('pointerup', (e) => {
     if (isPanning) { isPanning = false; return; }
 
     if (isSelecting) {
+        selectionPointer.x = e.clientX;
+        selectionPointer.y = e.clientY;
+        updateSelectionCorner(container.getBoundingClientRect());
+        const selectedByArea = selectionPointer.moved || dist >= 5;
+        stopSelectionPan();
         isSelecting = false;
-        if (dist > 5) { 
+        if (selectedByArea) {
             let minX = Math.min(selStartX, selEndX); let maxX = Math.max(selStartX, selEndX);
             let minY = Math.min(selStartY, selEndY); let maxY = Math.max(selStartY, selEndY);
             if (!e.shiftKey) activeDeviceIds.clear(); 
@@ -798,7 +888,7 @@ window.addEventListener('pointerup', (e) => {
         }
         snapGuideX = null; snapGuideY = null; requestRedraw(); triggerAutoSave();
     } 
-    else if (dist < 5) { 
+    else if (dist < 5 && !deviceGroupDrag?.devices) {
         if (draggedDevice) {
             const dev = draggedDevice;
             if (clickTimer && lastClickedDevice === dev.id) {
@@ -839,7 +929,7 @@ window.addEventListener('pointerup', (e) => {
             }
         } else if (draggedHandle) {
             if (draggedHandle.hIndex === 2) { floor.cables = floor.cables.filter(c => c.id !== draggedHandle.cable.id); }
-            snapGuideX = null; snapGuideY = null; saveStateToHistory(); requestRedraw(); triggerAutoSave();
+            requestRedraw();
         } else if (clickedCableId) {
             const cId = clickedCableId;
             if (clickTimer && lastClickedDevice === cId) {
@@ -853,12 +943,20 @@ window.addEventListener('pointerup', (e) => {
         }
     }
     
-    if (isDragging) { saveStateToHistory(); triggerAutoSave(); }
-
-    isDragging = false; draggedDevice = null; draggedHandle = null; isClickingText = false; clickedCableId = null; snapGuideX = null; snapGuideY = null;
+    clearCanvasDrag();
+    requestRedraw();
 });
 
 container.addEventListener('pointercancel', () => {
+    canvasTouchPoints.clear();
+    canvasTouchGesture = null;
+    clearCanvasDrag();
+    requestRedraw();
+});
+container.addEventListener('lostpointercapture', event => {
+    if (event.pointerId === canvasDragPointer) { clearCanvasDrag(); requestRedraw(); }
+});
+window.addEventListener('blur', () => {
     canvasTouchPoints.clear();
     canvasTouchGesture = null;
     clearCanvasDrag();
@@ -910,6 +1008,7 @@ function showWelcomeScreen(step = 'auth') {
 }
 
 function resetPlacementTool() {
+    clearDetectorSearchHighlight();
     stopDeviceRotation();
     selectedTool = 'select';
     window.tabletPanMode = false;
@@ -1084,6 +1183,7 @@ window.addEventListener('goom-language-changed', () => { if (isOverviewMode) dra
 }
 
 function changeFloor() {
+    clearDetectorSearchHighlight();
     finishProjectLegendDrag(); selectedProjectLegend = null; updateProjectLegendButton();
     if(!floors[currentFloorIndex]) return;
     

@@ -2,14 +2,23 @@
     const byId = id => document.getElementById(id);
     let purchasePending = false;
     let returnHandled = false;
+    const pricesInEuro = { monthly: 6.90, annual: 72.86 };
+    const czkPerEuro = 24.425; // Czech National Bank published rate for 2026-11-13.
     function render() {
         const active = Boolean(window.hasProAccess?.());
         byId('accountProStatus').textContent = tr(active ? 'PRO je aktivní.' : 'Váš účet používá bezplatnou verzi.');
         byId('accountProStatus').classList.toggle('active', active);
-        byId('btnUpdatePro').hidden = active;
-        byId('btnProPurchase').hidden = active;
+        byId('btnProPurchase').hidden = Boolean(window.hasOwnPaidPro?.());
+        for (const price of document.querySelectorAll('[data-pro-price]')) {
+            const currency = price.dataset.currency;
+            const euros = pricesInEuro[price.dataset.proPrice];
+            const value = currency === 'CZK' ? Math.round(euros * czkPerEuro) : euros;
+            const formatted = new Intl.NumberFormat(getGoomLocale(), { style: 'currency', currency,
+                maximumFractionDigits: currency === 'CZK' ? 0 : 2 }).format(value);
+            price.textContent = currency === 'CZK' ? '≈ ' + formatted : formatted;
+        }
         document.getElementById('btnOpenToolbarMenuEditor').classList.toggle('pro-lock', !active && !window.hasAdminAccess?.());
-        if (active) byId('proPurchaseStatus').textContent = tr('PRO je aktivní.');
+        if (window.hasOwnPaidPro?.()) byId('proPurchaseStatus').textContent = tr('PRO je aktivní.');
     }
     window.requestProUpgrade = () => {
         if (!window.getFirebaseUser()) { showWelcomeScreen(); return; }
@@ -20,7 +29,7 @@
     byId('btnUpdatePro').addEventListener('click', window.requestProUpgrade);
     byId('btnProClose').addEventListener('click', () => { byId('proUpgradeModal').style.display = 'none'; });
     byId('btnProPurchase').addEventListener('click', async () => {
-        if (purchasePending) return;
+        if (purchasePending || window.hasOwnPaidPro?.()) return;
         if (!window.getFirebaseUser()?.emailVerified) {
             byId('proPurchaseStatus').textContent = tr('Před nákupem potvrďte svou e-mailovou adresu v nastavení účtu.');
             return;

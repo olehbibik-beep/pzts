@@ -176,11 +176,22 @@ window.getFirebaseDatabase = async () => {
     return window.firebase.firestore();
 };
 
-window.callProBilling = async (name, data = {}) => {
-    if (!await window.ensureFirebaseSession()) throw new Error(tr('Přihlaste se ke svému účtu.'));
+async function callAccountFunction(name, data, uid) {
     if (!window.firebase.functions) await loadFirebaseScript(firebaseSdkUrls[4]);
+    if (window.getFirebaseUser()?.uid !== uid) throw new Error(tr('Přihlaste se ke svému účtu.'));
     const result = await window.firebase.app().functions('europe-west1').httpsCallable(name)({ ...data, language: getGoomLanguage() });
     return result.data;
+}
+
+window.callProBilling = async (name, data = {}) => {
+    const user = await window.ensureFirebaseSession();
+    if (!user) throw new Error(tr('Přihlaste se ke svému účtu.'));
+    return callAccountFunction(name, data, user.uid);
+};
+
+window.claimCompanyProSeat = async () => {
+    const user = window.getFirebaseUser();
+    if (user?.emailVerified) await callAccountFunction('goomCompanySeats', { action: 'claim' }, user.uid);
 };
 
 window.getFirebaseServices = getFirebaseServices;

@@ -497,5 +497,6 @@ function redraw() {
         ctx.fillRect(selStartX, selStartY, w, h); ctx.strokeRect(selStartX, selStartY, w, h);
     }
     drawFloorData(ctx, floor, false, theme);
+    if (!isExporting) drawDetectorSearchHighlight(ctx, floor);
 }
 

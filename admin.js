@@ -99,7 +99,7 @@
         const data = profile.data();
         const license = purchase === unavailable ? null : purchase.data();
         const validPurchase = license?.uid === uid && license.plan === 'pro' && license.status === 'active'
-            && license.source === 'stripe' && license.paymentStatus === 'paid' && license.billingMode === 'monthly';
+            && license.source === 'stripe' && license.paymentStatus === 'paid' && ['monthly', 'annual'].includes(license.billingMode);
         const programs = Object.fromEntries(Object.keys(programLabels).map(app => [app, {
             manualUntil: grant.data()?.expiresAt?.[app]?.toMillis() ?? null,
             paidUntil: validPurchase && Array.isArray(license.applications) && license.applications.includes(app)
