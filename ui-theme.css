@@ -190,7 +190,6 @@ body::after {
 .tablet-device-tools .tool-danger:not(:disabled) { color: #fca5a5; }
 .pro-card { margin-top: 22px; border-top: 1px solid #45484d; padding-top: 18px; }
 .pro-card h3 { margin: 0 0 10px; font-size: 16px; }
-.pro-features { padding-left: 18px; color: #d4d4d8; font-size: 13px; line-height: 1.8; }
 .pro-status { color: #c4c4cc; font-size: 13px; line-height: 1.5; }
 .pro-status.active { color: #a3e6af; }
 .account-card { overflow-anchor: none; scrollbar-gutter: stable; }
@@ -210,10 +209,23 @@ body::after {
 .account-cloud { margin-top: 0; padding-top: 0; border-top: 0; }
 .account-cloud h3 { margin-top: 0; }
 .pro-card { margin-top: 16px; padding-top: 14px; }
-#proUpgradeModal .account-card { width: min(760px, calc(100vw - 40px)); max-width: 760px; padding: 20px 24px; }
-.pro-columns { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.15fr); gap: 22px; }
+#proUpgradeModal .account-card { width: min(850px, calc(100vw - 40px)); max-width: 850px; padding: 20px 24px; background: #1c1c1f; }
+.pro-pricing .account-header { border-bottom: 1px solid #373741; }
+.pro-columns { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 22px; }
+.pro-columns h3 { margin: 0; font-size: 16px; }
+.pro-features { display: grid; gap: 5px; padding: 0; margin: 10px 0 0; list-style: none; }
+.pro-features li { --feature-accent: #a7dafa; display: grid; gap: 3px; padding: 7px 10px; border-left: 2px solid var(--feature-accent); border-radius: 0 5px 5px 0; background: #26262c; }
+.pro-features li:nth-child(2) { --feature-accent: #d7bbff; }
+.pro-features li:nth-child(3) { --feature-accent: #bdea81; }
+.pro-features li:nth-child(4) { --feature-accent: #aee7dc; }
+.pro-features li:nth-child(5) { --feature-accent: #f5c3de; }
+.pro-features li:nth-child(6) { --feature-accent: #ffd296; }
+.pro-features strong { color: var(--feature-accent); font-size: 13px; }
+.pro-features span, .pro-free-note { color: #d4d4d8; font-size: 12px; line-height: 1.4; }
+.pro-free-note { margin: 16px 0 0; padding-top: 12px; border-top: 1px solid #373741; }
 .pro-columns .pro-offers { margin: 0; border-left: 1px solid #45484d; padding-left: 22px; }
-.pro-columns .pro-offer { padding: 12px; }
+.pro-offers .account-note, .pro-offers .pro-status { margin: 0; }
+.pro-offers button { width: fit-content; }
 * { scrollbar-width: thin; scrollbar-color: #737579 #101112; }
 *::-webkit-scrollbar { width: 8px; height: 8px; }
 *::-webkit-scrollbar-track { background: #101112; }
@@ -250,17 +262,21 @@ body::after {
 .sliding-row-container #btnCycleToolbarMenu { min-height: 30px; padding: 3px; }
 .sliding-row-container #btnToggleConnections { padding: 4px 7px !important; }
 .pro-lock { opacity: .55; }
-.pro-offers { display: flex; flex-direction: column; gap: 10px; margin: 18px 0; }
-.pro-offer { display: flex; align-items: center; gap: 12px; padding: 14px; background: #292b2e; border: 1px solid #515459; border-radius: 8px; cursor: pointer; }
-.pro-offer:has(input:checked) { border-color: #fff; background: #36393d; }
+.pro-offers { display: flex; flex-direction: column; gap: 10px; }
+.pro-offer { --offer-accent: #cdb0ff; --offer-active: #342944; display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; background: #26262d; border: 1px solid #51515c; border-radius: 8px; cursor: pointer; }
+.pro-offer-annual { --offer-accent: #bdeb86; --offer-active: #2c3824; }
+.pro-offer input { accent-color: var(--offer-accent); }
+.pro-offer:hover, .pro-offer:focus-within { border-color: var(--offer-accent); }
+.pro-offer:has(input:checked) { border-color: var(--offer-accent); background: var(--offer-active); }
+.pro-offer .pro-discount { color: var(--offer-accent); font-weight: 700; }
 .pro-offer span { display: flex; flex-direction: column; gap: 5px; }
 .pro-offer strong { color: #fff; font-size: 14px; }
 .pro-offer small { color: #c4c4cc; font-size: 12px; }
 .pro-name { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; }
 .pro-badge { width: 46px; height: auto; flex: 0 0 auto; }
-.pro-offer .pro-price { flex-direction: row; align-items: baseline; gap: 6px; }
+.pro-offer .pro-price { flex-flow: row wrap; align-items: baseline; gap: 6px; }
 .pro-price b { color: var(--text-muted); font-weight: 400; }
-.pro-price strong { font-size: clamp(16px, 2vw, 23px); }
+.pro-price strong { font-size: clamp(16px, 2vw, 23px); color: var(--offer-accent); }
 .company-seat-form { margin-top: 18px; padding-top: 14px; border-top: 1px solid #45484d; gap: 7px; }
 .company-seat-form h3, .company-seat-form p { margin: 0 0 4px; }
 @media (max-width: 1100px) and (min-width: 600px) {

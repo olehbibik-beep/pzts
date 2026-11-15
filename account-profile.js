@@ -73,7 +73,7 @@
         byId('btnAccountAdmin').hidden = !window.hasAdminAccess();
         byId('accountCloudKey').value = hasKey ? license.licenseId || `PZTS-PRO-${license.keySuffix}` : '';
         byId('btnManageSubscription').hidden = !license?.billingCustomerId;
-        const formatDate = value => new Date(value).toLocaleDateString(getGoomLanguage() === 'cs' ? 'cs-CZ' : 'en-GB');
+        const formatDate = value => new Date(value).toLocaleDateString(getGoomLocale());
         const periods = [];
         if (Number.isFinite(paidUntil())) {
             const mode = license.applicationBillingModes?.[APP_PRODUCT] || license.billingMode;

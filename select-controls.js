@@ -62,6 +62,7 @@
             row.className = 'ui-select-option'; row.setAttribute('role', 'option');
             row.setAttribute('aria-selected', String(option.selected));
             row.setAttribute('aria-disabled', String(option.disabled));
+            if (option.dataset.languageName) row.setAttribute('aria-label', option.dataset.languageName);
             row.textContent = option.textContent;
             row.addEventListener('pointerdown', event => event.preventDefault());
             row.addEventListener('click', () => choose(index));

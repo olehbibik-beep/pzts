@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GOOM</title>
     <link rel="icon" type="image/png" href="Logo2.png?v=20261115-35">
-    <script src="i18n.js?v=20261115-pro-team-36"></script>
+    <script src="i18n.js?v=20261115-pro-languages-37"></script>
     <script src="device-support.js?v=20261114-loading-27"></script>
     <style>
         :root {
@@ -451,7 +451,7 @@
 
 
     </style>
-    <link rel="stylesheet" href="ui-theme.css?v=20261115-pro-team-36">
+    <link rel="stylesheet" href="ui-theme.css?v=20261115-pro-languages-37">
 </head>
 <body>
     <div id="deviceSupportNotice" role="alert">
@@ -604,7 +604,7 @@
         <div class="modal-content welcome-card" role="dialog" aria-modal="true" aria-label="Vítejte v GOOM">
             <div class="welcome-controls">
                 <button id="btnWelcomeAccount" class="welcome-back" type="button" aria-label="Zpět" title="Zpět" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"></path></svg></button>
-                <select class="language-picker" data-language-select aria-label="Jazyk"><option value="cs">Cz</option><option value="en">En</option></select>
+                <select class="language-picker" data-language-select aria-label="Jazyk"><option value="cs" data-language-name="Čeština">Cz</option><option value="en" data-language-name="English">En</option><option value="de" data-language-name="Deutsch">De</option><option value="ru" data-language-name="Русский">Ru</option></select>
             </div>
             <div class="welcome-panel">
                 
@@ -683,7 +683,7 @@
         <section class="modal-content account-card" role="dialog" aria-modal="true" aria-labelledby="userAccountTitle">
             <div class="account-header">
                 <h2 id="userAccountTitle">Uživatelský účet</h2>
-                <div class="account-language-controls"><select class="language-picker" data-language-select aria-label="Jazyk"><option value="cs">Cz</option><option value="en">En</option></select></div>
+                <div class="account-language-controls"><select class="language-picker" data-language-select aria-label="Jazyk"><option value="cs" data-language-name="Čeština">Cz</option><option value="en" data-language-name="English">En</option><option value="de" data-language-name="Deutsch">De</option><option value="ru" data-language-name="Русский">Ru</option></select></div>
                 <button id="btnAccountClose" class="btn-cad" type="button">Zavřít</button>
             </div>
             <div class="account-columns"><div class="account-personal"><dl class="account-details">
@@ -709,7 +709,7 @@
                 <button id="btnAccountCloudProjects" class="btn-cad auth-primary" type="button" hidden>Cloudové projekty</button>
             </div>
             <div class="pro-card">
-                <h3>UPDATE PRO</h3>
+                <h3>Předplatné PRO</h3>
                 <p id="accountProStatus" class="pro-status"></p>
                 <button id="btnUpdatePro" class="btn-cad auth-primary" type="button">Ceník PRO</button>
             </div>
@@ -732,17 +732,38 @@
     </div>
 
     <div id="proUpgradeModal" class="modal" style="z-index: 460;">
-        <section class="modal-content account-card" role="dialog" aria-modal="true" aria-labelledby="proUpgradeTitle">
+        <section class="modal-content account-card pro-pricing" role="dialog" aria-modal="true" aria-labelledby="proUpgradeTitle">
             <div class="account-header"><h2 id="proUpgradeTitle">PZTS PRO</h2><button id="btnProClose" class="btn-cad" type="button">Zavřít</button></div>
-            <div class="pro-columns"><div><p class="account-note">Rozšiřte svůj účet o nástroje PRO.</p>
-            <ul class="pro-features"><li>Cloudové ukládání plánů</li><li>Editor nabídek a ikon</li><li>Tipy při plánování</li></ul></div>
-            <div class="pro-offers">
-                <label class="pro-offer"><input type="radio" name="proOffer" value="monthly" checked><span><strong>Měsíční předplatné PZTS</strong><span class="pro-price"><small data-pro-price="monthly" data-currency="EUR"></small><b aria-hidden="true">—</b><strong data-pro-price="monthly" data-currency="CZK"></strong></span></span></label>
-                <label class="pro-offer"><input type="radio" name="proOffer" value="annual"><span><strong>Roční předplatné PZTS</strong><span class="pro-price"><small data-pro-price="annual" data-currency="EUR"></small><b aria-hidden="true">—</b><strong data-pro-price="annual" data-currency="CZK"></strong></span><small>Sleva 12 % oproti 12 měsíčním platbám</small></span></label>
+            <div class="pro-columns">
+                <section aria-labelledby="proFeaturesTitle">
+                    <h3 id="proFeaturesTitle">Co získáte s PRO</h3>
+                    <ul class="pro-features">
+                        <li><strong>Cloudové ukládání plánů</strong><span>Uložte až 5 projektů a otevřete je z jiného zařízení.</span></li>
+                        <li><strong>Editor nabídek a ikon</strong><span>Vytvářejte vlastní sady nástrojů a upravujte symboly detektorů.</span></li>
+                        <li><strong>Najít detektor</strong><span>Hledejte podle sběrnice a čísla detektoru napříč podlažími.</span></li>
+                        <li><strong>Výstupy bez vodoznaku</strong><span>Tiskněte a exportujte výkresy bez loga GooM.</span></li>
+                        <li><strong>Tipy při plánování</strong><span>Krátký průvodce nahráním výkresu a rozmístěním detektorů.</span></li>
+                        <li><strong>Firemní přístupy PRO</strong><span>Až 3 další účty k placenému firemnímu předplatnému.</span></li>
+                    </ul>
+                </section>
+                <div class="pro-offers" role="group" aria-labelledby="proIntervalTitle">
+                    <h3 id="proIntervalTitle">Zvolte období</h3>
+                    <p class="account-note">Obě předplatná odemykají stejné funkce PZTS PRO.</p>
+                    <label class="pro-offer">
+                        <input type="radio" name="proOffer" value="monthly" checked>
+                        <span><strong>Měsíční předplatné PZTS</strong><span class="pro-price"><small data-pro-price="monthly" data-currency="EUR"></small><b aria-hidden="true">—</b><strong data-pro-price="monthly" data-currency="CZK"></strong></span><small>Platba každý měsíc</small></span>
+                    </label>
+                    <label class="pro-offer pro-offer-annual">
+                        <input type="radio" name="proOffer" value="annual">
+                        <span><strong>Roční předplatné PZTS</strong><span class="pro-price"><small data-pro-price="annual" data-currency="EUR"></small><b aria-hidden="true">—</b><strong data-pro-price="annual" data-currency="CZK"></strong></span><small>Platba na celý rok</small><small class="pro-discount">Sleva 12 % oproti 12 měsíčním platbám</small></span>
+                    </label>
+                    <p class="account-note">Platba v EUR. Ceny v Kč jsou orientační podle kurzu ČNB.</p>
+                    <p class="account-note">Předplatné se obnovuje po zvoleném období. Automatické obnovení můžete zrušit v účtu.</p>
+                    <p id="proPurchaseStatus" class="pro-status" role="status" aria-live="polite"></p>
+                    <button id="btnProPurchase" class="btn-cad auth-primary" type="button">Koupit PRO</button>
+                </div>
             </div>
-            </div><p class="account-note">Platba v EUR. Ceny v Kč jsou orientační podle kurzu ČNB.</p>
-            <p class="account-note">Předplatné se obnovuje po zvoleném období. Automatické obnovení můžete zrušit v účtu.</p><p id="proPurchaseStatus" class="pro-status" role="status" aria-live="polite"></p>
-            <button id="btnProPurchase" class="btn-cad auth-primary" type="button">Koupit PRO</button>
+            <p class="pro-free-note">Bezplatná verze umožňuje kreslit, ukládat projekty .TECH do zařízení a tisknout s vodoznakem.</p>
         </section>
     </div>
 
@@ -1053,6 +1074,6 @@
         <button type="button" data-tablet-action="delete" class="tool-danger">×</button>
         <button type="button" data-tablet-action="undo">↶</button>
     </div>
-    <script src="bootstrap.js?v=20261115-pro-team-36"></script>
+    <script src="bootstrap.js?v=20261115-pro-languages-37"></script>
 </body>
 </html>
