@@ -55,6 +55,7 @@
         popup.className = 'ui-select-popup'; popup.setAttribute('role', 'listbox');
         const welcomeLanguage = Boolean(widget.select.closest('.welcome-controls, .account-language-controls')) && widget.select.hasAttribute('data-language-select');
         if (welcomeLanguage) popup.classList.add('welcome-language-popup');
+        if (widget.select.id === 'loopSelect') popup.classList.add('bus-select-popup');
         popup.setAttribute('aria-label', widget.trigger.getAttribute('aria-label'));
         [...widget.select.options].forEach((option, index) => {
             const row = document.createElement('div');

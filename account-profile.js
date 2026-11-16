@@ -37,6 +37,8 @@
         && license.paymentStatus === 'paid' && license.source === 'stripe' && ['monthly', 'annual'].includes(license.billingMode)
         && license.applications?.includes(APP_PRODUCT) && paidUntil() > Date.now();
     window.hasOwnPaidPro = hasPaidAccess;
+    window.getOwnProTier = () => hasPaidAccess() ? license.applicationPlans?.[APP_PRODUCT] || 'pro' : null;
+    window.isGoomCompanyAccount = () => profile?.accountType === 'company';
     window.hasProAccess = () => Boolean(window.getFirebaseUser()?.emailVerified && uid === window.getFirebaseUser()?.uid
         && (hasPaidAccess() || grantedUntil() > Date.now() || companyUntil() > Date.now()));
     window.hasCloudAccess = window.hasProAccess;
@@ -67,7 +69,8 @@
         byId('btnAccountRefresh').textContent = tr(user?.emailVerified ? 'Obnovit údaje' : 'E-mail jsem ověřil(a)');
         byId('accountCloudInfo').textContent = tr(entitled ? 'PRO je aktivní. Cloudové úložiště je připraveno.' : 'Cloudové úložiště je součástí PRO.');
         const hasKey = entitled && hasPaidAccess();
-        companySeatForm.hidden = !company || !hasKey;
+        const seatPeriods = license?.companyApplicationExpiresAt ?? license?.applicationExpiresAt;
+        companySeatForm.hidden = !company || !hasKey || !(millis(seatPeriods?.[APP_PRODUCT]) > Date.now());
         byId('accountCloudKeyBlock').hidden = !hasKey;
         byId('btnAccountCloudProjects').hidden = !entitled;
         byId('btnAccountAdmin').hidden = !window.hasAdminAccess();

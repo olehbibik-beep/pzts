@@ -2,13 +2,20 @@
     const byId = id => document.getElementById(id);
     let purchasePending = false;
     let returnHandled = false;
-    const pricesInEuro = { monthly: 6.90, annual: 72.86 };
+    const pricesInEuro = { monthly: 6.90, annual: 72.86, companyMonthly: 8.90, companyAnnual: 93.98 };
+    const buyButtons = [...document.querySelectorAll('[data-buy-tier]')];
+    const manageButtons = [...document.querySelectorAll('[data-manage-tier]')];
     const czkPerEuro = 24.425; // Czech National Bank published rate for 2026-11-13.
     function render() {
         const active = Boolean(window.hasProAccess?.());
         byId('accountProStatus').textContent = tr(active ? 'PRO je aktivní.' : 'Váš účet používá bezplatnou verzi.');
         byId('accountProStatus').classList.toggle('active', active);
-        byId('btnProPurchase').hidden = Boolean(window.hasOwnPaidPro?.());
+        const tier = window.getOwnProTier?.();
+        for (const button of buyButtons) {
+            button.hidden = button.dataset.buyTier === tier;
+            button.disabled = purchasePending || Boolean(tier);
+        }
+        for (const button of manageButtons) button.hidden = button.dataset.manageTier !== tier;
         for (const price of document.querySelectorAll('[data-pro-price]')) {
             const currency = price.dataset.currency;
             const euros = pricesInEuro[price.dataset.proPrice];
@@ -18,26 +25,33 @@
             price.textContent = currency === 'CZK' ? '≈ ' + formatted : formatted;
         }
         document.getElementById('btnOpenToolbarMenuEditor').classList.toggle('pro-lock', !active && !window.hasAdminAccess?.());
-        if (window.hasOwnPaidPro?.()) byId('proPurchaseStatus').textContent = tr('PRO je aktivní.');
     }
     window.requestProUpgrade = () => {
         if (!window.getFirebaseUser()) { showWelcomeScreen(); return; }
         byId('proUpgradeModal').style.display = 'flex';
-        byId('proPurchaseStatus').textContent = tr('Cena a podmínky se zobrazí na zabezpečené platební stránce.');
+        byId('proPurchaseStatus').textContent = window.hasProAccess?.() ? tr('PRO je aktivní.') : '';
         render(); window.clearGoomTooltips?.();
     };
     byId('btnUpdatePro').addEventListener('click', window.requestProUpgrade);
     byId('btnProClose').addEventListener('click', () => { byId('proUpgradeModal').style.display = 'none'; });
-    byId('btnProPurchase').addEventListener('click', async () => {
+    async function startCheckout(event) {
         if (purchasePending || window.hasOwnPaidPro?.()) return;
+        const company = event.currentTarget.dataset.buyTier === 'company';
         if (!window.getFirebaseUser()?.emailVerified) {
             byId('proPurchaseStatus').textContent = tr('Před nákupem potvrďte svou e-mailovou adresu v nastavení účtu.');
             return;
         }
-        purchasePending = true; byId('btnProPurchase').disabled = true;
+        if (company && !window.isGoomCompanyAccount?.()) {
+            byId('proPurchaseStatus').textContent = tr('Pro nákup firemního PRO potřebujete firemní účet.');
+            return;
+        }
+        const annual = document.querySelector('input[name="proPeriod"]:checked').value === 'annual';
+        const offer = company ? (annual ? 'companyAnnual' : 'companyMonthly') : (annual ? 'annual' : 'monthly');
+        purchasePending = true;
+        render();
         byId('proPurchaseStatus').textContent = tr('Připravujeme zabezpečenou platbu…');
         try {
-            const result = await window.callProBilling('createProCheckout', { offer: document.querySelector('input[name="proOffer"]:checked').value, application: APP_PRODUCT });
+            const result = await window.callProBilling('createProCheckout', { offer, application: APP_PRODUCT });
             const url = new URL(result.url);
             if (url.protocol !== 'https:' || url.hostname !== 'checkout.stripe.com') throw new Error('Invalid checkout URL');
             window.location.assign(url.href);
@@ -45,7 +59,12 @@
             byId('proPurchaseStatus').textContent = tr(error.code?.includes('already-exists')
                 ? 'Máte již předplatné. Spravujte je v uživatelském účtu.'
                 : 'Platbu nyní nelze otevřít. Zkuste to později.');
-        } finally { purchasePending = false; byId('btnProPurchase').disabled = false; }
+        } finally { purchasePending = false; render(); }
+    }
+    for (const button of buyButtons) button.addEventListener('click', startCheckout);
+    for (const button of manageButtons) button.addEventListener('click', () => {
+        byId('proUpgradeModal').style.display = 'none';
+        byId('btnManageSubscription').click();
     });
     async function handleReturn() {
         const params = new URLSearchParams(location.search);
