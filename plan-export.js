@@ -12,6 +12,8 @@ async function printPlanDirect(){
     planExportBusy=true;container.setAttribute('aria-busy','true');
     try{
         clearPrintPage();
+        const printPage = document.getElementById('printPage');
+        printPage.toggleAttribute('data-tablet-print', matchMedia('(any-pointer: coarse)').matches);
         await new Promise(requestAnimationFrame);
         if (!window.hasProAccess?.()) await emptyCanvasLogo.decode().catch(() => {});
         const sheets = document.createDocumentFragment();
@@ -44,7 +46,7 @@ async function printPlanDirect(){
             sheet.append(header, preview);
             sheets.append(sheet);
         }
-        document.getElementById('printPage').replaceChildren(sheets);
+        printPage.replaceChildren(sheets);
         await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
         window.print();
     }catch(error){console.error(error);clearPrintPage();showAppAlert(error.message,tr('Ошибка печати'));}

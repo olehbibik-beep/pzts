@@ -1,6 +1,6 @@
 (() => {
     // Change this version whenever publishing application files together.
-    const version = '20261116-legend-menu-41';
+    const version = '20261116-shared-menus-43';
     let started = false;
     function loadScript(src) {
         return new Promise((resolve, reject) => {

@@ -53,6 +53,12 @@ let editingToolbarMenu = null;
 let editingToolbarMenuIsNew = false;
 let toolbarMenuPreviousActiveId = null;
 let toolbarMenuEditorOriginal = '';
+let sharedToolbarMenus = {};
+let toolbarAccountUid = null;
+let displayedToolbarMenu = null;
+let toolbarSyncGeneration = 0;
+let toolbarSubscriptions = [];
+let toolbarSavePending = false;
 
 function sanitizeToolbarMenu(menu, id, fallbackName) {
     const deviceTypes = Array.isArray(menu.deviceTypes)
@@ -69,11 +75,11 @@ function sanitizeToolbarMenu(menu, id, fallbackName) {
     return cleaned;
 }
 
-function sanitizeToolbarMenus(value, overrides) {
-    if (!Array.isArray(value)) return [...builtInToolbarMenus];
+function sanitizeToolbarMenus(value) {
+    if (!Array.isArray(value)) return [];
     const seenIds = new Set(builtInToolbarMenus.map(menu => menu.id));
     const legacyDefaultNames = ['Default', 'Основное меню', 'Hlavní nabídka', 'Main menu'];
-    const menus = value.filter(menu => menu && typeof menu === 'object' && menu.id !== 'pro')
+    return value.filter(menu => menu && typeof menu === 'object' && menu.id !== 'pro')
         .filter(menu => menu.id !== 'default' || Object.keys(menu.icons || {}).length
             || menu.deviceTypes?.length !== defaultToolbarMenu.deviceTypes.length || !legacyDefaultNames.includes(menu.name))
         .slice(0, toolbarMenuLimit).map((menu, index) => {
@@ -82,39 +88,31 @@ function sanitizeToolbarMenus(value, overrides) {
         seenIds.add(id);
         return sanitizeToolbarMenu(menu, id, tr`Меню ${index + 1}`);
     });
-    const presets = builtInToolbarMenus.map(preset => {
-        const override = overrides?.[preset.id];
-        if (!override || typeof override !== 'object') return preset;
-        const cleaned = sanitizeToolbarMenu(override, preset.id, preset.name);
-        if (preset.id === proToolbarMenu.id && cleaned.name === 'PRO') cleaned.name = preset.name;
-        return cleaned.deviceTypes.length ? cleaned : preset;
-    });
-    return [...presets, ...menus];
 }
 
 function loadToolbarMenus() {
+    const allowed = canEditToolbarMenus();
+    const presets = allowed ? builtInToolbarMenus : [defaultToolbarMenu];
+    toolbarMenus = presets.map(preset => sharedToolbarMenus[preset.id] || preset);
+    activeToolbarMenuId = defaultToolbarMenu.id;
+    if (!toolbarAccountUid || !allowed) return;
     try {
-        const stored = localStorage.getItem(toolbarMenuStorageKey);
+        const stored = localStorage.getItem(`${toolbarMenuStorageKey}:${toolbarAccountUid}`);
         if (!stored) return;
         const data = JSON.parse(stored);
-        toolbarMenus = sanitizeToolbarMenus(data.menus, data.version === 3 ? data.presets : null);
-        const savedId = !(data.version >= 2) && data.activeMenuId === 'default'
-            ? toolbarMenus.find(menu => menu.id === 'default-copy')?.id || 'default' : data.activeMenuId;
-        activeToolbarMenuId = toolbarMenus.some(menu => menu.id === savedId) ? savedId : defaultToolbarMenu.id;
+        toolbarMenus.push(...sanitizeToolbarMenus(data.menus));
+        if (toolbarMenus.some(menu => menu.id === data.activeMenuId)) activeToolbarMenuId = data.activeMenuId;
     } catch (error) {
         console.error('Не удалось загрузить сохранённые наборы меню:', error);
-        toolbarMenus = [...builtInToolbarMenus];
-        activeToolbarMenuId = defaultToolbarMenu.id;
     }
 }
 
 function saveToolbarMenus() {
+    if (!toolbarAccountUid || !canEditToolbarMenus()) return true;
     try {
-        localStorage.setItem(toolbarMenuStorageKey, JSON.stringify({
-            version: 3,
+        localStorage.setItem(`${toolbarMenuStorageKey}:${toolbarAccountUid}`, JSON.stringify({
             activeMenuId: activeToolbarMenuId,
-            menus: toolbarMenus.filter(menu => !isBuiltInToolbarMenu(menu)),
-            presets: Object.fromEntries(toolbarMenus.filter(isBuiltInToolbarMenu).map(menu => [menu.id, menu]))
+            menus: toolbarMenus.filter(menu => !isBuiltInToolbarMenu(menu))
         }));
         return true;
     } catch (error) {
@@ -128,12 +126,56 @@ function getActiveToolbarMenu() {
     return toolbarMenus.find(menu => menu.id === activeToolbarMenuId) || toolbarMenus[0];
 }
 
+function sharedToolbarRef(db, preset) {
+    return db.collection('goomToolbarPresets').doc(APP_PRODUCT).collection('sets').doc(preset.id);
+}
+
+function updateSharedToolbarMenu(preset, data) {
+    let menu = preset;
+    if (data) {
+        try {
+            const cleaned = sanitizeToolbarMenu({ ...data, icons: JSON.parse(data.iconsJson) }, preset.id, preset.name);
+            if (cleaned.deviceTypes.length) menu = cleaned;
+        } catch { /* Use the bundled preset if the shared data is invalid. */ }
+    }
+    const index = toolbarMenus.findIndex(item => item.id === preset.id);
+    if (JSON.stringify(toolbarMenus[index]) === JSON.stringify(menu)) return;
+    sharedToolbarMenus[preset.id] = menu;
+    toolbarMenus[index] = menu;
+    if (activeToolbarMenuId === menu.id) {
+        applyToolbarMenu(menu, false);
+        if (isSystemReady) updateProjectLegendsFromMenu(menu);
+    }
+    if (iconEditorModal.style.display === 'flex') renderToolbarMenuEditor();
+}
+
+async function watchSharedToolbarMenus(uid, allowed) {
+    const generation = ++toolbarSyncGeneration;
+    toolbarSubscriptions.forEach(stop => stop());
+    toolbarSubscriptions = [];
+    if (!uid) return;
+    try {
+        const db = await window.getFirebaseDatabase();
+        if (generation !== toolbarSyncGeneration) return;
+        for (const preset of allowed ? builtInToolbarMenus : [defaultToolbarMenu]) {
+            const stop = sharedToolbarRef(db, preset).onSnapshot(snapshot => {
+                if (generation === toolbarSyncGeneration && !snapshot.metadata?.hasPendingWrites) {
+                    updateSharedToolbarMenu(preset, snapshot.data());
+                }
+            }, () => { /* Bundled presets also work offline or before rules are deployed. */ });
+            toolbarSubscriptions.push(stop);
+        }
+    } catch { /* Bundled presets are already available. */ }
+}
+
 function applyToolbarMenu(menu, persist = true) {
     if (!menu) return;
     const cycleButton = document.getElementById('btnCycleToolbarMenu');
-    const menuChanged = cycleButton.dataset.menuId !== menu.id;
     activeToolbarMenuId = menu.id;
-    if (menuChanged || !isSystemReady) applyToolbarMenuIcons(menu);
+    if (displayedToolbarMenu !== menu || !isSystemReady) {
+        displayedToolbarMenu = menu;
+        applyToolbarMenuIcons(menu);
+    }
     const visibleTypes = new Set(menu.deviceTypes);
     toolbarMenuDeviceButtons.forEach(button => {
         button.hidden = !visibleTypes.has(button.dataset.type);
@@ -169,7 +211,7 @@ function applyToolbarMenu(menu, persist = true) {
 
 function applyToolbarMenuIcons(menu = getActiveToolbarMenu()) {
     customDeviceIcons = cloneIconShapes(menu?.icons || {});
-    refreshCustomDeviceIcons();
+    refreshCustomDeviceIcons(customDeviceIcons);
 }
 
 function toolbarMenuButtonContent(type, menu) {
@@ -196,7 +238,7 @@ function renderToolbarMenuPresets() {
         name.type = 'text';
         name.maxLength = 32;
         name.className = 'toolbar-menu-preset-name';
-        name.value = menu.name;
+        name.value = editingToolbarMenu?.id === menu.id ? editingToolbarMenu.name : menu.name;
         name.readOnly = !canEditToolbarPreset(menu);
         name.setAttribute('aria-label', tr`Название меню: ${menu.name}`);
         name.addEventListener('focus', async () => { await selectToolbarMenuForEditing(menu.id, true); });
@@ -261,6 +303,8 @@ function updateToolbarMenuRowHighlights() {
 
 function updateToolbarMenuEditorStatus() {
     const saveButton = document.getElementById('btnToolbarMenuSave');
+    document.getElementById('btnToolbarLegacyPreset').hidden = !getLegacyToolbarPreset();
+    document.getElementById('btnToolbarImportMenus').hidden = !getLegacyPersonalToolbarMenus().length;
     if (!editingToolbarMenu) return;
     if (!canEditToolbarPreset(editingToolbarMenu)) {
         saveButton.disabled = true;
@@ -273,9 +317,33 @@ function updateToolbarMenuEditorStatus() {
     document.getElementById('toolbarMenuEditorStatus').textContent = changed
         ? tr('Есть несохранённые изменения')
         : (activeToolbarMenuId === editingToolbarMenu.id ? tr('Этот набор используется на панели') : tr('Выберите набор, измените его и сохраните'));
-    saveButton.disabled = !changed;
-    saveButton.textContent = changed ? tr('Сохранить меню') : tr('Сохранено');
+    saveButton.disabled = !changed || Boolean(toolbarSavePending);
+    saveButton.textContent = toolbarSavePending ? tr('Publikujeme…') : changed
+        ? tr(isBuiltInToolbarMenu(editingToolbarMenu) ? 'Publikovat sdílenou sadu' : 'Сохранить меню') : tr('Сохранено');
     saveButton.style.opacity = changed ? '1' : '.48';
+}
+
+function getLegacyPersonalToolbarMenus() {
+    if (!canEditToolbarMenus()) return [];
+    try {
+        const legacy = JSON.parse(localStorage.getItem(toolbarMenuStorageKey));
+        const addedIds = new Set(toolbarMenus.map(menu => menu.id));
+        const slots = Math.max(0, toolbarMenuLimit - toolbarMenus.filter(menu => !isBuiltInToolbarMenu(menu)).length);
+        return sanitizeToolbarMenus(legacy?.menus).filter(menu => !addedIds.has(menu.id)).slice(0, slots);
+    } catch { return []; }
+}
+
+function getLegacyToolbarPreset() {
+    if (!editingToolbarMenu || !isBuiltInToolbarMenu(editingToolbarMenu) || !window.hasAdminAccess?.()) return null;
+    try {
+        const raw = JSON.parse(localStorage.getItem(toolbarMenuStorageKey))?.presets?.[editingToolbarMenu.id];
+        if (!raw) return null;
+        const bundled = builtInToolbarMenus.find(preset => preset.id === editingToolbarMenu.id);
+        const legacy = sanitizeToolbarMenu(raw, bundled.id, bundled.name);
+        const serialized = JSON.stringify(legacy);
+        if (legacy.deviceTypes.length && serialized !== JSON.stringify(bundled) && serialized !== JSON.stringify(editingToolbarMenu)) return legacy;
+    } catch { /* No usable legacy preset on this browser. */ }
+    return null;
 }
 
 function renderToolbarMenuEditor() {
@@ -297,6 +365,7 @@ function discardUnsavedNewMenu() {
 }
 
 async function selectToolbarMenuForEditing(id, focusName = false) {
+    if (toolbarSavePending) return false;
     if (editingToolbarMenu?.id === id) return true;
     if (editorHasUnsavedChanges() && !await showAppConfirm(tr('Отбросить несохранённые изменения?'))) return false;
     discardUnsavedNewMenu();
@@ -336,13 +405,14 @@ document.getElementById('iconEditorModal').addEventListener('click', event => {
 document.getElementById('btnIconEditorClose').addEventListener('click', async event => {
     event.preventDefault();
     event.stopImmediatePropagation();
+    if (toolbarSavePending) return;
     if (editorHasUnsavedChanges() && !await showAppConfirm(tr('Закрыть редактор меню без сохранения изменений?'))) return;
     discardUnsavedNewMenu();
     saveToolbarMenus();
     document.getElementById('iconEditorModal').style.display = 'none';
 }, true);
 document.getElementById('btnToolbarMenuNew').addEventListener('click', async () => {
-    if (!canEditToolbarMenus()) return;
+    if (toolbarSavePending || !canEditToolbarMenus()) return;
     if (toolbarMenus.length - builtInToolbarMenus.length >= toolbarMenuLimit) {
         showAppAlert(tr('Достигнут лимит в 7 меню.'), tr('Лимит меню'));
         return;
@@ -372,7 +442,7 @@ document.getElementById('btnToolbarMenuNew').addEventListener('click', async () 
 });
 async function deleteToolbarMenu(id) {
     const menu = toolbarMenus.find(item => item.id === id);
-    if (!menu || isBuiltInToolbarMenu(menu) || !canEditToolbarMenus() || !await showAppConfirm(tr`Удалить меню «${menu.name}»?`)) return;
+    if (toolbarSavePending || !menu || isBuiltInToolbarMenu(menu) || !canEditToolbarMenus() || !await showAppConfirm(tr`Удалить меню «${menu.name}»?`)) return;
     toolbarMenus = toolbarMenus.filter(item => item.id !== id);
     const activeMenuWasDeleted = activeToolbarMenuId === id;
     if (activeMenuWasDeleted) activeToolbarMenuId = id;
@@ -385,8 +455,26 @@ async function deleteToolbarMenu(id) {
     saveToolbarMenus();
     renderToolbarMenuEditor();
 }
-document.getElementById('btnToolbarMenuSave').addEventListener('click', () => {
-    if (!canEditToolbarPreset(editingToolbarMenu)) return;
+document.getElementById('btnToolbarLegacyPreset').addEventListener('click', () => {
+    const legacy = getLegacyToolbarPreset();
+    if (!legacy || toolbarSavePending) return;
+    editingToolbarMenu = legacy;
+    selectIconEditorTarget(legacy.deviceTypes.find(type => iconEditorDeviceTypes.some(([iconType]) => iconType === type)) || iconEditorTarget.value);
+    renderToolbarMenuEditor();
+});
+
+document.getElementById('btnToolbarImportMenus').addEventListener('click', async () => {
+    const uid = toolbarAccountUid;
+    if (toolbarSavePending || !getLegacyPersonalToolbarMenus().length
+        || !await showAppConfirm(tr('Přidat starší osobní nabídky z tohoto prohlížeče k právě přihlášenému účtu?'))
+        || uid !== toolbarAccountUid) return;
+    toolbarMenus.push(...getLegacyPersonalToolbarMenus());
+    saveToolbarMenus();
+    renderToolbarMenuEditor();
+});
+
+document.getElementById('btnToolbarMenuSave').addEventListener('click', async () => {
+    if (toolbarSavePending || !canEditToolbarPreset(editingToolbarMenu)) return;
     const name = editingToolbarMenu.name.trim();
     if (!name) {
         showAppAlert(tr('Укажите название набора меню.'), tr('Название меню'));
@@ -401,16 +489,36 @@ document.getElementById('btnToolbarMenuSave').addEventListener('click', () => {
     editingToolbarMenu.deviceTypes = toolbarMenuTypes
         .map(item => item.type)
         .filter(type => editingToolbarMenu.deviceTypes.includes(type));
-    const index = toolbarMenus.findIndex(menu => menu.id === editingToolbarMenu.id);
-    if (index < 0) toolbarMenus.push(JSON.parse(JSON.stringify(editingToolbarMenu)));
-    else toolbarMenus[index] = JSON.parse(JSON.stringify(editingToolbarMenu));
+    const saved = sanitizeToolbarMenu(editingToolbarMenu, editingToolbarMenu.id, name);
+    if (isBuiltInToolbarMenu(saved)) {
+        const attempt = { uid: toolbarAccountUid };
+        toolbarSavePending = attempt;
+        updateToolbarMenuEditorStatus();
+        try {
+            const db = await window.getFirebaseDatabase();
+            if (toolbarSavePending !== attempt || !window.hasAdminAccess?.()) return;
+            await sharedToolbarRef(db, saved).set({ name: saved.name, deviceTypes: saved.deviceTypes, iconsJson: JSON.stringify(saved.icons || {}) });
+            if (toolbarSavePending !== attempt || toolbarAccountUid !== attempt.uid || !window.hasAdminAccess?.()) return;
+            sharedToolbarMenus[saved.id] = saved;
+        } catch {
+            if (toolbarSavePending === attempt) showAppAlert(tr('Sdílenou nabídku nelze uložit. Zkontrolujte připojení a pravidla Firebase.'), tr('Ошибка сохранения'));
+            return;
+        } finally {
+            if (toolbarSavePending === attempt) {
+                toolbarSavePending = false;
+                updateToolbarMenuEditorStatus();
+            }
+        }
+    }
+    const index = toolbarMenus.findIndex(menu => menu.id === saved.id);
+    if (index < 0) toolbarMenus.push(saved);
+    else toolbarMenus[index] = saved;
     editingToolbarMenuIsNew = false;
     toolbarMenuPreviousActiveId = null;
     if (!saveToolbarMenus()) return;
-    applyToolbarMenu(editingToolbarMenu, false);
-    applyToolbarMenuIcons(editingToolbarMenu);
-    updateProjectLegendsFromMenu(editingToolbarMenu);
-    toolbarMenuEditorOriginal = JSON.stringify(editingToolbarMenu);
+    applyToolbarMenu(saved, false);
+    updateProjectLegendsFromMenu(saved);
+    toolbarMenuEditorOriginal = JSON.stringify(saved);
     renderToolbarMenuEditor();
     if (isSystemReady) {
         saveStateToHistory();
@@ -439,28 +547,36 @@ document.getElementById('btnCycleToolbarMenu').addEventListener('click', async (
     }
 });
 
-loadToolbarMenus();
-applyToolbarMenu(canEditToolbarMenus() ? getActiveToolbarMenu() : toolbarMenus[0], false);
-let lastToolbarAccess = canEditToolbarMenus();
-let lastToolbarAdmin = Boolean(window.hasAdminAccess?.());
-document.addEventListener('goom-account-changed', () => {
+let lastToolbarAccess = false;
+let lastToolbarAdmin = false;
+function updateToolbarAccount() {
+    const uid = window.getFirebaseUser?.()?.uid || null;
+    const accountChanged = uid !== toolbarAccountUid;
     const allowed = canEditToolbarMenus();
     const admin = Boolean(window.hasAdminAccess?.());
-    if (allowed === lastToolbarAccess && admin === lastToolbarAdmin) return;
-    const wasAllowed = lastToolbarAccess;
+    const accessChanged = allowed !== lastToolbarAccess;
+    if (!accountChanged && !accessChanged && admin === lastToolbarAdmin && displayedToolbarMenu) return;
+    const lostAdmin = lastToolbarAdmin && !admin;
+    toolbarAccountUid = uid;
     lastToolbarAccess = allowed;
     lastToolbarAdmin = admin;
-    if (!allowed || (wasAllowed && !admin)) {
-        discardUnsavedNewMenu();
+    if (accountChanged || !allowed || lostAdmin) {
+        toolbarSavePending = false;
+        editingToolbarMenu = null;
+        editingToolbarMenuIsNew = false;
+        toolbarMenuPreviousActiveId = null;
         iconEditorModal.style.display = 'none';
     }
-    if (allowed && !wasAllowed) {
+    if (accountChanged) { sharedToolbarMenus = {}; displayedToolbarMenu = null; }
+    if (!allowed) delete sharedToolbarMenus.pro;
+    if (accountChanged || accessChanged || lostAdmin || !displayedToolbarMenu) {
         loadToolbarMenus();
         applyToolbarMenu(getActiveToolbarMenu(), false);
-    } else if (!allowed) {
-        applyToolbarMenu(toolbarMenus[0], false);
     } else if (iconEditorModal.style.display === 'flex') {
         redrawIconEditor();
         renderToolbarMenuEditor();
     }
-});
+    if (accountChanged || accessChanged) void watchSharedToolbarMenus(uid, allowed);
+}
+updateToolbarAccount();
+document.addEventListener('goom-account-changed', updateToolbarAccount);

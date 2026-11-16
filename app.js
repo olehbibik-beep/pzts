@@ -1001,6 +1001,16 @@ function showWelcomeScreen(step = 'auth') {
     document.getElementById('welcomeAuthBlock').hidden = step !== 'auth';
     document.getElementById('welcomeEmailBlock').hidden = step !== 'email';
     document.getElementById('welcomeButtonsBlock').hidden = step !== 'projects';
+    if (step === 'projects') {
+        const uid = window.getFirebaseUser?.()?.uid;
+        const resume = document.getElementById('btnWelcomeResume');
+        resume.hidden = true;
+        void getSavedProjectData().then(saved => {
+            if (modal.dataset.step === 'projects' && window.getFirebaseUser?.()?.uid === uid) {
+                resume.hidden = !saved?.floors?.length || Boolean(saved.ownerUid && saved.ownerUid !== uid);
+            }
+        }).catch(() => {});
+    }
     document.getElementById('btnWelcomeAccount').hidden = step === 'auth';
     const naming = document.getElementById('welcomeNamingBlock');
     naming.hidden = step !== 'naming';
@@ -1056,7 +1066,7 @@ async function initProject() {
                 document.getElementById('welcomeModal').style.display = 'none';
                 
                 loadDefaultFloors(false, finalName);
-                setTimeout(() => window.startGoomOnboarding?.(), 350);
+                window.startGoomOnboarding?.();
             };
         }
 
@@ -1098,13 +1108,15 @@ async function initProject() {
         };
         const resumeButton = document.getElementById('btnWelcomeResume');
         resumeButton.onclick = async () => {
-            if (!window.getFirebaseUser?.()) { showWelcomeScreen(); return; }
+            const uid = window.getFirebaseUser?.()?.uid;
+            if (!uid) { showWelcomeScreen(); return; }
             resumeButton.disabled = true;
             try {
-                if (!await loadFromDB()) throw new Error(tr('Локальное сохранение недоступно. Создайте или откройте другой проект.'));
+                if (!await loadFromDB({ requireUid: uid })) throw new Error(tr('Локальное сохранение недоступно. Создайте или откройте другой проект.'));
                 isSystemReady = true;
                 changeFloor(); applySavedPlanViewport(window.restoredPlanViewport); saveStateToHistory(); requestRedraw();
                 document.getElementById('welcomeModal').style.display = 'none';
+                window.startGoomOnboarding?.();
             } catch (error) {
                 showAppAlert(error.message, tr('Не удалось продолжить проект'));
             } finally {
@@ -1115,8 +1127,6 @@ async function initProject() {
         isSystemReady = false; requestRedraw();
         showWelcomeScreen();
         await initDB();
-        const savedProject = await getSavedProjectData();
-        resumeButton.hidden = !savedProject?.floors?.length;
 
     } catch(e) {
         console.error("Critical error during init:", e);
@@ -1261,6 +1271,7 @@ function importFileContent(file, options = {}) {
             saveStateToHistory(); 
             triggerAutoSave();
             document.getElementById('welcomeModal').style.display = 'none';
+            window.startGoomOnboarding?.();
             resolve(true);
 
         } catch (err) { 

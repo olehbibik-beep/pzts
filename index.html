@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GOOM</title>
     <link rel="icon" type="image/png" href="Logo2.png?v=20261115-35">
-    <script src="i18n.js?v=20261116-account-cloud-40"></script>
+    <script src="i18n.js?v=20261116-shared-menus-43"></script>
     <script src="device-support.js?v=20261114-loading-27"></script>
     <style>
         :root {
@@ -252,15 +252,6 @@
         .app-dialog-actions button { min-width: 100px; justify-content: center; }
         .app-dialog-cancel { background: #303036 !important; color: #e1e1e6 !important; }
         .app-dialog-confirm { background: #0ea5e9 !important; color: #fff !important; }
-        .onboarding-backdrop { position: fixed; inset: 0; z-index: 10000; pointer-events: none; }
-        .onboarding-highlight { position: fixed; z-index: 10000; pointer-events: none; border: 2px solid #38bdf8; border-radius: 9px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.58), 0 0 24px rgba(56,189,248,0.35); transition: all 0.18s ease; }
-        .onboarding-card { position: fixed; z-index: 10001; width: min(360px, calc(100vw - 32px)); padding: 18px; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.14); border-radius: 12px; background: #1c1c1f; color: var(--text-main); box-shadow: 0 18px 55px rgba(0,0,0,0.55); pointer-events: auto; }
-        .onboarding-step { margin: 0 0 8px; color: #38bdf8; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
-        .onboarding-title { margin: 0 0 8px; font-size: 17px; }
-        .onboarding-message { margin: 0 0 16px; color: #c4c4cc; font-size: 13px; line-height: 1.5; }
-        .onboarding-actions { display: flex; justify-content: space-between; gap: 8px; }
-        .onboarding-actions button { justify-content: center; }
-        .onboarding-actions .onboarding-next { background: #0ea5e9; color: #fff; }
         @media (min-width: 600px) and (max-width: 1100px) {
             .toolbar-row { flex-wrap: wrap; gap: 8px 12px; padding: 8px 14px; }
             .toolbar-row > .toolbar-section { margin-left: auto !important; flex-wrap: wrap; }
@@ -297,6 +288,9 @@
             .plan-print-header { display: flex; justify-content: space-between; gap: 8mm; padding: 0 0 3mm; color: #181a1d; font-size: 10pt; overflow-wrap: anywhere; }
             .plan-print-header span { flex: none; }
             .plan-print-image { display: block; width: 100%; height: 100%; object-fit: contain; }
+            #printPage[data-tablet-print] .plan-print-sheet { display: block; height: auto; }
+            #printPage[data-tablet-print] .plan-print-header strong { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+            #printPage[data-tablet-print] .plan-print-image { height: auto; max-height: 174mm; }
         }
         #mainMenuModal .main-menu-content { box-sizing: border-box; max-width: 680px; width: min(680px, calc(100vw - 40px)); }
         .main-menu-layout {
@@ -449,7 +443,7 @@
 
 
     </style>
-    <link rel="stylesheet" href="ui-theme.css?v=20261116-account-cloud-40">
+    <link rel="stylesheet" href="ui-theme.css?v=20261116-shared-menus-43">
 </head>
 <body>
     <div id="deviceSupportNotice" role="alert">
@@ -699,9 +693,9 @@
             </div><div class="account-subscription"><section class="account-cloud" aria-labelledby="accountCloudTitle">
                 <h3 id="accountCloudTitle">Cloudové úložiště</h3>
                 <p id="accountCloudInfo" class="account-note"></p>
-                <button id="btnAccountCloudProjects" class="btn-cad" type="button" hidden>
+                <button id="btnAccountCloudProjects" class="btn-cad cloud-upgrade" type="button" aria-describedby="accountCloudInfo">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 18a4 4 0 0 1-1-7.9 6 6 0 0 1 11.6-1.4A4.7 4.7 0 0 1 18 18Z"/></svg>
-                    <span>Otevřít cloudové projekty</span>
+                    <span>Cloudové projekty</span>
                 </button>
             </section>
             <div class="pro-card">
@@ -737,20 +731,19 @@
                     <label><input type="radio" name="proPeriod" value="annual"><span>Ročně <b>−12 %</b></span></label>
                 </div>
             </div>
-            <div class="pro-plans">
-                <section class="pro-plan pro-plan-basic" aria-labelledby="proBasicTitle">
+            <div class="pro-comparison-scroll">
+              <table class="pro-comparison" aria-labelledby="proUpgradeTitle">
+                <colgroup><col class="pro-feature-column"><col span="3"></colgroup>
+                <thead><tr>
+                <th class="pro-feature-intro" scope="col">Funkce tarifů</th>
+                <th scope="col" aria-labelledby="proBasicTitle"><div class="pro-plan pro-plan-basic">
                     <header class="pro-plan-header">
                         <h3 id="proBasicTitle">Základní</h3>
                         <p class="pro-plan-caption">Zdarma</p>
                     </header>
                     <button class="btn-cad pro-plan-action" type="button" disabled>Aktivní</button>
-                    <ul class="pro-features">
-                        <li>Import a úpravy výkresů</li>
-                        <li>Místní uložení projektů .TECH</li>
-                        <li>Export a tisk s vodoznakem</li>
-                    </ul>
-                </section>
-                <section class="pro-plan pro-plan-standard" aria-labelledby="proStandardTitle">
+                </div></th>
+                <th scope="col" aria-labelledby="proStandardTitle"><div class="pro-plan pro-plan-standard">
                     <header class="pro-plan-header">
                         <h3 id="proStandardTitle">PROJECT</h3>
                         <p class="pro-plan-caption">Doporučujeme</p>
@@ -761,16 +754,8 @@
                         <div class="pro-price-option" data-period="monthly"><small>Měsíčně</small><span class="pro-price"><span data-pro-price="monthly" data-currency="EUR"></span><span class="pro-price-separator" aria-hidden="true">/</span><strong data-pro-price="monthly" data-currency="CZK"></strong></span></div>
                         <div class="pro-price-option" data-period="annual"><small>Ročně</small><span class="pro-price"><span data-pro-price="annual" data-currency="EUR"></span><span class="pro-price-separator" aria-hidden="true">/</span><strong data-pro-price="annual" data-currency="CZK"></strong></span></div>
                     </div>
-                    <ul class="pro-features">
-                        <li>Vše ze základní verze</li>
-                        <li>Až 5 projektů v cloudu</li>
-                        <li>Editor nabídek a ikon</li>
-                        <li>Vyhledávání detektorů ve všech podlažích</li>
-                        <li>Výstupy bez vodoznaku</li>
-                        <li>Tipy při plánování</li>
-                    </ul>
-                </section>
-                <section class="pro-plan pro-plan-company" aria-labelledby="proCompanyTitle">
+                </div></th>
+                <th scope="col" aria-labelledby="proCompanyTitle"><div class="pro-plan pro-plan-company">
                     <header class="pro-plan-header">
                         <h3 id="proCompanyTitle">Firemní PROJECT</h3>
                         <p class="pro-plan-caption">Pro týmy</p>
@@ -781,12 +766,10 @@
                         <div class="pro-price-option" data-period="monthly"><small>Měsíčně</small><span class="pro-price"><span data-pro-price="companyMonthly" data-currency="EUR"></span><span class="pro-price-separator" aria-hidden="true">/</span><strong data-pro-price="companyMonthly" data-currency="CZK"></strong></span></div>
                         <div class="pro-price-option" data-period="annual"><small>Ročně</small><span class="pro-price"><span data-pro-price="companyAnnual" data-currency="EUR"></span><span class="pro-price-separator" aria-hidden="true">/</span><strong data-pro-price="companyAnnual" data-currency="CZK"></strong></span></div>
                     </div>
-                    <ul class="pro-features">
-                        <li>Vše z PROJECT včetně tipů při plánování</li>
-                        <li>Až 3 další účty PROJECT</li>
-                        <li>Přístup kolegů po dobu firemního předplatného</li>
-                    </ul>
-                </section>
+                </div></th>
+                </tr></thead>
+                <tbody id="proComparisonFeatures"></tbody>
+              </table>
             </div>
             <div class="pro-pricing-footer">
                 <p id="proPurchaseStatus" class="pro-status" role="status" aria-live="polite"></p>
@@ -824,18 +807,17 @@
         </section>
     </div>
 
-    <div id="onboardingBackdrop" class="onboarding-backdrop" hidden>
-        <div id="onboardingHighlight" class="onboarding-highlight"></div>
-        <section id="onboardingCard" class="onboarding-card" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle">
+    <aside id="onboardingBackdrop" class="onboarding-card" aria-label="Průvodce prvním projektem" hidden>
+            <div aria-live="polite">
             <p class="onboarding-step" id="onboardingStep"></p>
             <h2 class="onboarding-title" id="onboardingTitle"></h2>
             <p class="onboarding-message" id="onboardingMessage"></p>
+            </div>
             <div class="onboarding-actions">
                 <button id="onboardingSkip" class="btn-cad" type="button">Přeskočit</button>
                 <button id="onboardingNext" class="btn-cad onboarding-next" type="button">Dále</button>
             </div>
-        </section>
-    </div>
+    </aside>
 
     <div id="mainMenuModal" class="modal">
         <div class="modal-content main-menu-content">
@@ -922,6 +904,8 @@
                 <button id="btnToolbarMenuNew" class="btn-cad toolbar-menu-add" type="button" title="Přidat nabídku" aria-label="Přidat nabídku">+</button>
                 <span id="toolbarMenuEditorStatus" style="color:var(--text-muted);font-size:12px;"></span>
                 <div class="toolbar-menu-editor-actions-group">
+                    <button id="btnToolbarImportMenus" class="btn-cad" type="button" hidden>Importovat osobní nabídky</button>
+                    <button id="btnToolbarLegacyPreset" class="btn-cad" type="button" hidden>Použít starší nabídku z tohoto zařízení</button>
                     <button id="btnToolbarMenuSave" class="btn-cad" type="button" style="background:#22c55e;color:#121214;font-weight:bold;">Uložit nabídku</button>
                 </div>
             </div>
@@ -1094,14 +1078,14 @@
         </div>
     </div>
     <div id="tabletDeviceTools" class="tablet-device-tools" role="toolbar" aria-label="Ovládání detektoru" hidden>
-        <button type="button" data-tablet-action="select" aria-pressed="false">↖ <span>Výběr</span></button>
-        <button type="button" data-tablet-action="pan" aria-pressed="false">✋ <span>Posun</span></button>
-        <button type="button" data-tablet-action="duplicate">⧉</button>
-        <button type="button" data-tablet-action="note">T</button>
-        <button type="button" data-tablet-action="address">#</button>
-        <button type="button" data-tablet-action="delete" class="tool-danger">×</button>
-        <button type="button" data-tablet-action="undo">↶</button>
+        <button type="button" data-tablet-action="select" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 3 15 8-7 2-3 7Z"/></svg></button>
+        <button type="button" data-tablet-action="pan" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 12V6a1.5 1.5 0 0 1 3 0v4-6a1.5 1.5 0 0 1 3 0v6-5a1.5 1.5 0 0 1 3 0v6-3a1.5 1.5 0 0 1 3 0v6a7 7 0 0 1-7 7h-1c-2 0-3.5-1-4.5-2.5l-3-4.5a1.7 1.7 0 0 1 2.8-2Z"/></svg></button>
+        <button type="button" data-tablet-action="duplicate"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M5 16a2 2 0 0 1-1-2V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 1"/></svg></button>
+        <button type="button" data-tablet-action="note"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v13h-8l-5 4v-4H5ZM8 8h8m-8 4h6"/></svg></button>
+        <button type="button" data-tablet-action="address"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4 6 20M18 4l-2 16M4 9h17M3 15h17"/></svg></button>
+        <button type="button" data-tablet-action="delete" class="tool-danger"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13m-8 3v7m4-7v7"/></svg></button>
+        <button type="button" data-tablet-action="undo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 4-5 5 5 5M4 9h9a6 6 0 0 1 6 6v2"/></svg></button>
     </div>
-    <script src="bootstrap.js?v=20261116-legend-menu-41"></script>
+    <script src="bootstrap.js?v=20261116-shared-menus-43"></script>
 </body>
 </html>

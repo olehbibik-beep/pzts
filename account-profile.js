@@ -70,7 +70,9 @@
         byId('accountCloudInfo').textContent = tr(entitled ? 'Ukládejte projekty a otevírejte je i z jiného zařízení.' : 'Cloudové úložiště je součástí PROJECT.');
         const seatPeriods = license?.companyApplicationExpiresAt ?? license?.applicationExpiresAt;
         companySeatForm.hidden = !company || !entitled || !hasPaidAccess() || !(millis(seatPeriods?.[APP_PRODUCT]) > Date.now());
-        byId('btnAccountCloudProjects').hidden = !entitled;
+        const cloudButton = byId('btnAccountCloudProjects');
+        cloudButton.classList.toggle('cloud-upgrade', !entitled);
+        cloudButton.querySelector('span').textContent = tr(entitled ? 'Otevřít cloudové projekty' : 'Cloudové projekty');
         byId('btnAccountAdmin').hidden = !window.hasAdminAccess();
         byId('btnManageSubscription').hidden = !license?.billingCustomerId;
         const formatDate = value => new Date(value).toLocaleDateString(getGoomLocale());
@@ -340,7 +342,9 @@
         finally { byId('btnAccountRefresh').disabled = false; }
     });
     byId('btnAccountCloudProjects').addEventListener('click', async () => {
-        if (await window.ensureCloudAccess()) { byId('userAccountModal').style.display = 'none'; await window.openCloudProjects(); }
+        if (!await window.ensureCloudAccess()) { window.requestProUpgrade?.(); return; }
+        byId('userAccountModal').style.display = 'none';
+        await window.openCloudProjects();
     });
     byId('btnAccountSignOut').addEventListener('click', async () => {
         try { await (await getFirebaseAuth()).signOut(); }

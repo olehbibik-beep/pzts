@@ -1,99 +1,60 @@
 const onboardingSteps = [
-    {
-        target: '#btnLogo',
-        title: tr('Откройте меню GOOM'),
-        message: tr('Чтобы загрузить план этажа, нажмите на значок GOOM в верхней панели.'),
-        modal: null
-    },
-    {
-        target: '#btnMenuLoadImg',
-        title: tr('Загрузите план'),
-        message: tr('Выберите изображение или PDF с планом. После загрузки можно будет размещать на нём датчики.'),
-        modal: '#mainMenuModal'
-    },
-    {
-        target: '#arrowTabBtn',
-        title: tr('Выберите датчик'),
-        message: tr('Разверните панель инструментов, выберите датчик, затем щёлкните по плану, чтобы его поставить.'),
-        modal: null
-    },
-    {
-        target: '#blueprintCanvas',
-        title: tr('Работайте с планом'),
-        message: tr('Перетаскивайте датчики мышью. Чтобы выделить несколько, зажмите левую кнопку и протяните рамку.'),
-        modal: null
-    }
+    ['Nahrajte výkres', 'V horní liště otevřete nabídku GooM a zvolte Nahrát výkres. Můžete použít PDF, obrázek nebo DXF.'],
+    ['Umístěte první detektor', 'Rozbalte panel nástrojů, vyberte sběrnici a detektor a klepněte nebo klikněte na výkres.'],
+    ['Upravte polohu a směr', 'Detektor přetáhněte na nové místo. Otočíte ho klávesami S a D nebo šipkami u vybraného detektoru na tabletu.'],
+    ['Pracujte s podlažími', 'Dole otevřete Řez budovou a vyberte podlaží. Každé podlaží má vlastní výkres a detektory.'],
+    ['Uložte nebo vytiskněte projekt', 'V nabídce GooM vyberte Uložit / Export pro soubor .TECH nebo Tisk pro otevření dialogu tiskárny.']
 ];
 
+const onboardingPanel = document.getElementById('onboardingBackdrop');
+const onboardingNext = document.getElementById('onboardingNext');
+const completedOnboarding = new Set();
 let onboardingIndex = 0;
-let onboardingTarget = null;
-
-function positionOnboarding() {
-    if (!onboardingTarget || document.getElementById('onboardingBackdrop').hidden) return;
-    const targetRect = onboardingTarget.getBoundingClientRect();
-    const highlight = document.getElementById('onboardingHighlight');
-    const card = document.getElementById('onboardingCard');
-    const padding = 6;
-    highlight.style.left = `${targetRect.left - padding}px`;
-    highlight.style.top = `${targetRect.top - padding}px`;
-    highlight.style.width = `${targetRect.width + padding * 2}px`;
-    highlight.style.height = `${targetRect.height + padding * 2}px`;
-
-    const cardRect = card.getBoundingClientRect();
-    const left = Math.max(16, Math.min(targetRect.left, window.innerWidth - cardRect.width - 16));
-    const below = targetRect.bottom + 18;
-    const top = below + cardRect.height <= window.innerHeight - 16
-        ? below
-        : Math.max(16, targetRect.top - cardRect.height - 18);
-    card.style.left = `${left}px`;
-    card.style.top = `${top}px`;
-}
+let onboardingUid = null;
 
 function renderOnboardingStep() {
-    const step = onboardingSteps[onboardingIndex];
-    if (!step) {
-        finishOnboarding();
-        return;
-    }
-
-    document.querySelectorAll('.modal').forEach(modal => {
-        if (modal.id !== step.modal) modal.style.display = 'none';
-    });
-    if (step.modal) document.querySelector(step.modal).style.display = 'flex';
-
-    onboardingTarget = document.querySelector(step.target);
-    if (!onboardingTarget) {
-        finishOnboarding();
-        return;
-    }
-
+    const [title, message] = onboardingSteps[onboardingIndex];
     document.getElementById('onboardingStep').textContent = tr`Шаг ${onboardingIndex + 1} из ${onboardingSteps.length}`;
-    document.getElementById('onboardingTitle').textContent = step.title;
-    document.getElementById('onboardingMessage').textContent = step.message;
-    document.getElementById('onboardingNext').textContent = onboardingIndex === onboardingSteps.length - 1 ? tr('Готово') : tr('Далее');
-    document.getElementById('onboardingBackdrop').hidden = false;
-    requestAnimationFrame(positionOnboarding);
+    document.getElementById('onboardingTitle').textContent = tr(title);
+    document.getElementById('onboardingMessage').textContent = tr(message);
+    onboardingNext.textContent = tr(onboardingIndex === onboardingSteps.length - 1 ? 'Готово' : 'Далее');
+}
+
+function onboardingStorageKey(uid) {
+    return `goom-first-project-v1:${uid}`;
+}
+
+function hideOnboarding() {
+    onboardingPanel.hidden = true;
+    onboardingUid = null;
 }
 
 function finishOnboarding() {
-    document.getElementById('onboardingBackdrop').hidden = true;
-    document.getElementById('mainMenuModal').style.display = 'none';
-    onboardingTarget = null;
+    if (onboardingUid) {
+        completedOnboarding.add(onboardingUid);
+        try { localStorage.setItem(onboardingStorageKey(onboardingUid), '1'); } catch {}
+    }
+    hideOnboarding();
 }
 
 window.startGoomOnboarding = () => {
-    if (!window.hasProAccess?.()) return;
+    const uid = window.getFirebaseUser?.()?.uid;
+    if (!uid || onboardingUid === uid || completedOnboarding.has(uid)) return;
+    try { if (localStorage.getItem(onboardingStorageKey(uid))) return; } catch {}
+    onboardingUid = uid;
     onboardingIndex = 0;
     renderOnboardingStep();
+    onboardingPanel.hidden = false;
 };
 
-document.getElementById('onboardingNext').addEventListener('click', () => {
-    if (onboardingIndex === 2) document.getElementById('arrowTabBtn').click();
-    onboardingIndex++;
-    renderOnboardingStep();
+onboardingNext.addEventListener('click', () => {
+    if (onboardingIndex + 1 === onboardingSteps.length) finishOnboarding();
+    else { onboardingIndex++; renderOnboardingStep(); }
 });
 document.getElementById('onboardingSkip').addEventListener('click', finishOnboarding);
-window.addEventListener('resize', positionOnboarding);
-document.addEventListener('goom-account-changed', () => {
-    if (!window.hasProAccess?.() && !document.getElementById('onboardingBackdrop').hidden) finishOnboarding();
+window.addEventListener('goom-language-changed', () => {
+    if (!onboardingPanel.hidden) renderOnboardingStep();
+});
+document.addEventListener('goom-auth-state-changed', event => {
+    if (onboardingUid && event.detail.user?.uid !== onboardingUid) hideOnboarding();
 });

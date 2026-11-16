@@ -165,11 +165,11 @@ function getCustomDeviceShapes(type) {
     return customDeviceShapeCache.get(source);
 }
 
-function refreshCustomDeviceIcons() {
+function refreshCustomDeviceIcons(toolbarIcons = typeof getActiveToolbarMenu === 'function' ? getActiveToolbarMenu()?.icons || {} : customDeviceIcons) {
     iconEditorDeviceTypes.forEach(([type]) => {
         const button = document.querySelector(`#deviceSelector .device-btn[data-type="${type}"]`);
         if (!button) return;
-        const dataUrl = getCustomDeviceIconDataUrl(type);
+        const dataUrl = getCustomDeviceIconDataUrl(type, toolbarIcons);
         button.innerHTML = dataUrl
             ? `<img src="${dataUrl}" alt="" style="width:24px;height:24px;object-fit:contain;">`
             : defaultDeviceButtonContent.get(type) || button.innerHTML;
