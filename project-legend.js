@@ -23,12 +23,23 @@ function sanitizeProjectLegend(value) {
         }))
     };
 }
-function projectLegendEntries() {
-    const menu = getActiveToolbarMenu();
+function projectLegendEntries(menu = getActiveToolbarMenu(), icons = customDeviceIcons) {
     return [...new Set(menu.deviceTypes)].filter(type => legendDeviceTypes.has(type)).map(type => ({
         type, label: toolbarMenuTypes.find(item => item.type === type)?.title || type,
-        shapes: sanitizeIconShapes(customDeviceIcons[type])
+        shapes: sanitizeIconShapes(icons[type])
     }));
+}
+function updateProjectLegendsFromMenu(menu) {
+    const legends = floors.map(floor => floor.legend).filter(Boolean);
+    if (!legends.length) return;
+    const entries = projectLegendEntries(menu, menu.icons || {});
+    const signature = JSON.stringify(entries);
+    const changed = legends.filter(legend => JSON.stringify(legend.entries) !== signature);
+    if (!changed.length) return;
+    changed.forEach(legend => { legend.entries = entries; });
+    if (!entries.length) selectedProjectLegend = null;
+    requestRedraw();
+    if (isSystemReady) triggerAutoSave();
 }
 function projectLegendLayout(legend) {
     const language = getGoomLanguage();
@@ -125,7 +136,7 @@ function toggleProjectLegend() {
     const floor = floors[currentFloorIndex];
     if (!floor || !isSystemReady || isOverviewMode) return;
     finishProjectLegendDrag();
-    if (floor.legend?.entries.length) floor.legend.visible = !floor.legend.visible;
+    if (floor.legend) floor.legend.visible = !floor.legend.visible;
     else {
         const legend = {visible:true,x:0,y:0,scale:1,entries:projectLegendEntries()};
         if (!legend.entries.length) return;

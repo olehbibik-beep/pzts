@@ -160,7 +160,10 @@ function applyToolbarMenu(menu, persist = true) {
     document.getElementById('activeToolbarMenuName').textContent = menu.name;
     cycleButton.disabled = !canEditToolbarMenus();
 
-    if (persist) saveToolbarMenus();
+    if (persist) {
+        saveToolbarMenus();
+        updateProjectLegendsFromMenu(menu);
+    }
     if (typeof requestRedraw === 'function') requestRedraw();
 }
 
@@ -375,6 +378,7 @@ async function deleteToolbarMenu(id) {
     if (activeMenuWasDeleted) activeToolbarMenuId = id;
     if (editingToolbarMenu?.id === id) editingToolbarMenu = JSON.parse(JSON.stringify(getActiveToolbarMenu()));
     applyToolbarMenu(activeMenuWasDeleted ? toolbarMenus[0] : getActiveToolbarMenu(), false);
+    if (activeMenuWasDeleted) updateProjectLegendsFromMenu(getActiveToolbarMenu());
     editingToolbarMenuIsNew = false;
     toolbarMenuEditorOriginal = JSON.stringify(editingToolbarMenu);
     selectIconEditorTarget(iconEditorTarget.value);
@@ -405,6 +409,7 @@ document.getElementById('btnToolbarMenuSave').addEventListener('click', () => {
     if (!saveToolbarMenus()) return;
     applyToolbarMenu(editingToolbarMenu, false);
     applyToolbarMenuIcons(editingToolbarMenu);
+    updateProjectLegendsFromMenu(editingToolbarMenu);
     toolbarMenuEditorOriginal = JSON.stringify(editingToolbarMenu);
     renderToolbarMenuEditor();
     if (isSystemReady) {
