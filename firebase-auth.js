@@ -13,6 +13,15 @@ let firebaseAuthReadyPromise;
 let verifiedFirebaseUser = null;
 let pendingAuthCheck = null;
 let authCheckGeneration = 0;
+const localFirebaseClients = new WeakSet();
+
+function connectLocalFirebaseClient(client, ...address) {
+    if (location.origin === 'http://127.0.0.1:5505' && FIREBASE_CONFIG.projectId === 'demo-goom' && !localFirebaseClients.has(client)) {
+        client.useEmulator(...address);
+        localFirebaseClients.add(client);
+    }
+    return client;
+}
 
 window.getFirebaseUser = () => verifiedFirebaseUser && firebaseAuthInstance?.currentUser?.uid === verifiedFirebaseUser.uid
     ? verifiedFirebaseUser : null;
@@ -128,7 +137,7 @@ async function getFirebaseAuth() {
             if (!window.firebase?.initializeApp) await loadFirebaseScript(firebaseSdkUrls[0]);
             if (!window.firebase?.auth) await loadFirebaseScript(firebaseSdkUrls[1]);
             if (!window.firebase.apps.length) window.firebase.initializeApp(FIREBASE_CONFIG);
-            firebaseAuthInstance = window.firebase.auth();
+            firebaseAuthInstance = connectLocalFirebaseClient(window.firebase.auth(), 'http://127.0.0.1:9099');
             await firebaseAuthInstance.setPersistence(window.firebase.auth.Auth.Persistence.LOCAL);
             firebaseAuthReadyPromise = new Promise(resolve => {
                 firebaseAuthInstance.onAuthStateChanged(user => {
@@ -159,8 +168,8 @@ async function getFirebaseServices() {
             if (!window.firebase.storage) await loadFirebaseScript(firebaseSdkUrls[3]);
             return {
                 auth,
-                firestore: window.firebase.firestore(),
-                storage: window.firebase.storage()
+                firestore: connectLocalFirebaseClient(window.firebase.firestore(), '127.0.0.1', 8080),
+                storage: connectLocalFirebaseClient(window.firebase.storage(), '127.0.0.1', 9199)
             };
         })().catch(error => {
             firebaseServicesPromise = null;
@@ -173,13 +182,14 @@ async function getFirebaseServices() {
 window.getFirebaseDatabase = async () => {
     await getFirebaseAuth();
     if (!window.firebase.firestore) await loadFirebaseScript(firebaseSdkUrls[2]);
-    return window.firebase.firestore();
+    return connectLocalFirebaseClient(window.firebase.firestore(), '127.0.0.1', 8080);
 };
 
 async function callAccountFunction(name, data, uid) {
     if (!window.firebase.functions) await loadFirebaseScript(firebaseSdkUrls[4]);
     if (window.getFirebaseUser()?.uid !== uid) throw new Error(tr('Přihlaste se ke svému účtu.'));
-    const result = await window.firebase.app().functions('europe-west1').httpsCallable(name)({ ...data, language: getGoomLanguage() });
+    const functions = connectLocalFirebaseClient(window.firebase.app().functions('europe-west1'), '127.0.0.1', 5001);
+    const result = await functions.httpsCallable(name)({ ...data, language: getGoomLanguage() });
     return result.data;
 }
 

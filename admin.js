@@ -15,7 +15,7 @@
     let loaded = false;
     let visitRequest = 0;
     const nav = [...document.querySelectorAll('[data-view]')];
-    const viewTitles = { overview: 'Обзор', users: 'Пользователи', access: 'PRO и доступ', activity: 'Активность' };
+    const viewTitles = { overview: 'Обзор', users: 'Пользователи', access: 'PROJECT и доступ', activity: 'Активность' };
     const server = { source: 'server' };
     const unavailable = Symbol('unavailable');
 
@@ -237,7 +237,7 @@
         const activityAvailable = loaded && users.every(user => user.visit !== unavailable);
         byId('adminMetrics').replaceChildren(...[
             ['Пользователи', loaded ? users.length : '—'],
-            ['Оплаченный PRO', billingAvailable ? paid : '—'],
+            ['Оплаченный PROJECT', billingAvailable ? paid : '—'],
             ['Ручной доступ', loaded ? manual : '—'],
             ['Посещали за 7 дней', activityAvailable ? recent : '—']
         ].map(([label, value]) => {
@@ -254,7 +254,7 @@
         donut.style.background = billingAvailable ? `conic-gradient(var(--paid) 0 ${paidStop}%, var(--manual) ${paidStop}% ${manualStop}%, var(--free) ${manualStop}% 100%)` : '';
         donut.firstElementChild.textContent = billingAvailable ? users.length : '—';
         byId('adminBreakdown').replaceChildren(...[
-            ['Оплаченный PRO', paid, 'paid'], ['Только ручной доступ', manualOnly, 'manual'], ['Без PRO', free, 'free']
+            ['Оплаченный PROJECT', paid, 'paid'], ['Только ручной доступ', manualOnly, 'manual'], ['Без PROJECT', free, 'free']
         ].map(([label, value, color]) => {
             const item = element('li', label);
             item.style.setProperty('--dot', `var(--${color})`);
@@ -378,7 +378,7 @@
             const row = element('section', undefined, 'grant');
             const manual = user.programs[application].manualUntil;
             row.append(element('h3', application),
-                element('p', `Оплаченный PRO · ${paidLabel(user, application)}`, 'muted'),
+                element('p', `Оплаченный PROJECT · ${paidLabel(user, application)}`, 'muted'),
                 element('p', `Ручной доступ · ${manual > Date.now() ? dateLabel(manual) : '—'}`, 'muted'));
             if (!canGrant) return row;
             const form = element('form', undefined, 'control-row');
@@ -386,7 +386,7 @@
             const input = element('input');
             Object.assign(input, { type: 'number', min: '1', max: '365', step: '1', value: '30', required: true });
             label.append(input);
-            const grantButton = element('button', 'Выдать Pro', 'primary');
+            const grantButton = element('button', 'Выдать PROJECT', 'primary');
             grantButton.type = 'submit';
             const revoke = element('button', 'Отозвать', 'danger');
             revoke.type = 'button';

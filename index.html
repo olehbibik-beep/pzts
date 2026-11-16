@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GOOM</title>
     <link rel="icon" type="image/png" href="Logo2.png?v=20261115-35">
-    <script src="i18n.js?v=20261115-pro-tiers-38"></script>
+    <script src="i18n.js?v=20261116-account-cloud-40"></script>
     <script src="device-support.js?v=20261114-loading-27"></script>
     <style>
         :root {
@@ -207,7 +207,6 @@
         .account-note, #accountFeedback { font-size: 12px; color: #c4c4cc; line-height: 1.5; }
         #accountFeedback[data-error="true"] { color: #fca5a5; }
         .account-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
-        #accountCloudKey { font-family: ui-monospace, monospace; }
         #welcomeModal .welcome-project-name { width: 100%; box-sizing: border-box; padding: 12px 14px; border-radius: 6px; }
         #welcomeModal .welcome-name-buttons { display: flex; gap: 10px; margin-top: 4px; }
         #welcomeModal .welcome-name-buttons .btn-cad { flex: 1; justify-content: center; padding: 11px; }
@@ -305,8 +304,7 @@
             align-items: center; gap: 18px; margin-top: 20px;
         }
         .main-menu-brand { display: flex; flex-direction: column; align-items: center; gap: 8px; }
-        .main-menu-brand-name { color: #d1d5db; font-size: 20px; font-weight: 700; }
-        .main-menu-brand-accent { width: 82px; height: 3px; border-radius: 2px; background: #22c55e; }
+        .main-menu-brand-logo { width: clamp(56px, 10vw, 100px); height: auto; display: block; }
         .main-menu-actions { display: flex; flex-direction: column; gap: 12px; align-items: stretch; }
         #iconEditorModal .modal-content { max-width: 1120px; width: min(1120px, calc(100vw - 32px)); max-height: 92vh; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #77777f #242428; box-sizing: border-box; padding: 10px 12px 14px 20px; }
         #iconEditorModal .modal-content::-webkit-scrollbar { width: 9px; }
@@ -451,7 +449,7 @@
 
 
     </style>
-    <link rel="stylesheet" href="ui-theme.css?v=20261115-pro-tiers-38">
+    <link rel="stylesheet" href="ui-theme.css?v=20261116-account-cloud-40">
 </head>
 <body>
     <div id="deviceSupportNotice" role="alert">
@@ -622,7 +620,7 @@
                     </div>
                     <p id="googleAuthMessage" role="status" aria-live="polite" hidden></p>
                     <div id="googleAuthStatus" class="welcome-auth-status" aria-live="polite">
-                        <div class="pro-name"><span id="googleAuthUser"></span><img id="welcomeProBadge" class="pro-badge" src="PRO.png" alt="PRO" hidden></div>
+                        <div class="pro-name"><span id="googleAuthUser"></span><span id="welcomeProBadge" class="pro-badge" hidden>PROJECT</span></div>
                         <button id="btnGoogleSignOut" class="btn-cad welcome-signout" type="button">Odhlásit se</button>
                     </div>
                     <button id="btnWelcomeContinue" class="btn-cad" type="button" hidden style="background: #0ea5e9; color: #fff;">Přejít k projektům</button>
@@ -639,7 +637,7 @@
                         <label id="emailConfirmField" hidden>Potvrdit heslo<input id="emailAuthConfirm" class="account-input" type="password" name="passwordConfirm" autocomplete="new-password"></label>
                         <label id="emailTypeField" hidden>Typ účtu<select id="emailAccountType" class="account-input" name="accountType"><option value="personal">Osobní účet</option><option value="company">Firma</option></select></label>
                         <label id="emailIcoField" hidden>IČO<input id="emailCompanyIco" class="account-input" name="ico" inputmode="numeric" maxlength="8" placeholder="8 číslic včetně kontrolní číslice"></label>
-                        <p id="emailCompanyHelp" class="welcome-description" hidden>Firemní údaje můžete upravit později. PRO je dostupné v uživatelském účtu.</p>
+                        <p id="emailCompanyHelp" class="welcome-description" hidden>Firemní údaje můžete upravit později. PROJECT je dostupné v uživatelském účtu.</p>
                         <p id="emailAuthFeedback" class="account-note" role="status" aria-live="polite" hidden></p>
                         <button id="btnEmailAuthSubmit" class="btn-cad auth-primary" type="submit">Přihlásit se</button>
                         <button id="btnEmailResetPassword" class="auth-link" type="button">Zapomenuté heslo?</button>
@@ -682,12 +680,12 @@
     <div id="userAccountModal" class="modal">
         <section class="modal-content account-card" role="dialog" aria-modal="true" aria-labelledby="userAccountTitle">
             <div class="account-header">
+                <button id="btnAccountClose" class="btn-cad icon-editor-close" type="button" aria-label="Zavřít">×</button>
                 <h2 id="userAccountTitle">Uživatelský účet</h2>
                 <div class="account-language-controls"><select class="language-picker" data-language-select aria-label="Jazyk"><option value="cs" data-language-name="Čeština">Cz</option><option value="en" data-language-name="English">En</option><option value="de" data-language-name="Deutsch">De</option><option value="ru" data-language-name="Русский">Ru</option></select></div>
-                <button id="btnAccountClose" class="btn-cad" type="button">Zavřít</button>
             </div>
             <div class="account-columns"><div class="account-personal"><dl class="account-details">
-                <dt>Jméno</dt><dd class="pro-name"><span id="accountName" data-user-content></span><img id="accountProBadge" class="pro-badge" src="PRO.png" alt="PRO" hidden></dd>
+                <dt>Jméno</dt><dd class="pro-name"><span id="accountName" data-user-content></span><span id="accountProBadge" class="pro-badge" hidden>PROJECT</span></dd>
                 <dt>E-mail</dt><dd id="accountEmail" data-user-content></dd>
                 <dt>Typ účtu</dt><dd id="accountTypeLabel"></dd>
                 <dt id="accountIcoLabel" hidden>IČO</dt><dd id="accountIcoValue" data-user-content hidden></dd>
@@ -698,25 +696,23 @@
             </form>
             <p id="accountEmailStatus" class="account-note"></p>
             <div class="account-actions"><button id="btnAccountVerifyEmail" class="btn-cad" type="button">Ověřit e-mail</button><button id="btnAccountRefresh" class="btn-cad" type="button">E-mail jsem ověřil(a)</button></div>
-            </div><div class="account-subscription"><div class="account-cloud">
-                <h3>Cloudové úložiště</h3>
+            </div><div class="account-subscription"><section class="account-cloud" aria-labelledby="accountCloudTitle">
+                <h3 id="accountCloudTitle">Cloudové úložiště</h3>
                 <p id="accountCloudInfo" class="account-note"></p>
-                <div id="accountCloudKeyBlock" hidden>
-                    <label for="accountCloudKey" class="account-note">Cloudový klíč</label>
-                    <input id="accountCloudKey" class="account-input" readonly data-user-content>
-                    <div class="account-actions"><button id="btnAccountCopyKey" class="btn-cad" type="button">Zkopírovat klíč</button></div>
-                </div>
-                <button id="btnAccountCloudProjects" class="btn-cad auth-primary" type="button" hidden>Cloudové projekty</button>
-            </div>
+                <button id="btnAccountCloudProjects" class="btn-cad" type="button" hidden>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 18a4 4 0 0 1-1-7.9 6 6 0 0 1 11.6-1.4A4.7 4.7 0 0 1 18 18Z"/></svg>
+                    <span>Otevřít cloudové projekty</span>
+                </button>
+            </section>
             <div class="pro-card">
-                <h3>Předplatné PRO</h3>
+                <h3>Předplatné PROJECT</h3>
                 <p id="accountProStatus" class="pro-status"></p>
-                <button id="btnUpdatePro" class="btn-cad auth-primary" type="button">Ceník PRO</button>
+                <button id="btnUpdatePro" class="btn-cad auth-primary" type="button">Ceník PROJECT</button>
             </div>
             <p id="accountSubscriptionPeriod" class="account-note"></p><button id="btnManageSubscription" class="btn-cad" type="button" hidden>Spravovat předplatné</button>
             <form id="companySeatForm" class="company-seat-form account-form" hidden>
-                <h3>Firemní přístupy PRO</h3>
-                <p class="account-note">Až tři kolegové získají PRO po přihlášení s ověřeným e-mailem. Přístup končí s vaším předplatným.</p>
+                <h3>Firemní přístupy PROJECT</h3>
+                <p class="account-note">Až tři kolegové získají PROJECT po přihlášení s ověřeným e-mailem. Přístup končí s vaším předplatným.</p>
                 <input class="account-input" type="email" maxlength="254" aria-label="E-mail kolegy 1" placeholder="E-mail kolegy 1">
                 <input class="account-input" type="email" maxlength="254" aria-label="E-mail kolegy 2" placeholder="E-mail kolegy 2">
                 <input class="account-input" type="email" maxlength="254" aria-label="E-mail kolegy 3" placeholder="E-mail kolegy 3">
@@ -734,18 +730,20 @@
     <div id="proUpgradeModal" class="modal" style="z-index: 460;">
         <section class="modal-content account-card pro-pricing" role="dialog" aria-modal="true" aria-labelledby="proUpgradeTitle">
             <div class="account-header">
-                <h2 id="proUpgradeTitle">Ceník PZTS</h2>
+                <button id="btnProClose" class="pro-close" type="button" aria-label="Zavřít">×</button>
+                <h2 id="proUpgradeTitle">Tarify a předplatné</h2>
                 <div class="pro-period" role="group" aria-label="Zvolte období">
                     <label><input type="radio" name="proPeriod" value="monthly" checked><span>Měsíčně</span></label>
                     <label><input type="radio" name="proPeriod" value="annual"><span>Ročně <b>−12 %</b></span></label>
                 </div>
-                <button id="btnProClose" class="btn-cad" type="button">Zavřít</button>
             </div>
             <div class="pro-plans">
                 <section class="pro-plan pro-plan-basic" aria-labelledby="proBasicTitle">
-                    <h3 id="proBasicTitle">Základní</h3>
-                    <p class="pro-plan-caption">Zdarma</p>
-                    <button class="btn-cad pro-plan-action" type="button" disabled>Vždy aktivní</button>
+                    <header class="pro-plan-header">
+                        <h3 id="proBasicTitle">Základní</h3>
+                        <p class="pro-plan-caption">Zdarma</p>
+                    </header>
+                    <button class="btn-cad pro-plan-action" type="button" disabled>Aktivní</button>
                     <ul class="pro-features">
                         <li>Import a úpravy výkresů</li>
                         <li>Místní uložení projektů .TECH</li>
@@ -753,13 +751,15 @@
                     </ul>
                 </section>
                 <section class="pro-plan pro-plan-standard" aria-labelledby="proStandardTitle">
-                    <h3 id="proStandardTitle">PRO</h3>
-                    <p class="pro-plan-caption">Doporučujeme</p>
-                    <button id="btnProPurchase" class="btn-cad pro-plan-action" type="button" data-buy-tier="pro">Koupit PRO</button>
+                    <header class="pro-plan-header">
+                        <h3 id="proStandardTitle">PROJECT</h3>
+                        <p class="pro-plan-caption">Doporučujeme</p>
+                    </header>
+                    <button id="btnProPurchase" class="btn-cad pro-plan-action" type="button" data-buy-tier="pro">Koupit PROJECT</button>
                     <button class="btn-cad pro-plan-action" type="button" data-manage-tier="pro" hidden>Spravovat předplatné</button>
                     <div class="pro-plan-prices">
-                        <div class="pro-price-option" data-period="monthly"><small>Měsíčně</small><span class="pro-price"><small data-pro-price="monthly" data-currency="EUR"></small><span aria-hidden="true">—</span><strong data-pro-price="monthly" data-currency="CZK"></strong></span></div>
-                        <div class="pro-price-option" data-period="annual"><small>Ročně</small><span class="pro-price"><small data-pro-price="annual" data-currency="EUR"></small><span aria-hidden="true">—</span><strong data-pro-price="annual" data-currency="CZK"></strong></span></div>
+                        <div class="pro-price-option" data-period="monthly"><small>Měsíčně</small><span class="pro-price"><span data-pro-price="monthly" data-currency="EUR"></span><span class="pro-price-separator" aria-hidden="true">/</span><strong data-pro-price="monthly" data-currency="CZK"></strong></span></div>
+                        <div class="pro-price-option" data-period="annual"><small>Ročně</small><span class="pro-price"><span data-pro-price="annual" data-currency="EUR"></span><span class="pro-price-separator" aria-hidden="true">/</span><strong data-pro-price="annual" data-currency="CZK"></strong></span></div>
                     </div>
                     <ul class="pro-features">
                         <li>Vše ze základní verze</li>
@@ -771,17 +771,19 @@
                     </ul>
                 </section>
                 <section class="pro-plan pro-plan-company" aria-labelledby="proCompanyTitle">
-                    <h3 id="proCompanyTitle">Firemní PRO</h3>
-                    <p class="pro-plan-caption">Pro týmy</p>
-                    <button id="btnCompanyProPurchase" class="btn-cad pro-plan-action" type="button" data-buy-tier="company">Koupit firemní PRO</button>
+                    <header class="pro-plan-header">
+                        <h3 id="proCompanyTitle">Firemní PROJECT</h3>
+                        <p class="pro-plan-caption">Pro týmy</p>
+                    </header>
+                    <button id="btnCompanyProPurchase" class="btn-cad pro-plan-action" type="button" data-buy-tier="company">Koupit firemní PROJECT</button>
                     <button class="btn-cad pro-plan-action" type="button" data-manage-tier="company" hidden>Spravovat předplatné</button>
                     <div class="pro-plan-prices">
-                        <div class="pro-price-option" data-period="monthly"><small>Měsíčně</small><span class="pro-price"><small data-pro-price="companyMonthly" data-currency="EUR"></small><span aria-hidden="true">—</span><strong data-pro-price="companyMonthly" data-currency="CZK"></strong></span></div>
-                        <div class="pro-price-option" data-period="annual"><small>Ročně</small><span class="pro-price"><small data-pro-price="companyAnnual" data-currency="EUR"></small><span aria-hidden="true">—</span><strong data-pro-price="companyAnnual" data-currency="CZK"></strong></span></div>
+                        <div class="pro-price-option" data-period="monthly"><small>Měsíčně</small><span class="pro-price"><span data-pro-price="companyMonthly" data-currency="EUR"></span><span class="pro-price-separator" aria-hidden="true">/</span><strong data-pro-price="companyMonthly" data-currency="CZK"></strong></span></div>
+                        <div class="pro-price-option" data-period="annual"><small>Ročně</small><span class="pro-price"><span data-pro-price="companyAnnual" data-currency="EUR"></span><span class="pro-price-separator" aria-hidden="true">/</span><strong data-pro-price="companyAnnual" data-currency="CZK"></strong></span></div>
                     </div>
                     <ul class="pro-features">
-                        <li>Vše z PRO včetně tipů při plánování</li>
-                        <li>Až 3 další účty PRO</li>
+                        <li>Vše z PROJECT včetně tipů při plánování</li>
+                        <li>Až 3 další účty PROJECT</li>
                         <li>Přístup kolegů po dobu firemního předplatného</li>
                     </ul>
                 </section>
@@ -839,8 +841,7 @@
         <div class="modal-content main-menu-content">
             <div class="main-menu-layout">
                 <div class="main-menu-brand">
-                    <div class="main-menu-brand-name" id="menuTitleContainer">GooM</div>
-                    <div class="main-menu-brand-accent"></div>
+                    <img class="main-menu-brand-logo" src="Logo2.png?v=20261115-35" alt="GooM">
                 </div>
                 <div class="main-menu-actions">
                 <button id="btnMenuNew" class="btn-cad" style="width: 100%; justify-content: flex-start; background: #ef4444; color: #ffffff; font-weight: bold;">
@@ -1101,6 +1102,6 @@
         <button type="button" data-tablet-action="delete" class="tool-danger">×</button>
         <button type="button" data-tablet-action="undo">↶</button>
     </div>
-    <script src="bootstrap.js?v=20261115-pro-tiers-38"></script>
+    <script src="bootstrap.js?v=20261116-account-cloud-40"></script>
 </body>
 </html>

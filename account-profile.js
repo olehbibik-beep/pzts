@@ -67,14 +67,11 @@
         byId('accountEmailStatus').textContent = tr(user?.emailVerified ? 'E-mail je ověřen' : 'E-mail zatím není ověřen');
         byId('btnAccountVerifyEmail').hidden = Boolean(user?.emailVerified);
         byId('btnAccountRefresh').textContent = tr(user?.emailVerified ? 'Obnovit údaje' : 'E-mail jsem ověřil(a)');
-        byId('accountCloudInfo').textContent = tr(entitled ? 'PRO je aktivní. Cloudové úložiště je připraveno.' : 'Cloudové úložiště je součástí PRO.');
-        const hasKey = entitled && hasPaidAccess();
+        byId('accountCloudInfo').textContent = tr(entitled ? 'Ukládejte projekty a otevírejte je i z jiného zařízení.' : 'Cloudové úložiště je součástí PROJECT.');
         const seatPeriods = license?.companyApplicationExpiresAt ?? license?.applicationExpiresAt;
-        companySeatForm.hidden = !company || !hasKey || !(millis(seatPeriods?.[APP_PRODUCT]) > Date.now());
-        byId('accountCloudKeyBlock').hidden = !hasKey;
+        companySeatForm.hidden = !company || !entitled || !hasPaidAccess() || !(millis(seatPeriods?.[APP_PRODUCT]) > Date.now());
         byId('btnAccountCloudProjects').hidden = !entitled;
         byId('btnAccountAdmin').hidden = !window.hasAdminAccess();
-        byId('accountCloudKey').value = hasKey ? license.licenseId || `PZTS-PRO-${license.keySuffix}` : '';
         byId('btnManageSubscription').hidden = !license?.billingCustomerId;
         const formatDate = value => new Date(value).toLocaleDateString(getGoomLocale());
         const periods = [];
@@ -341,11 +338,6 @@
         byId('btnAccountRefresh').disabled = true;
         try { if (await window.ensureFirebaseSession()) { await window.refreshUserAccount(); render(); } }
         finally { byId('btnAccountRefresh').disabled = false; }
-    });
-    byId('btnAccountCopyKey').addEventListener('click', async () => {
-        if (!window.hasProAccess()) return;
-        try { await navigator.clipboard.writeText(byId('accountCloudKey').value); feedback(tr('Klíč byl zkopírován.')); }
-        catch { byId('accountCloudKey').focus(); byId('accountCloudKey').select(); }
     });
     byId('btnAccountCloudProjects').addEventListener('click', async () => {
         if (await window.ensureCloudAccess()) { byId('userAccountModal').style.display = 'none'; await window.openCloudProjects(); }

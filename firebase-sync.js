@@ -58,7 +58,7 @@ function cloudOperationMessage(error, action) {
 }
 
 async function getCloudServices(userId) {
-    if (cloudUser?.uid !== userId || !window.hasCloudAccess?.()) throw new Error(tr('Cloudové úložiště je součástí PRO.'));
+    if (cloudUser?.uid !== userId || !window.hasCloudAccess?.()) throw new Error(tr('Cloudové úložiště je součástí PROJECT.'));
     return window.getFirebaseServices();
 }
 

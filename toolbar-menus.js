@@ -31,7 +31,7 @@ const proToolbarLabels = {
 };
 const proToolbarMenu = {
     id: 'pro',
-    name: 'PRO',
+    name: 'PROJECT',
     deviceTypes: defaultToolbarMenu.deviceTypes,
     icons: Object.fromEntries(Object.entries(proToolbarLabels).map(([type, label]) => {
         const shape = { x: 200, y: 200, rotation: 0, color: COLORS[type], stroke: 17 };
@@ -86,6 +86,7 @@ function sanitizeToolbarMenus(value, overrides) {
         const override = overrides?.[preset.id];
         if (!override || typeof override !== 'object') return preset;
         const cleaned = sanitizeToolbarMenu(override, preset.id, preset.name);
+        if (preset.id === proToolbarMenu.id && cleaned.name === 'PRO') cleaned.name = preset.name;
         return cleaned.deviceTypes.length ? cleaned : preset;
     });
     return [...presets, ...menus];

@@ -1023,8 +1023,6 @@ async function initProject() {
         resizePlanCanvas();
         updateLoopSelect();
 
-        const menuTitleEl = document.getElementById('menuTitleContainer');
-        if(menuTitleEl) { menuTitleEl.textContent = 'GooM'; }
         const welcomeLogoEl = document.getElementById('welcomeLogoContainer');
         if(welcomeLogoEl && typeof LOGO_LARGE !== 'undefined') { welcomeLogoEl.innerHTML = LOGO_LARGE; }
 
