@@ -53,10 +53,9 @@ const pirCoverageCache = new WeakMap();
 
 function getPIRCoveragePoints(floor, device) {
     const mask = floor.wallMask;
-    const rangePixels = 300;
-    const isGlassbreak = device.type === 'glassbreak';
-    const fovDegrees = 90;
-    if (!rangePixels) return null;
+    const optics = getCameraOptics(device);
+    const rangePixels = optics?.range ?? 300;
+    const fovDegrees = optics?.angle ?? 90;
 
     const cached = pirCoverageCache.get(device);
     if (cached && cached.mask === mask && cached.x === device.x && cached.y === device.y &&
@@ -70,7 +69,7 @@ function getPIRCoveragePoints(floor, device) {
     const originY = device.y * maskScaleY;
     const range = rangePixels * maskScaleX;
     const fov = fovDegrees * Math.PI / 180;
-    const centerAngle = ((device.rotation || 0) + (isGlassbreak ? 0 : 180)) * Math.PI / 180;
+    const centerAngle = ((device.rotation || 0) + (optics || device.type === 'glassbreak' ? 0 : 180)) * Math.PI / 180;
     const rayCount = Math.min(720, Math.max(90, Math.ceil(fovDegrees * rangePixels / 180)));
     const points = [{ x: device.x, y: device.y }];
 
@@ -78,6 +77,10 @@ function getPIRCoveragePoints(floor, device) {
         const angle = centerAngle - fov / 2 + fov * ray / rayCount;
         const dx = Math.cos(angle);
         const dy = Math.sin(angle);
+        if (!mask) {
+            points.push({ x: device.x + dx * rangePixels, y: device.y + dy * rangePixels });
+            continue;
+        }
         let distance = 0;
         let lastX = originX;
         let lastY = originY;
@@ -85,11 +88,9 @@ function getPIRCoveragePoints(floor, device) {
         for (distance = 1; distance <= range; distance += 1) {
             const x = originX + dx * distance;
             const y = originY + dy * distance;
-            if (mask) {
-                if (x >= 0 && y >= 0 && x < mask.width && y < mask.height) {
-                    const pixelIndex = Math.floor(y) * mask.width + Math.floor(x);
-                    if (distance > 3 && mask.data[pixelIndex]) break;
-                }
+            if (x >= 0 && y >= 0 && x < mask.width && y < mask.height) {
+                const pixelIndex = Math.floor(y) * mask.width + Math.floor(x);
+                if (distance > 3 && mask.data[pixelIndex]) break;
             }
             lastX = x;
             lastY = y;
@@ -111,7 +112,7 @@ function drawPIRCoverage(ctx, floor, force = false) {
     const toggle = document.getElementById('togglePirCoverage');
     if (!force && toggle?.getAttribute('aria-pressed') === 'false') return;
     floor.devices.forEach(device => {
-        if (!['pir', 'pir_wl', 'glassbreak'].includes(device.type)) return;
+        if (!hasDeviceCoverage(device)) return;
         const points = getPIRCoveragePoints(floor, device);
         if (!points) return;
         ctx.save();
@@ -123,7 +124,9 @@ function drawPIRCoverage(ctx, floor, force = false) {
             path=pirCoveragePathCache.get(points);
             if(!path){path=new Path2D();path.moveTo(points[0].x,points[0].y);for(let i=1;i<points.length;i++)path.lineTo(points[i].x,points[i].y);path.closePath();pirCoveragePathCache.set(points,path);}
         }
-        ctx.fillStyle = device.type === 'glassbreak'
+        ctx.fillStyle = APP_PRODUCT === 'CCTV'
+            ? 'rgba(14, 165, 233, 0.22)'
+            : device.type === 'glassbreak'
             ? 'rgba(56, 189, 248, 0.2)'
             : 'rgba(34, 197, 94, 0.18)';
         if(path)ctx.fill(path);else ctx.fill();
@@ -278,6 +281,8 @@ function drawDevice(ctx, dev, skipSelection = false, theme = 'dark', options = {
         ctx.translate(-200, -200);
         for (const shape of customShapes) drawEditorShape(ctx, shape);
         ctx.restore();
+    } else if (APP_PRODUCT === 'CCTV' && Object.hasOwn(CCTV_DEVICE_LABELS, dev.type)) {
+        drawCctvDevice(ctx, dev.type, sMult);
     } else if (dev.type === 'panel') {
         ctx.fillStyle = "#ffffff"; ctx.fillRect(-20*sMult, -10*sMult, 40*sMult, 20*sMult);
         ctx.strokeStyle = COLORS.panel; ctx.lineWidth = 2 * sMult; ctx.strokeRect(-20*sMult, -10*sMult, 40*sMult, 20*sMult);

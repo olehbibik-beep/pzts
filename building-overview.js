@@ -2,13 +2,20 @@ const overviewFloorLabels=['6NP','5NP','4NP','3NP','2NP','1NP','1PP','2PP','3PP'
 const overviewAuxiliaryTypes=new Set(['panel','keypad','expander','abax','siren','acs_module','acs_reader','textNode','ramen','deactivated','cableTool']);
 let overviewStats=[];
 let overviewMainPanelFloor=-1;
-function overviewDetectorWord(count){return tr(count===1?'detektor':count>=2&&count<=4?'detektory':'detektorů');}
+const overviewIsCctv = APP_PRODUCT === 'CCTV';
+const overviewEmptyAddresses = overviewIsCctv ? 'Bez adres kamer' : 'Bez zón';
+const overviewDetectorCount = count => tr(overviewIsCctv ? 'Kamery: {0}' : 'Detektory: {0}', count);
+const overviewPanelCount = count => tr(overviewIsCctv ? 'NVR: {0}' : 'Ústředny: {0}', count);
+function overviewDetectorWord(count){
+    if (overviewIsCctv) return tr(count === 1 ? 'kamera' : count >= 2 && count <= 4 ? 'kamery' : 'kamer');
+    return tr(count===1?'detektor':count>=2&&count<=4?'detektory':'detektorů');
+}
 function getOverviewFloorIndex(label){
     return floors.findIndex(floor=>String(floor.name).replace(/\s/g,'').toUpperCase()===label);
 }
 function getFloorOverviewStats(floor){
     const active=floor.devices.filter(device=>!['deactivated','textNode','ramen','cableTool'].includes(device.type));
-    const detectors=active.filter(device=>!overviewAuxiliaryTypes.has(device.type));
+    const detectors=active.filter(device=>overviewIsCctv ? Object.hasOwn(CCTV_CAMERAS, device.type) : !overviewAuxiliaryTypes.has(device.type));
     const buses=new Map();
     for(const device of detectors){
         const address=Number(device.number),bus=Number(device.loopId)||1;
@@ -24,12 +31,12 @@ function getFloorOverviewStats(floor){
         }
     }
     return {name:floor.name,detectors:detectors.length,elements:active.length,zones:[...buses.values()].reduce((count,addresses)=>count+addresses.size,0),
-        panels:active.filter(device=>device.type==='panel'),addresses:[...buses].flatMap(([bus,addresses])=>[...addresses].map(number=>`${bus}/${number}`)),ranges};
+        panels:active.filter(device=>device.type === (overviewIsCctv ? 'cctv_nvr' : 'panel')),addresses:[...buses].flatMap(([bus,addresses])=>[...addresses].map(number=>`${bus}/${number}`)),ranges};
 }
 function overviewRangeText(ranges){return ranges.map(range=>`${range.bus}/${range.start}`+(range.end===range.start?'':`–${range.bus}/${range.end}`)).join(', ');}
 function appendOverviewRanges(container,ranges){
     container.replaceChildren();
-    if(!ranges.length){container.textContent=tr('Bez zón');return;}
+    if(!ranges.length){container.textContent=tr(overviewEmptyAddresses);return;}
     for(const range of ranges){
         const item=document.createElement('span');item.className='overview-zone-range';
         const number=document.createElement('strong');number.textContent=String(range.start);
@@ -44,9 +51,10 @@ function showOverviewFloorDetails(index){
     const row = Math.max(0, overviewFloorLabels.indexOf(label));
     document.getElementById('overviewFloorDetails').style.setProperty('--overview-detail-row', row);
     document.getElementById('overviewDetailFloor').textContent=stats.name;
-    document.getElementById('overviewDetailCounts').textContent=tr`Detektory: ${stats.detectors}`+' · '+tr`Zóny: ${stats.zones}`;
+    document.getElementById('overviewDetailCounts').textContent=overviewDetectorCount(stats.detectors)+(overviewIsCctv ? '' : ' · '+tr`Zóny: ${stats.zones}`);
     document.getElementById('overviewDetailPanel').hidden=!stats.panels.length;
-    document.getElementById('overviewDetailPanel').textContent=index===overviewMainPanelFloor?tr('Hlavní ústředna'):stats.panels.length?tr`Ústředny: ${stats.panels.length}`:tr('Bez ústředny');
+    document.getElementById('overviewDetailPanel').textContent=overviewIsCctv ? overviewPanelCount(stats.panels.length)
+        : index===overviewMainPanelFloor?tr('Hlavní ústředna'):stats.panels.length?overviewPanelCount(stats.panels.length):tr('Bez ústředny');
     appendOverviewRanges(document.getElementById('overviewDetailZones'),stats.ranges);
 }
 function updateOverviewFloorButtons(){
@@ -77,12 +85,16 @@ function updateOverviewFloorButtons(){
         button.querySelector('.overview-floor-count').textContent=String(stats.detectors);
         button.querySelector('.overview-floor-body').hidden=stats.detectors===0;
         button.querySelector('.overview-detector-label').textContent=overviewDetectorWord(stats.detectors);
-        button.querySelector('.overview-zone-count').textContent=tr`Zóny: ${stats.zones}`;
-        button.querySelector('.overview-floor-zones').textContent=overviewRangeText(stats.ranges)||tr('Bez zón');
+        button.querySelector('.overview-zone-count').textContent=overviewIsCctv ? '' : tr`Zóny: ${stats.zones}`;
+        button.querySelector('.overview-floor-zones').textContent=overviewRangeText(stats.ranges)||tr(overviewEmptyAddresses);
         const badge=button.querySelector('.overview-panel-badge');badge.hidden=!stats.panels.length;
         button.classList.toggle('overview-main-panel',index===overviewMainPanelFloor);
-        badge.querySelector('span').textContent=stats.panels.length>1?tr`Ústředny: ${stats.panels.length}`:tr('Ústředna');
-        button.setAttribute('aria-label',`${button.dataset.overviewFloor} · ${tr`Detektory: ${stats.detectors}`} · ${tr`Zóny: ${stats.zones}`} · ${overviewRangeText(stats.ranges)||tr('Bez zón')}${stats.panels.length?' · '+tr`Ústředny: ${stats.panels.length}`:''}`);
+        badge.querySelector('span').textContent=overviewIsCctv ? 'NVR' : stats.panels.length>1?overviewPanelCount(stats.panels.length):tr('Ústředna');
+        const details = [button.dataset.overviewFloor, overviewDetectorCount(stats.detectors)];
+        if (!overviewIsCctv) details.push(tr`Zóny: ${stats.zones}`);
+        details.push(overviewRangeText(stats.ranges)||tr(overviewEmptyAddresses));
+        if (stats.panels.length) details.push(overviewPanelCount(stats.panels.length));
+        button.setAttribute('aria-label',details.join(' · '));
     }
 }
 function alignOverviewArtwork(){
@@ -112,8 +124,9 @@ function drawBuildingOverview(){
     const count=overviewStats.reduce((n,stats)=>n+stats.detectors,0),zones=new Set(overviewStats.flatMap(stats=>stats.addresses)).size;
     const panelFloors=overviewStats.filter(stats=>stats.panels.length).map(stats=>stats.name);
     const summary=document.getElementById('overviewProjectStats');summary.replaceChildren();
-    const panelSummary=overviewMainPanelFloor>=0?tr`Hlavní ústředna: ${overviewStats[overviewMainPanelFloor].name}`:panelFloors.length?tr`Ústředny: ${panelFloors.join(', ')}`:tr('Ústředna není umístěna');
-    summary.setAttribute('aria-label',tr`Detektory: ${count}`+' · '+tr`Zóny: ${zones}`+' · '+panelSummary);
+    const panelSummary=overviewIsCctv ? (panelFloors.length ? overviewPanelCount(panelFloors.join(', ')) : tr('NVR není umístěn'))
+        : overviewMainPanelFloor>=0?tr`Hlavní ústředna: ${overviewStats[overviewMainPanelFloor].name}`:panelFloors.length?overviewPanelCount(panelFloors.join(', ')):tr('Ústředna není umístěna');
+    summary.setAttribute('aria-label',overviewDetectorCount(count)+(overviewIsCctv ? '' : ' · '+tr`Zóny: ${zones}`)+' · '+panelSummary);
     for(const text of [panelSummary]){
         const badge=document.createElement('span');badge.textContent=text;summary.appendChild(badge);
     }

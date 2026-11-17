@@ -1,10 +1,9 @@
 (() => {
     const welcome = document.getElementById('welcomeModal');
-    const intro = document.getElementById('welcomeIntro');
     const play = document.getElementById('btnIntroPlay');
-    const close = document.getElementById('btnIntroClose');
     const video = document.getElementById('welcomeIntroVideo');
     const status = document.getElementById('welcomeIntroStatus');
+    let playHadFocus = false;
 
     function stop(restoreFocus = false) {
         if (video.hidden) return;
@@ -13,9 +12,8 @@
         video.removeAttribute('src');
         video.load();
         welcome.classList.remove('is-intro-playing');
-        close.hidden = true;
         play.hidden = false;
-        if (restoreFocus) play.focus();
+        if (restoreFocus && playHadFocus && document.activeElement === document.body) play.focus();
     }
 
     function playbackFailed() {
@@ -27,23 +25,17 @@
 
     play.addEventListener('click', () => {
         status.hidden = true;
-        welcome.classList.add('is-intro-playing');
-        video.hidden = false;
-        close.hidden = false;
+        playHadFocus = document.activeElement === play;
         play.hidden = true;
+        video.hidden = false;
         video.src = 'Intro.mp4?v=20261117';
-        close.focus();
         video.play().catch(error => { if (error.name !== 'AbortError') playbackFailed(); });
     });
-    close.addEventListener('click', () => stop(true));
+    video.addEventListener('playing', () => {
+        if (!video.hidden) welcome.classList.add('is-intro-playing');
+    });
     video.addEventListener('ended', () => stop(true));
     video.addEventListener('error', playbackFailed);
-    intro.addEventListener('keydown', event => {
-        if (event.key !== 'Escape' || video.hidden) return;
-        event.preventDefault();
-        event.stopPropagation();
-        stop(true);
-    });
     new MutationObserver(() => {
         if (welcome.dataset.step !== 'auth' || welcome.style.display === 'none') {
             stop();

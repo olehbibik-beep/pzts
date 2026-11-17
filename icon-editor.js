@@ -1,4 +1,4 @@
-const iconEditorDeviceTypes = [
+const iconEditorDeviceTypes = APP_PRODUCT === 'CCTV' ? Object.entries(CCTV_DEVICE_LABELS).map(([type, label]) => [type, tr(label)]) : [
     ['panel', tr('Управляющая панель')],
     ['expander', tr('Расширитель')],
     ['abax', tr('Беспроводной модуль')],
@@ -22,7 +22,7 @@ const iconShapeHeightRatios = new Map([['rectangle', .64], ['roundedRectangle', 
 const iconEditorShapeKinds = new Set(['circle', 'rect', 'roundRect', 'triangle', 'diamond', 'line', 'text', 'hexagon', 'octagon', 'arc', 'arrow', 'stockIcon', ...iconShapeHeightRatios.keys()]);
 const iconEditorStockTypes = new Set(iconEditorDeviceTypes.map(([type]) => type));
 const iconEditorOpenShapes = new Set(['line', 'arc', 'arrow']);
-const iconTemplateKey = 'goom-icon-editor-template-v1';
+const iconTemplateKey = productStorageKey('goom-icon-editor-template-v1');
 let iconTemplateShapes = loadIconEditorTemplate();
 const canChangeIcon = () => typeof canEditToolbarPreset === 'function' && canEditToolbarPreset(editingToolbarMenu);
 let iconEditorShapes = [];
@@ -45,9 +45,9 @@ iconEditorDeviceTypes.forEach(([type, label]) => {
     iconEditorTarget.appendChild(option);
     const button = document.querySelector(`#deviceSelector .device-btn[data-type="${type}"]`);
     if (button) {
-        if (NEW_TOOLBAR_DEVICE_TYPES.includes(type)) {
+        if (APP_PRODUCT === 'CCTV' || NEW_TOOLBAR_DEVICE_TYPES.includes(type)) {
             const icon = new SVGPlanContext(32, 32);
-            drawDevice(icon, { type, x: 16, y: 16 }, true, 'dark', { baseSize: 14, defaultIcon: true });
+            drawDevice(icon, { type, x: 16, y: 16 }, true, 'dark', { baseSize: APP_PRODUCT === 'CCTV' ? 10 : 14, defaultIcon: true });
             const image = document.createElement('img');
             image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(icon.toSVG())}`;
             image.alt = '';
@@ -416,7 +416,7 @@ function openIconEditor(preferredType) {
     if (!canEditToolbarMenus()) { window.requestProUpgrade?.(); return; }
     const selected = floors[currentFloorIndex]?.devices.find(device => activeDeviceIds.has(device.id));
     const selectedType = selected && iconEditorDeviceTypes.some(([type]) => type === selected.type) ? selected.type : selectedTool;
-    const target = preferredType || (iconEditorDeviceTypes.some(([type]) => type === selectedType) ? selectedType : 'pir');
+    const target = preferredType || (iconEditorDeviceTypes.some(([type]) => type === selectedType) ? selectedType : APP_PRODUCT === 'CCTV' ? 'cctv_bullet' : 'pir');
     selectIconEditorTarget(target);
     iconEditorModal.style.display = 'flex';
     if (typeof renderToolbarMenuEditor === 'function') renderToolbarMenuEditor();

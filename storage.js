@@ -142,6 +142,7 @@ function getProjectDataPayload() {
     return { 
         version: "1.0",
         format: "TECH",
+        application: APP_PRODUCT,
         ownerUid:window.projectOwnerUid||window.getFirebaseUser?.()?.uid||null,
         viewport:{scale,offsetX,offsetY,width:planCanvasWidth(),height:planCanvasHeight()}, 
         projectName: projectName,

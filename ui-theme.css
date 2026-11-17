@@ -55,10 +55,15 @@ body::after {
     position: absolute; inset: 0; z-index: 0; display: flex;
     align-items: center; justify-content: flex-end; pointer-events: none;
 }
-.welcome-art-space img {
+.welcome-art-space :is(img, video) {
     display: block; width: 100%; height: 100%; max-width: 100%; max-height: 100%;
     object-fit: cover; object-position: right center; opacity: 1;
     filter: none; mask-image: none;
+}
+#welcomeIntroVideo { position: absolute; inset: 0; opacity: 0; transition: opacity 180ms ease-out; }
+#welcomeModal.is-intro-playing #welcomeIntroVideo { opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+    #welcomeIntroVideo { transition: none; }
 }
 #welcomeModal .welcome-art-space::after {
     content: ''; position: absolute; inset: 0; pointer-events: none;
@@ -69,7 +74,7 @@ body::after {
     display: grid; place-items: center; min-width: 0;
 }
 #welcomeModal:not([data-step="auth"]) .welcome-intro { display: none; }
-.welcome-intro :is(button, video) { pointer-events: auto; }
+.welcome-intro button { pointer-events: auto; }
 .welcome-intro-play {
     display: grid; place-items: center; width: 68px; height: 68px;
     border: 0; border-radius: 12px; background: transparent; cursor: pointer;
@@ -81,13 +86,6 @@ body::after {
 }
 .welcome-intro-play:hover::before, .welcome-intro-play:focus-visible::before { border-left-color: #fff; }
 .welcome-intro :focus-visible, .main-menu-feedback:focus-visible { outline: 2px solid #a8db7a; outline-offset: 3px; }
-#welcomeModal.is-intro-playing .welcome-art-space { background: #151618; }
-#welcomeModal.is-intro-playing .welcome-art-space img { visibility: hidden; }
-#welcomeIntroVideo { display: block; width: 100%; height: 100%; min-width: 0; object-fit: contain; background: #151618; }
-.welcome-intro-close {
-    position: absolute; top: 10px; right: 8px; width: 38px; height: 38px;
-    border: 0; border-radius: 6px; background: rgba(20,21,23,.82); color: #fff; font: 26px/1 sans-serif; cursor: pointer;
-}
 .welcome-intro-status {
     position: absolute; bottom: 20px; margin: 0 10px; padding: 7px 10px;
     border-radius: 6px; background: rgba(20,21,23,.88); font-size: 13px; color: #fff;
@@ -110,6 +108,10 @@ body::after {
 #feedbackForm .app-dialog-actions { margin-top: 10px; }
 #btnFeedbackSend { background: #a6dd68; color: #182610; }
 #btnFeedbackSend:disabled { opacity: .5; cursor: default; }
+#cameraOptics { display: grid; grid-template-columns: 1fr 68px; align-items: center; gap: 10px; border: 0; border-top: 1px solid #414147; margin: 18px 0 0; padding: 10px 0 0; text-align: left; font-size: 13px; }
+#cameraOptics legend { padding: 0 6px; color: #b8dff3; }
+#cameraOptics input { box-sizing: border-box; width: 100%; padding: 6px; color: inherit; background: #161619; border: 1px solid #565660; border-radius: 5px; }
+[data-goom-product="CCTV"] :is(.pro-period, .pro-price-option, .pro-pricing-footer .account-note) { display: none; }
 .modal-content, .app-dialog-card { position: relative; isolation: isolate; }
 .modal-blueprint-host { position: absolute; inset: 0; z-index: -1; overflow: hidden; border-radius: inherit; pointer-events: none; }
 #welcomeModal .modal-blueprint-host { z-index: 1; }

@@ -1,6 +1,6 @@
 (() => {
     // Change this version whenever publishing application files together.
-    const version = '20261117-feedback-intro-53';
+    const version = '20261117-intro-bg-55';
     let started = false;
     function loadScript(src) {
         return new Promise((resolve, reject) => {
@@ -37,6 +37,7 @@
             ].map(promise => promise.catch(error => console.warn('Библиотека импорта/экспорта недоступна:', error)));
             window.planLibrariesReady = Promise.all(libraries);
             for (const name of ['modal-ui', 'config', 'state', 'project-legend', 'engine', 'storage', 'dialogs', 'render', 'plan-renderer', 'render-performance', 'editor-interactions', 'editor-session', 'building-overview', 'svg-context', 'plan-export', 'app', 'onboarding', 'firebase-auth', 'account-profile', 'pro-billing', 'firebase-sync', 'icon-editor', 'toolbar-menus', 'select-controls', 'tablet-tools', 'feedback', 'welcome-intro']) {
+                if (name === 'state' && window.goomProduct === 'CCTV') await loadScript(`cctv.js?v=${version}`);
                 await loadScript(`${name}.js?v=${version}`);
             }
             const editorReady = firstSession.then(() => Promise.all([window.localProjectStartup, window.initialEditorResume]));

@@ -173,7 +173,9 @@ detectorSearchForm.addEventListener('submit', event => {
         showDetectorSearchMatch(matches[0]);
         return;
     }
-    detectorSearchStatus.textContent = tr(matches.length ? 'Vyberte detektor s adresou {0}.' : 'Detektor s adresou {0} nebyl nalezen.', prefix + number);
+    detectorSearchStatus.textContent = tr(APP_PRODUCT === 'CCTV'
+        ? (matches.length ? 'Vyberte kameru s adresou {0}.' : 'Kamera s adresou {0} nebyla nalezena.')
+        : (matches.length ? 'Vyberte detektor s adresou {0}.' : 'Detektor s adresou {0} nebyl nalezen.'), prefix + number);
     detectorSearchStatus.hidden = false;
     if (!matches.length) return;
     for (const match of matches) {

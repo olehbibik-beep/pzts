@@ -12,7 +12,7 @@
         byId('accountProStatus').classList.toggle('active', active);
         const tier = window.getOwnProTier?.();
         for (const button of buyButtons) {
-            button.hidden = button.dataset.buyTier === tier;
+            button.hidden = APP_PRODUCT === 'CCTV' || button.dataset.buyTier === tier;
             button.disabled = purchasePending || Boolean(tier);
         }
         for (const button of manageButtons) button.hidden = button.dataset.manageTier !== tier;
@@ -29,13 +29,14 @@
     window.requestProUpgrade = () => {
         if (!window.getFirebaseUser()) { showWelcomeScreen(); return; }
         byId('proUpgradeModal').style.display = 'flex';
-        byId('proPurchaseStatus').textContent = window.hasProAccess?.() ? tr('PROJECT je aktivní.') : '';
+        byId('proPurchaseStatus').textContent = window.hasProAccess?.() ? tr('PROJECT je aktivní.')
+            : APP_PRODUCT === 'CCTV' ? tr('Předplatné CCTV zatím nelze zakoupit.') : '';
         render(); window.clearGoomTooltips?.();
     };
     byId('btnUpdatePro').addEventListener('click', window.requestProUpgrade);
     byId('btnProClose').addEventListener('click', () => { byId('proUpgradeModal').style.display = 'none'; });
     async function startCheckout(event) {
-        if (purchasePending || window.hasOwnPaidPro?.()) return;
+        if (APP_PRODUCT === 'CCTV' || purchasePending || window.hasOwnPaidPro?.()) return;
         const company = event.currentTarget.dataset.buyTier === 'company';
         if (!window.getFirebaseUser()?.emailVerified) {
             byId('proPurchaseStatus').textContent = tr('Před nákupem potvrďte svou e-mailovou adresu v nastavení účtu.');

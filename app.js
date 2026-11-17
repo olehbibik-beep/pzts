@@ -113,7 +113,9 @@ document.addEventListener('focusout', e => {
 function updateLoopSelect() {
     const currentVal = loopSelect.value; loopSelect.innerHTML = '';
     for(let i=1; i<=currentMaxLines; i++) {
-        let opt = document.createElement('option'); opt.value = i; opt.textContent = tr`Sběrnice ${i}`; loopSelect.appendChild(opt);
+        let opt = document.createElement('option'); opt.value = i;
+        opt.textContent = tr(APP_PRODUCT === 'CCTV' ? 'Skupina {0}' : 'Sběrnice {0}', i);
+        loopSelect.appendChild(opt);
     }
     const addOpt = document.createElement('option'); addOpt.value = 'add'; addOpt.textContent = tr('+ Přidat'); loopSelect.appendChild(addOpt);
     if (currentVal && currentVal !== 'add' && currentVal <= currentMaxLines) loopSelect.value = currentVal; else loopSelect.value = 1;
@@ -132,7 +134,8 @@ function isPirCoverageVisible() {
 }
 function setPirCoverageVisible(visible) {
     if (!pirToggle) return;
-    const label = tr(visible ? 'Скрыть зоны PIR' : 'Показать зоны PIR');
+    const label = tr(APP_PRODUCT === 'CCTV' ? (visible ? 'Skrýt zorná pole' : 'Zobrazit zorná pole')
+        : (visible ? 'Скрыть зоны PIR' : 'Показать зоны PIR'));
     pirToggle.setAttribute('aria-pressed', String(visible));
     pirToggle.setAttribute('aria-label', label);
     pirToggle.title = label;
@@ -1275,6 +1278,7 @@ function importFileContent(file, options = {}) {
             if (!text || text.trim() === "") throw new Error(tr("Soubor je prázdný."));
 
             const data = JSON.parse(text);
+            if ((data?.application ?? 'PZTS') !== APP_PRODUCT) throw new Error(tr('Tento soubor je z jiné aplikace GooM.'));
             let loadedFloors = [];
             
             if (Array.isArray(data)) {
@@ -1371,7 +1375,13 @@ if (arrowTabBtn && slidingMenu) {
 function openNumberModal(dev) { 
     editingDevice = dev; 
     let inp = document.getElementById('devNumberInput');
-    inp.value = dev.manualNumber || dev.number || ""; 
+    const optics = APP_PRODUCT === 'CCTV' ? getCameraOptics(dev) : null;
+    inp.value = (optics ? dev.manualNumber : dev.manualNumber || dev.number) || '';
+    document.getElementById('cameraOptics').hidden = !optics;
+    if (optics) {
+        document.getElementById('cameraAngle').value = optics.angle;
+        document.getElementById('cameraRange').value = optics.range;
+    }
     document.getElementById('numberModal').style.display = 'flex'; 
     setTimeout(() => inp.select(), 50);
 
@@ -1442,7 +1452,15 @@ if (devNumberInput) {
 const btnSaveNumber = document.getElementById('btnSaveNumber');
 if (btnSaveNumber) {
     btnSaveNumber.addEventListener('click', () => {
+        if (btnSaveNumber.style.pointerEvents === 'none') return;
         if (editingDevice) {
+            if (APP_PRODUCT === 'CCTV' && getCameraOptics(editingDevice)) {
+                const angle = document.getElementById('cameraAngle');
+                const range = document.getElementById('cameraRange');
+                if (!angle.reportValidity() || !range.reportValidity()) return;
+                editingDevice.cameraAngle = angle.valueAsNumber;
+                editingDevice.cameraRange = range.valueAsNumber;
+            }
             let valStr = document.getElementById('devNumberInput').value;
             let newNum = parseInt(valStr);
             

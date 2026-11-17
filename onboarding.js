@@ -1,8 +1,11 @@
 const onboardingSteps = [
     ['Nahrajte výkres', 'V horní liště otevřete nabídku GooM a zvolte Nahrát výkres. Můžete použít PDF, obrázek nebo DXF.'],
-    ['Umístěte první detektor', 'Rozbalte panel nástrojů, vyberte sběrnici a detektor a klepněte nebo klikněte na výkres.'],
-    ['Upravte polohu a směr', 'Detektor přetáhněte na nové místo. Otočíte ho klávesami S a D nebo šipkami u vybraného detektoru na tabletu.'],
-    ['Pracujte s podlažími', 'Dole otevřete Řez budovou a vyberte podlaží. Každé podlaží má vlastní výkres a detektory.'],
+    APP_PRODUCT === 'CCTV' ? ['Umístěte první kameru', 'Vyberte skupinu a typ kamery a klikněte na výkres.'] :
+        ['Umístěte první detektor', 'Rozbalte panel nástrojů, vyberte sběrnici a detektor a klepněte nebo klikněte na výkres.'],
+    ['Upravte polohu a směr', APP_PRODUCT === 'CCTV' ? 'Kameru otočte klávesami S a D nebo šipkami na tabletu. Dvojím kliknutím nastavíte úhel a dosah.' :
+        'Detektor přetáhněte na nové místo. Otočíte ho klávesami S a D nebo šipkami u vybraného detektoru na tabletu.'],
+    ['Pracujte s podlažími', APP_PRODUCT === 'CCTV' ? 'Každé podlaží má vlastní výkres a kamery.' :
+        'Dole otevřete Řez budovou a vyberte podlaží. Každé podlaží má vlastní výkres a detektory.'],
     ['Uložte nebo vytiskněte projekt', 'V nabídce GooM vyberte Uložit / Export pro soubor .TECH nebo Tisk pro otevření dialogu tiskárny.']
 ];
 
@@ -21,7 +24,7 @@ function renderOnboardingStep() {
 }
 
 function onboardingStorageKey(uid) {
-    return `goom-first-project-v1:${uid}`;
+    return `${productStorageKey('goom-first-project-v1')}:${uid}`;
 }
 
 function hideOnboarding() {

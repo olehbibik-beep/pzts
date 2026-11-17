@@ -1,5 +1,6 @@
 // A floor annotation in world coordinates; the same vectors are used on screen and on paper.
-const legendDeviceTypes = new Set(['panel','expander','abax','keypad','pir','pir_wl','magnet','magnet_wl','glassbreak','panic','siren', ...NEW_TOOLBAR_DEVICE_TYPES]);
+const legendDeviceTypes = new Set(APP_PRODUCT === 'CCTV' ? Object.keys(CCTV_DEVICE_LABELS) :
+    ['panel','expander','abax','keypad','pir','pir_wl','magnet','magnet_wl','glassbreak','panic','siren', ...NEW_TOOLBAR_DEVICE_TYPES]);
 let selectedProjectLegend = null;
 let projectLegendDrag = null;
 const projectLegendLayouts = new WeakMap();

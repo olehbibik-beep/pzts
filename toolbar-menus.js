@@ -1,4 +1,4 @@
-const toolbarMenuStorageKey = 'goom-toolbar-menus-v1';
+const toolbarMenuStorageKey = productStorageKey('goom-toolbar-menus-v1');
 const toolbarMenuLimit = 7;
 const toolbarMenuDeviceButtons = [...document.querySelectorAll('#deviceSelector .device-btn[data-type]:not([data-type="plainText"])')];
 const toolbarMenuTypeLabels = {
@@ -14,7 +14,7 @@ const toolbarMenuTypeLabels = {
     panic: tr('Тревожная кнопка'),
     siren: tr('Сирена'),
     textNode: tr('Текстовая заметка'),
-    ...ADDITIONAL_DEVICE_LABELS
+    ...Object.fromEntries(Object.entries(ADDITIONAL_DEVICE_LABELS).map(([type, label]) => [type, tr(label)]))
 };
 const toolbarMenuTypes = toolbarMenuDeviceButtons.map(button => ({
     type: button.dataset.type,
@@ -26,7 +26,9 @@ const defaultToolbarMenu = {
     name: 'Default',
     deviceTypes: toolbarMenuTypes.map(item => item.type)
 };
-const proToolbarLabels = {
+const proToolbarLabels = APP_PRODUCT === 'CCTV' ? {
+    cctv_bullet: 'CAM', cctv_dome: 'DOME', cctv_ptz: 'PTZ', cctv_nvr: 'NVR', cctv_poe: 'PoE'
+} : {
     panel: 'EZS', expander: 'EXP', abax: 'RF', keypad: 'KEY', pir: 'PIR', pir_wl: 'PIR+',
     magnet: 'MC', magnet_wl: 'MC+', glassbreak: 'GB', panic: 'SOS', siren: 'SIR'
 };

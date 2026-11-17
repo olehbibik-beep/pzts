@@ -66,7 +66,7 @@ function getPlanOutputBounds(floor,coverage) {
     let left=base.minX,top=base.minY,right=left+base.width,bottom=top+base.height;
     for(const device of floor.devices){
         if(!showDeactivatedDevices && device.type==='deactivated')continue;
-        if(coverage && ['pir','pir_wl','glassbreak'].includes(device.type)){
+        if(coverage && hasDeviceCoverage(device)){
             for(const point of getPIRCoveragePoints(floor,device)||[]){left=Math.min(left,point.x-10);top=Math.min(top,point.y-10);right=Math.max(right,point.x+10);bottom=Math.max(bottom,point.y+10);}
         }
         if (device.type === 'textNode') {

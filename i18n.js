@@ -1,6 +1,39 @@
 // Czech is the default. Source aliases also cover labels in older saved menu sets.
 (() => {
     const rows = [
+        ['Kamerový systém', 'Video surveillance system', 'Videoüberwachungssystem', 'Система видеонаблюдения'],
+        ['Válcová kamera', 'Bullet camera', 'Bullet-Kamera', 'Цилиндрическая камера'],
+        ['Kopulová kamera', 'Dome camera', 'Dome-Kamera', 'Купольная камера'],
+        ['PTZ kamera', 'PTZ camera', 'PTZ-Kamera', 'PTZ-камера'],
+        ['Síťový videorekordér (NVR)', 'Network video recorder (NVR)', 'Netzwerk-Videorekorder (NVR)', 'Сетевой видеорегистратор (NVR)'],
+        ['PoE přepínač', 'PoE switch', 'PoE-Switch', 'PoE-коммутатор'],
+        ['Zorný úhel (°)', 'Field of view (°)', 'Sichtwinkel (°)', 'Угол обзора (°)'],
+        ['Dosah na výkresu (px)', 'Range on plan (px)', 'Reichweite im Plan (px)', 'Дальность на плане (px)'],
+        ['Rozpoznání stěn a zorná pole', 'Wall detection and fields of view', 'Wanderkennung und Sichtfelder', 'Распознавание стен и углы обзора'],
+        ['Skrýt zorná pole', 'Hide fields of view', 'Sichtfelder ausblenden', 'Скрыть сектора обзора'],
+        ['Zobrazit zorná pole', 'Show fields of view', 'Sichtfelder einblenden', 'Показать сектора обзора'],
+        ['Vyberte skupinu kamer', 'Choose a camera group', 'Kameragruppe auswählen', 'Выбрать группу камер'],
+        ['Skupina {0}', 'Group {0}', 'Gruppe {0}', 'Группа {0}'],
+        ['Skupina', 'Group', 'Gruppe', 'Группа'],
+        ['Najít kameru', 'Find a camera', 'Kamera suchen', 'Найти камеру'],
+        ['Číslo kamery', 'Camera number', 'Kameranummer', 'Номер камеры'],
+        ['Kamery: {0}', 'Cameras: {0}', 'Kameras: {0}', 'Камеры: {0}'],
+        ['kamera', 'camera', 'Kamera', 'камера'],
+        ['kamery', 'cameras', 'Kameras', 'камеры'],
+        ['kamer', 'cameras', 'Kameras', 'камер'],
+        ['Adresy kamer', 'Camera addresses', 'Kameraadressen', 'Адреса камер'],
+        ['Bez adres kamer', 'No camera addresses', 'Keine Kameraadressen', 'Нет адресов камер'],
+        ['Vyberte kameru s adresou {0}.', 'Choose a camera with address {0}.', 'Wählen Sie eine Kamera mit der Adresse {0}.', 'Выберите камеру с адресом {0}.'],
+        ['Kamera s adresou {0} nebyla nalezena.', 'No camera found at address {0}.', 'Keine Kamera mit der Adresse {0} gefunden.', 'Камера с адресом {0} не найдена.'],
+        ['NVR: {0}', 'NVR: {0}', 'NVR: {0}', 'Видеорегистраторы: {0}'],
+        ['NVR není umístěn', 'No NVR placed', 'Kein NVR platziert', 'Видеорегистратор не установлен'],
+        ['Kamera a její zorné pole', 'Camera and its field of view', 'Kamera und Sichtfeld', 'Камера и сектор обзора'],
+        ['Umístěte první kameru', 'Place your first camera', 'Erste Kamera platzieren', 'Разместите первую камеру'],
+        ['Vyberte skupinu a typ kamery a klikněte na výkres.', 'Choose a group and camera type, then click the plan.', 'Gruppe und Kameratyp auswählen und in den Plan klicken.', 'Выберите группу и тип камеры, затем нажмите на план.'],
+        ['Kameru otočte klávesami S a D nebo šipkami na tabletu. Dvojím kliknutím nastavíte úhel a dosah.', 'Rotate the camera with S and D or the tablet arrows. Double-click to set the angle and range.', 'Kamera mit S und D oder den Tablet-Pfeilen drehen. Doppelklick für Winkel und Reichweite.', 'Поверните камеру клавишами S и D или стрелками на планшете. Двойное нажатие открывает настройки угла и дальности.'],
+        ['Každé podlaží má vlastní výkres a kamery.', 'Each floor has its own plan and cameras.', 'Jedes Geschoss hat einen eigenen Plan und eigene Kameras.', 'У каждого этажа свой план и камеры.'],
+        ['Tento soubor je z jiné aplikace GooM.', 'This file belongs to another GooM application.', 'Diese Datei gehört zu einer anderen GooM-Anwendung.', 'Этот файл создан в другой программе GooM.'],
+        ['Předplatné CCTV zatím nelze zakoupit.', 'CCTV subscriptions are not on sale yet.', 'CCTV-Abos sind noch nicht erhältlich.', 'Подписки CCTV пока недоступны для покупки.'],
         ['Zpětná vazba', 'Feedback', 'Feedback', 'Обратная связь'],
         ['Odpověď na e-mail', 'Reply to email', 'Antwort an E-Mail-Adresse', 'Ответ на почту'],
         ['Vaše zpráva', 'Your message', 'Ihre Nachricht', 'Ваше сообщение'],
@@ -395,6 +428,7 @@
     ];
 
     const locales = { cs: 'cs-CZ', en: 'en-GB', de: 'de-DE', ru: 'ru-RU' };
+    window.goomProduct = new URLSearchParams(location.search).get('app') === 'CCTV' ? 'CCTV' : 'PZTS';
     const welcomeAcronyms = { cs: 'PZTS', en: 'I&HAS', de: 'GMA', ru: 'СОТС' };
     const normalizeLanguage = value => Object.hasOwn(locales, value) ? value : 'cs';
     const catalog = new Map();
@@ -465,7 +499,7 @@
     window.localizeGoom = localize;
     function localizeWelcomeBrand() {
         const brand = document.querySelector('#welcomeModal .welcome-brand');
-        if (brand) brand.textContent = welcomeAcronyms[language];
+        if (brand) brand.textContent = window.goomProduct === 'CCTV' ? 'CCTV' : welcomeAcronyms[language];
     }
     window.setGoomLanguage = value => {
         language = normalizeLanguage(value);
