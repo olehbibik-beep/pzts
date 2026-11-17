@@ -1,6 +1,20 @@
 // Czech is the default. Source aliases also cover labels in older saved menu sets.
 (() => {
     const rows = [
+        ['Zpětná vazba', 'Feedback', 'Feedback', 'Обратная связь'],
+        ['Odpověď na e-mail', 'Reply to email', 'Antwort an E-Mail-Adresse', 'Ответ на почту'],
+        ['Vaše zpráva', 'Your message', 'Ihre Nachricht', 'Ваше сообщение'],
+        ['Odeslat zprávu', 'Send message', 'Nachricht senden', 'Отправить сообщение'],
+        ['Odesílám zprávu…', 'Sending message…', 'Nachricht wird gesendet…', 'Отправляю сообщение…'],
+        ['Zpráva byla odeslána.', 'Message sent.', 'Nachricht gesendet.', 'Сообщение отправлено.'],
+        ['Napište zprávu.', 'Enter a message.', 'Geben Sie eine Nachricht ein.', 'Напишите сообщение.'],
+        ['Pro odeslání zprávy se přihlaste s ověřeným e-mailem.', 'Sign in with a verified email address to send a message.', 'Melden Sie sich mit einer bestätigten E-Mail-Adresse an, um eine Nachricht zu senden.', 'Войдите в аккаунт с подтверждённой почтой, чтобы отправить сообщение.'],
+        ['Před další zprávou počkejte 30 sekund.', 'Wait 30 seconds before sending another message.', 'Warten Sie 30 Sekunden vor der nächsten Nachricht.', 'Подождите 30 секунд перед отправкой следующего сообщения.'],
+        ['Zprávu se nepodařilo odeslat. Zkuste to znovu.', 'Could not send the message. Try again.', 'Die Nachricht konnte nicht gesendet werden. Versuchen Sie es erneut.', 'Не удалось отправить сообщение. Попробуйте ещё раз.'],
+        ['Úvodní video', 'Intro video', 'Einführungsvideo', 'Вступительное видео'],
+        ['Přehrát úvodní video', 'Play intro video', 'Einführungsvideo abspielen', 'Воспроизвести вступительное видео'],
+        ['Zavřít úvodní video', 'Close intro video', 'Einführungsvideo schließen', 'Закрыть вступительное видео'],
+        ['Úvodní video se nepodařilo přehrát.', 'Could not play the intro video.', 'Das Einführungsvideo konnte nicht abgespielt werden.', 'Не удалось воспроизвести вступительное видео.'],
         ['Cloudový projekt může mít nejvýše 24 MiB. Větší projekt uložte jako soubor .TECH.', 'Cloud projects can be up to 24 MiB. Save larger projects as a .TECH file.', 'Cloud-Projekte dürfen höchstens 24 MiB groß sein. Speichern Sie größere Projekte als .TECH-Datei.', 'Облачный проект может занимать до 24 МиБ. Проекты большего размера сохраните в файл .TECH.'],
         ['Velikost písma', 'Font size', 'Schriftgröße', 'Размер шрифта'],
         ['Modul přístupového systému (ACS)', 'Access control module (ACS)', 'Zutrittskontrollmodul (ACS)', 'Модуль контроля доступа (ACS)'],

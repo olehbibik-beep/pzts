@@ -14,8 +14,9 @@
     let changing = false;
     let loaded = false;
     let visitRequest = 0;
+    let feedbackCursor = null, feedbackLoading = false;
     const nav = [...document.querySelectorAll('[data-view]')];
-    const viewTitles = { overview: 'Обзор', users: 'Пользователи', access: 'PROJECT и доступ', activity: 'Активность' };
+    const viewTitles = { overview: 'Обзор', users: 'Пользователи', access: 'PROJECT и доступ', activity: 'Активность', feedback: 'Обратная связь' };
     const server = { source: 'server' };
     const unavailable = Symbol('unavailable');
 
@@ -61,6 +62,10 @@
         byId('adminUsers').replaceChildren();
         byId('adminEvents').replaceChildren();
         byId('adminVisits').replaceChildren();
+        byId('adminFeedback').replaceChildren();
+        byId('adminMoreFeedback').hidden = true;
+        feedbackCursor = null;
+        feedbackLoading = false;
         if (dialog.open) dialog.close();
         byId('adminUserPrograms').replaceChildren();
         byId('adminUserTitle').textContent = '';
@@ -199,13 +204,16 @@
             else button.removeAttribute('aria-current');
         });
         const activity = view === 'activity';
-        byId('adminPrograms').hidden = activity;
+        const feedback = view === 'feedback';
+        byId('adminPrograms').hidden = activity || feedback;
         byId('adminSummary').hidden = view !== 'overview';
-        byId('adminUserList').hidden = activity;
+        byId('adminUserList').hidden = activity || feedback;
         byId('adminVisitsSection').hidden = !activity;
         byId('adminAuditSection').hidden = !activity;
+        byId('adminFeedbackSection').hidden = !feedback;
         byId('adminTable').dataset.view = view;
         if (activity) void Promise.all([loadVisits(), loadAudit()]);
+        if (feedback) void loadFeedback();
     }
 
     function paidLabel(user, application) {
@@ -364,6 +372,59 @@
         } catch (error) { handleError(error, currentEpoch); }
     }
 
+    function feedbackRow(entry) {
+        const item = element('li', undefined, 'feedback-item');
+        const heading = element('div', undefined, 'feedback-item-heading');
+        const identity = element('div');
+        identity.append(element('strong', entry.name || entry.email));
+        const email = element('a', entry.email, 'feedback-item-email');
+        email.href = `mailto:${encodeURIComponent(entry.email).replace('%40', '@')}`;
+        identity.append(email);
+        heading.append(identity, element('span', `${dateLabel(entry.sentAt?.toMillis())} · ${entry.application}`, 'muted'));
+        item.append(heading, element('p', entry.message, 'feedback-item-message'));
+        return item;
+    }
+
+    async function loadFeedback(more = false) {
+        if (!session || feedbackLoading || (more && !feedbackCursor)) return;
+        const currentEpoch = epoch;
+        const list = byId('adminFeedback');
+        const next = byId('adminMoreFeedback');
+        const refresh = byId('adminRefreshFeedback');
+        const statusId = 'adminFeedbackStatus';
+        feedbackLoading = true;
+        next.disabled = refresh.disabled = true;
+        if (!more) {
+            feedbackCursor = null;
+            list.replaceChildren();
+            next.hidden = true;
+        }
+        status('Загружаем сообщения…', false, statusId);
+        try {
+            let page = db.collection('goomFeedback').orderBy('sentAt', 'desc').limit(pageSize);
+            if (more) page = page.startAfter(feedbackCursor);
+            const result = await page.get(server);
+            if (currentEpoch !== epoch) return;
+            list.append(...result.docs.map(snapshot => feedbackRow(snapshot.data())));
+            feedbackCursor = result.size === pageSize ? result.docs.at(-1) : null;
+            next.hidden = !feedbackCursor;
+            status(list.childElementCount ? '' : 'Сообщений пока нет.', false, statusId);
+        } catch (error) {
+            if (currentEpoch !== epoch) return;
+            if (error.code === 'permission-denied') {
+                list.replaceChildren();
+                feedbackCursor = null;
+                next.hidden = true;
+            }
+            status(readableError(error), true, statusId);
+        } finally {
+            if (currentEpoch === epoch) {
+                feedbackLoading = false;
+                next.disabled = refresh.disabled = false;
+            }
+        }
+    }
+
     function renderUserDialog() {
         const user = selectedUser;
         byId('adminUserTitle').textContent = user.name || user.email || user.uid;
@@ -487,6 +548,8 @@
     byId('adminNext').addEventListener('click', () => { if (nextPage) void loadUsers(pageIndex + 1); });
     byId('adminRefreshAudit').addEventListener('click', loadAudit);
     byId('adminRefreshVisits').addEventListener('click', loadVisits);
+    byId('adminRefreshFeedback').addEventListener('click', () => loadFeedback());
+    byId('adminMoreFeedback').addEventListener('click', () => loadFeedback(true));
     nav.forEach(button => button.addEventListener('click', () => showView(button.dataset.view)));
     byId('adminCloseDialog').addEventListener('click', () => dialog.close());
     dialog.addEventListener('cancel', event => { if (changing) event.preventDefault(); });

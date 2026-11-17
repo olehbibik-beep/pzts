@@ -89,6 +89,10 @@ td:first-child { max-width: 240px; overflow-wrap: anywhere; }
 .pagination span { margin-right: auto; }
 .events { margin: 10px 0 0; padding: 0; list-style: none; }
 .events li { padding: 8px 0; border-top: 1px solid var(--line); font-size: .9rem; overflow-wrap: anywhere; }
+.events .feedback-item { padding: 15px 0; }
+.feedback-item-heading { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 5px 16px; }
+.feedback-item-email { display: block; width: fit-content; margin-top: 3px; color: var(--accent); }
+.feedback-item-message { margin: 9px 0 0; white-space: pre-wrap; }
 dialog { width: min(690px, calc(100% - 24px)); max-height: 90dvh; overflow: auto; padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); color: inherit; }
 dialog::backdrop { background: #1c1a385e; }
 .control-row { padding: 12px 0; }
