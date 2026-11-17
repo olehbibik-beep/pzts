@@ -498,11 +498,7 @@ window.addEventListener('keydown', (e) => {
     }
 
     if (e.key === 'Delete' || e.key === 'Backspace') {
-        if (activeDeviceIds.size > 0) {
-            floor.devices = floor.devices.filter(d => !activeDeviceIds.has(d.id));
-            floor.cables = floor.cables.filter(c => !activeDeviceIds.has(c.fromId) && !activeDeviceIds.has(c.toId));
-            activeDeviceIds.clear(); saveStateToHistory(); requestRedraw(); triggerAutoSave();
-        }
+        if (activeDeviceIds.size > 0) { e.preventDefault(); if (!e.repeat) void deleteSelectedDevices(); }
         return;
     }
 
@@ -1015,6 +1011,41 @@ function showWelcomeScreen(step = 'auth') {
     const naming = document.getElementById('welcomeNamingBlock');
     naming.hidden = step !== 'naming';
     naming.style.display = step === 'naming' ? 'flex' : 'none';
+}
+
+let deviceDeletionPending = false;
+async function deleteSelectedDevices() {
+    const projectFloors = floors;
+    const floor = projectFloors[currentFloorIndex];
+    if (!floor || !isSystemReady || isOverviewMode || deviceDeletionPending) return;
+    const deletedIds = new Set(activeDeviceIds);
+    const devices = floor.devices.filter(device => deletedIds.has(device.id));
+    if (!devices.length) return;
+    const uid = window.getFirebaseUser?.()?.uid;
+    deviceDeletionPending = true;
+    try {
+        if (devices.some(getDeviceNumberGroup)) {
+            const shift = await showAppDialog({
+                type: 'choice',
+                title: tr('Odstranit vybrané prvky?'),
+                message: tr('Ponechte mezeru v adresách, nebo posuňte další automaticky číslované prvky.'),
+                alternateLabel: tr('Odstranit a ponechat mezeru'),
+                primaryLabel: tr('Odstranit a přečíslovat')
+            });
+            if (shift === null || floors !== projectFloors || floors[currentFloorIndex] !== floor
+                || !isSystemReady || window.getFirebaseUser?.()?.uid !== uid) return;
+            if (!shift) reserveDeletedAddresses(projectFloors, floor, deletedIds);
+        }
+        floor.devices = floor.devices.filter(device => !deletedIds.has(device.id));
+        floor.cables = floor.cables.filter(cable => !deletedIds.has(cable.fromId) && !deletedIds.has(cable.toId));
+        activeDeviceIds.clear();
+        saveStateToHistory();
+        requestRedraw();
+        triggerAutoSave();
+    } finally {
+        deviceDeletionPending = false;
+        window.updateTabletTools?.();
+    }
 }
 
 function resetPlacementTool() {

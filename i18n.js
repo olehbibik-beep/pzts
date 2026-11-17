@@ -1,6 +1,10 @@
 // Czech is the default. Source aliases also cover labels in older saved menu sets.
 (() => {
     const rows = [
+        ['Odstranit vybrané prvky?', 'Delete selected devices?', 'Ausgewählte Geräte löschen?', 'Удалить выбранные устройства?'],
+        ['Ponechte mezeru v adresách, nebo posuňte další automaticky číslované prvky.', 'Keep the gap in the addresses or shift the numbers of subsequent automatically numbered devices.', 'Lassen Sie die Adresslücke bestehen oder verschieben Sie die Nummern der nachfolgenden automatisch nummerierten Geräte.', 'Оставьте пропуск в адресах или сдвиньте номера следующих устройств с автоматической нумерацией.'],
+        ['Odstranit a ponechat mezeru', 'Delete and keep the gap', 'Löschen und Lücke lassen', 'Удалить и оставить пропуск'],
+        ['Odstranit a přečíslovat', 'Delete and renumber', 'Löschen und neu nummerieren', 'Удалить и сдвинуть номера'],
         ['Publikovat sdílenou sadu', 'Publish shared preset', 'Gemeinsame Vorlage veröffentlichen', 'Опубликовать общий набор'],
         ['Publikujeme…', 'Publishing…', 'Wird veröffentlicht…', 'Публикуем…'],
         ['Importovat osobní nabídky', 'Import personal menus', 'Persönliche Menüs importieren', 'Импортировать личные меню'],

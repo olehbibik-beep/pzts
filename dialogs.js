@@ -19,17 +19,20 @@ function showNextAppDialog() {
     if (activeAppDialog || !appDialogQueue.length) return;
 
     activeAppDialog = appDialogQueue.shift();
-    const { type, message, title, defaultValue } = activeAppDialog.options;
+    const { type, message, title, defaultValue, primaryLabel, alternateLabel } = activeAppDialog.options;
     const backdrop = document.getElementById('appDialog');
     const input = document.getElementById('appDialogInput');
     const cancelButton = document.getElementById('appDialogCancel');
     const confirmButton = document.getElementById('appDialogConfirm');
+    const alternateButton = document.getElementById('appDialogAlternate');
     document.getElementById('appDialogTitle').textContent = title;
     document.getElementById('appDialogMessage').textContent = message;
     input.hidden = type !== 'prompt';
     input.value = type === 'prompt' ? defaultValue : '';
     cancelButton.hidden = type === 'alert';
-    confirmButton.textContent = type === 'alert' ? tr('Понятно') : type === 'prompt' ? tr('Сохранить') : tr('Подтвердить');
+    confirmButton.textContent = primaryLabel || (type === 'alert' ? tr('Понятно') : type === 'prompt' ? tr('Сохранить') : tr('Подтвердить'));
+    alternateButton.hidden = type !== 'choice';
+    alternateButton.textContent = alternateLabel || '';
     backdrop.hidden = false;
     backdrop.setAttribute('role', type === 'alert' ? 'alertdialog' : 'dialog');
 
@@ -43,18 +46,20 @@ function showNextAppDialog() {
         backdrop.onclick = null;
         confirmButton.onclick = null;
         cancelButton.onclick = null;
+        alternateButton.onclick = null;
         if (previousFocus instanceof HTMLElement) previousFocus.focus();
         dialog.resolve(value);
         queueMicrotask(showNextAppDialog);
     };
     activeAppDialog.finish = finish;
 
-    confirmButton.onclick = () => finish(type === 'prompt' ? input.value : type === 'confirm' ? true : undefined);
+    confirmButton.onclick = () => finish(type === 'prompt' ? input.value : type === 'confirm' || type === 'choice' ? true : undefined);
+    alternateButton.onclick = () => finish(false);
     cancelButton.onclick = () => finish(type === 'confirm' ? false : null);
     backdrop.onclick = event => {
         if (event.target === backdrop && type !== 'alert') finish(type === 'confirm' ? false : null);
     };
-    (type === 'prompt' ? input : confirmButton).focus();
+    (type === 'prompt' ? input : type === 'choice' ? cancelButton : confirmButton).focus();
 }
 
 function showAppDialog(options) {

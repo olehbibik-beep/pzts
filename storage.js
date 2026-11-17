@@ -15,6 +15,7 @@ function sanitizeFloors(floorDataArray) {
             imgData: f.imgData || null, 
             devices: Array.isArray(f.devices) ? f.devices : [], 
             cables: Array.isArray(f.cables) ? f.cables : [],    
+            addressReservations: mergeAddressReservations(Array.isArray(f.addressReservations) ? f.addressReservations : []),
             showConnections: f.showConnections !== false,
             wallThreshold: Number.isFinite(f.wallThreshold) ? Math.min(255, Math.max(0, f.wallThreshold)) : 100,
             pirRangePixels: 300,
@@ -86,6 +87,7 @@ function saveStateToHistory() {
         customDeviceIcons: JSON.parse(JSON.stringify(customDeviceIcons)),
         fData: floors.map(f => ({
             name: f.name, imgData: f.imgData, legend: f.legend ? JSON.parse(JSON.stringify(f.legend)) : null,
+            addressReservations: f.addressReservations,
             devices: JSON.parse(JSON.stringify(f.devices)), cables: JSON.parse(JSON.stringify(f.cables)), showConnections: f.showConnections,
             wallThreshold: f.wallThreshold, pirRangePixels: f.pirRangePixels,
             planTheme: f.planTheme, vectorPlan: f.vectorPlan, pdfSource: f.pdfSource, rasterSource: f.rasterSource, pdfPage: f.pdfPage, sourceName: f.sourceName
@@ -150,6 +152,7 @@ function getProjectDataPayload() {
         pirCoverageVisible: isPirCoverageVisible(),
         floors: floors.map(f => ({
             name: f.name, imgData: f.imgData, devices: f.devices, cables: f.cables, legend: f.legend,
+            addressReservations: f.addressReservations,
             showConnections: f.showConnections, wallThreshold: f.wallThreshold, pirRangePixels: f.pirRangePixels,
             planTheme: f.planTheme, vectorPlan: f.vectorPlan, pdfSource: f.pdfSource, rasterSource: f.rasterSource, pdfPage: f.pdfPage, sourceName: f.sourceName
         }))

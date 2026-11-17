@@ -70,73 +70,83 @@ function getDeviceAddressParts(device) {
     return { prefix, number: String(device.number) };
 }
 
-function calculateDynamicNumbersGlobal(floorsArray) {
-    if (!floorsArray || floorsArray.length === 0) return;
+function getDeviceNumberGroup(device) {
+    if (['panel', 'deactivated', 'textNode', 'ramen', 'cableTool'].includes(device.type)) return null;
+    if (['expander', 'keypad', 'abax', 'siren'].includes(device.type)) return device.type;
+    return `bus:${device.loopId || 1}`;
+}
 
-    let taken = { expander: new Set(), keypad: new Set(), abax: new Set(), siren: new Set(), loops: {} };
-    
-    // ЭТАП 1: Собираем все ручные (замороженные) номера, чтобы не занять их
-    floorsArray.forEach(floor => {
-        if (!floor || !floor.devices) return;
-        floor.devices.forEach(dev => {
-            if (dev.manualNumber) {
-                if (['expander', 'keypad', 'abax', 'siren'].includes(dev.type)) {
-                    taken[dev.type].add(dev.manualNumber);
-                } else if (!['panel', 'deactivated', 'textNode', 'ramen', 'cableTool'].includes(dev.type)) {
-                    let lId = dev.loopId || 1;
-                    if (!taken.loops[lId]) taken.loops[lId] = new Set();
-                    taken.loops[lId].add(dev.manualNumber);
-                }
-            }
-        });
-    });
-
-    let counters = { expander: 1, keypad: 1, abax: 1, siren: 1, loops: {} };
-    
-    // Функция: найти следующий свободный номер
-    function getNextFree(category, isLoop = false) {
-        let current = isLoop ? (counters.loops[category] || 1) : counters[category];
-        let takenSet = isLoop ? (taken.loops[category] || new Set()) : taken[category];
-        
-        while (takenSet.has(current)) {
-            current++;
-        }
-        if (isLoop) counters.loops[category] = current + 1;
-        else counters[category] = current + 1;
-        
-        return current;
+function mergeAddressReservations(reservations) {
+    const sorted = reservations.filter(range => typeof range?.group === 'string' && /^(expander|keypad|abax|siren|bus:\d+)$/.test(range.group)
+        && Number.isSafeInteger(range.start) && Number.isSafeInteger(range.end)
+        && range.start > 0 && range.end >= range.start).sort((a, b) => a.group.localeCompare(b.group) || a.start - b.start);
+    const merged = [];
+    for (const range of sorted) {
+        const previous = merged.at(-1);
+        if (previous?.group === range.group && range.start <= previous.end + 1) previous.end = Math.max(previous.end, range.end);
+        else merged.push({ group: range.group, start: range.start, end: range.end });
     }
+    return merged;
+}
 
-    // ЭТАП 2: Раздаем номера (с учетом прыжков счетчика)
-    floorsArray.forEach(floor => {
-        if (!floor || !floor.devices) return;
-        floor.devices.forEach(dev => {
-            if (['panel', 'deactivated', 'textNode', 'ramen', 'cableTool'].includes(dev.type)) {
-                dev.number = "";
-                return;
-            }
+function reserveDeletedAddresses(floorsArray, floor, deletedIds) {
+    const groups = new Map();
+    for (const device of floor.devices) {
+        const group = getDeviceNumberGroup(device);
+        if (!deletedIds.has(device.id) || !group || !Number.isSafeInteger(device.number)) continue;
+        const entry = groups.get(group) || { last: 0, remaining: new Set() };
+        entry.last = Math.max(entry.last, device.number);
+        groups.set(group, entry);
+    }
+    for (const item of floorsArray) {
+        for (const device of item.devices) {
+            const entry = groups.get(getDeviceNumberGroup(device));
+            if (!entry || !Number.isSafeInteger(device.number) || device.number < 1 || (item === floor && deletedIds.has(device.id))) continue;
+            entry.last = Math.max(entry.last, device.number);
+            entry.remaining.add(device.number);
+        }
+    }
+    const reservations = [...(floor.addressReservations || [])];
+    for (const [group, { last, remaining }] of groups) {
+        // Preserve earlier jumps as well when the removed device held a manually assigned address.
+        let start = 1;
+        for (const number of [...remaining].sort((a, b) => a - b)) {
+            if (number > start) reservations.push({ group, start, end: number - 1 });
+            start = number + 1;
+        }
+        if (start <= last) reservations.push({ group, start, end: last });
+    }
+    floor.addressReservations = mergeAddressReservations(reservations);
+}
 
-            if (dev.manualNumber) {
-                dev.number = dev.manualNumber;
-                // ПРЫЖОК СЧЕТЧИКА: Автоматика продолжает отсчет после ручного номера
-                if (['expander', 'keypad', 'abax', 'siren'].includes(dev.type)) {
-                    if (dev.manualNumber >= (counters[dev.type] || 1)) counters[dev.type] = dev.manualNumber + 1;
-                } else {
-                    let lId = dev.loopId || 1;
-                    if (!counters.loops[lId]) counters.loops[lId] = 1;
-                    if (dev.manualNumber >= counters.loops[lId]) counters.loops[lId] = dev.manualNumber + 1;
-                }
-            } else {
-                // Выдаем автоматический номер
-                if (['expander', 'keypad', 'abax', 'siren'].includes(dev.type)) {
-                    dev.number = getNextFree(dev.type, false);
-                } else {
-                    let lId = dev.loopId || 1;
-                    dev.number = getNextFree(lId, true);
-                }
-            }
-        });
-    });
+function calculateDynamicNumbersGlobal(floorsArray) {
+    if (!floorsArray?.length) return;
+    const devices = floorsArray.flatMap(floor => floor?.devices || []);
+    const blocked = floorsArray.flatMap(floor => floor?.addressReservations || []);
+    const counters = new Map();
+    for (const device of devices) {
+        const group = getDeviceNumberGroup(device);
+        if (!group) continue;
+        if (!counters.has(group)) counters.set(group, { next: 1, offset: 0, ranges: [] });
+        const number = Number(device.manualNumber);
+        if (Number.isSafeInteger(number) && number > 0) blocked.push({ group, start: number, end: number });
+    }
+    for (const range of mergeAddressReservations(blocked)) counters.get(range.group)?.ranges.push(range);
+
+    for (const device of devices) {
+        const counter = counters.get(getDeviceNumberGroup(device));
+        if (!counter) { device.number = ''; continue; }
+        const manual = Number(device.manualNumber);
+        if (Number.isSafeInteger(manual) && manual > 0) {
+            device.number = manual;
+            counter.next = Math.max(counter.next, manual + 1);
+            continue;
+        }
+        while (counter.ranges[counter.offset]?.start <= counter.next) {
+            counter.next = Math.max(counter.next, counter.ranges[counter.offset++].end + 1);
+        }
+        device.number = counter.next++;
+    }
 }
 
 function getProjectBounds(floor, showDeac) {

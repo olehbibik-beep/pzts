@@ -46,20 +46,13 @@
         } else if (action === 'undo') await undo();
         else if (action === 'note') openTextModal(items[0]);
         else if (action === 'address') openNumberModal(items[0]);
-        else {
-            if (action === 'delete') {
-                floor.devices = floor.devices.filter(item => !activeDeviceIds.has(item.id));
-                floor.cables = floor.cables.filter(cable => !activeDeviceIds.has(cable.fromId) && !activeDeviceIds.has(cable.toId));
-                activeDeviceIds.clear();
+        else if (action === 'delete') await deleteSelectedDevices();
+        else if (action === 'duplicate') {
+            activeDeviceIds.clear();
+            for (const item of items) {
+                const copy = { ...JSON.parse(JSON.stringify(item)), id: genId(), x: item.x + 35, y: item.y + 35, manualNumber: null };
+                floor.devices.push(copy); activeDeviceIds.add(copy.id);
             }
-            if (action === 'duplicate') {
-                activeDeviceIds.clear();
-                for (const item of items) {
-                    const copy = { ...JSON.parse(JSON.stringify(item)), id: genId(), x: item.x + 35, y: item.y + 35, manualNumber: null };
-                    floor.devices.push(copy); activeDeviceIds.add(copy.id);
-                }
-            }
-            calculateDynamicNumbersGlobal(floors);
             saveStateToHistory(); triggerAutoSave();
         }
         previousState = ''; requestRedraw(); window.updateTabletTools();
