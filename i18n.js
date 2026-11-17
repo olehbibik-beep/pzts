@@ -373,6 +373,7 @@
     ];
 
     const locales = { cs: 'cs-CZ', en: 'en-GB', de: 'de-DE', ru: 'ru-RU' };
+    const welcomeAcronyms = { cs: 'PZTS', en: 'I&HAS', de: 'GMA', ru: 'СОТС' };
     const normalizeLanguage = value => Object.hasOwn(locales, value) ? value : 'cs';
     const catalog = new Map();
     for (const row of rows) {
@@ -440,11 +441,16 @@
         }
     }
     window.localizeGoom = localize;
+    function localizeWelcomeBrand() {
+        const brand = document.querySelector('#welcomeModal .welcome-brand');
+        if (brand) brand.textContent = welcomeAcronyms[language];
+    }
     window.setGoomLanguage = value => {
         language = normalizeLanguage(value);
         document.documentElement.lang = language;
         try { localStorage.setItem('goom.language', language); } catch {}
         localize();
+        localizeWelcomeBrand();
         document.querySelectorAll('[data-language-select]').forEach(select => { select.value = language; });
         window.dispatchEvent(new Event('goom-language-changed'));
         window.requestRedraw?.();
@@ -452,6 +458,7 @@
     document.documentElement.lang = language;
     document.addEventListener('DOMContentLoaded', () => {
         localize();
+        localizeWelcomeBrand();
         document.querySelectorAll('[data-language-select]').forEach(select => {
             select.value = language;
             select.addEventListener('change', () => window.setGoomLanguage(select.value));
