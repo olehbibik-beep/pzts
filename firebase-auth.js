@@ -2,18 +2,17 @@ const firebaseSdkUrls = [
     'https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js',
     'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js',
     'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js',
-    'https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js',
     'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions-compat.js'
 ];
 
 let firebaseSdkPromise;
-let firebaseServicesPromise;
 let firebaseAuthInstance;
 let firebaseAuthReadyPromise;
 let verifiedFirebaseUser = null;
 let pendingAuthCheck = null;
 let authCheckGeneration = 0;
 const localFirebaseClients = new WeakSet();
+const firebaseScriptLoads = new Map();
 
 function connectLocalFirebaseClient(client, ...address) {
     if (location.origin === 'http://127.0.0.1:5505' && FIREBASE_CONFIG.projectId === 'demo-goom' && !localFirebaseClients.has(client)) {
@@ -115,15 +114,21 @@ window.ensureFirebaseSession = async () => {
 };
 
 function loadFirebaseScript(url) {
-    return new Promise((resolve, reject) => {
+    if (firebaseScriptLoads.has(url)) return firebaseScriptLoads.get(url);
+    const loading = new Promise((resolve, reject) => {
         const script = document.createElement('script');
         script.src = url;
         script.async = true;
         const timer = setTimeout(() => { script.remove(); reject(new Error(tr('Не удалось загрузить сервис входа. Проверьте подключение и попробуйте снова.'))); }, 12000);
         script.onload = () => { clearTimeout(timer); resolve(); };
-        script.onerror = () => { clearTimeout(timer); reject(new Error(tr('Не удалось загрузить сервис входа. Проверьте подключение и попробуйте снова.'))); };
+        script.onerror = () => { clearTimeout(timer); script.remove(); reject(new Error(tr('Не удалось загрузить сервис входа. Проверьте подключение и попробуйте снова.'))); };
         document.head.appendChild(script);
+    }).catch(error => {
+        firebaseScriptLoads.delete(url);
+        throw error;
     });
+    firebaseScriptLoads.set(url, loading);
+    return loading;
 }
 
 async function getFirebaseAuth() {
@@ -160,25 +165,6 @@ async function getFirebaseAuth() {
     return firebaseSdkPromise;
 }
 
-async function getFirebaseServices() {
-    if (!firebaseServicesPromise) {
-        firebaseServicesPromise = (async () => {
-            const auth = await getFirebaseAuth();
-            if (!window.firebase.firestore) await loadFirebaseScript(firebaseSdkUrls[2]);
-            if (!window.firebase.storage) await loadFirebaseScript(firebaseSdkUrls[3]);
-            return {
-                auth,
-                firestore: connectLocalFirebaseClient(window.firebase.firestore(), '127.0.0.1', 8080),
-                storage: connectLocalFirebaseClient(window.firebase.storage(), '127.0.0.1', 9199)
-            };
-        })().catch(error => {
-            firebaseServicesPromise = null;
-            throw error;
-        });
-    }
-    return firebaseServicesPromise;
-}
-
 window.getFirebaseDatabase = async () => {
     await getFirebaseAuth();
     if (!window.firebase.firestore) await loadFirebaseScript(firebaseSdkUrls[2]);
@@ -186,7 +172,7 @@ window.getFirebaseDatabase = async () => {
 };
 
 async function callAccountFunction(name, data, uid) {
-    if (!window.firebase.functions) await loadFirebaseScript(firebaseSdkUrls[4]);
+    if (!window.firebase.functions) await loadFirebaseScript(firebaseSdkUrls[3]);
     if (window.getFirebaseUser()?.uid !== uid) throw new Error(tr('Přihlaste se ke svému účtu.'));
     const functions = connectLocalFirebaseClient(window.firebase.app().functions('europe-west1'), '127.0.0.1', 5001);
     const result = await functions.httpsCallable(name)({ ...data, language: getGoomLanguage() });
@@ -204,7 +190,6 @@ window.claimCompanyProSeat = async () => {
     if (user?.emailVerified) await callAccountFunction('goomCompanySeats', { action: 'claim' }, user.uid);
 };
 
-window.getFirebaseServices = getFirebaseServices;
 
 const btnGoogleSignIn = document.getElementById('btnGoogleSignIn');
 if (btnGoogleSignIn) {

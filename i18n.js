@@ -1,6 +1,7 @@
 // Czech is the default. Source aliases also cover labels in older saved menu sets.
 (() => {
     const rows = [
+        ['Cloudový projekt může mít nejvýše 24 MiB. Větší projekt uložte jako soubor .TECH.', 'Cloud projects can be up to 24 MiB. Save larger projects as a .TECH file.', 'Cloud-Projekte dürfen höchstens 24 MiB groß sein. Speichern Sie größere Projekte als .TECH-Datei.', 'Облачный проект может занимать до 24 МиБ. Проекты большего размера сохраните в файл .TECH.'],
         ['Velikost písma', 'Font size', 'Schriftgröße', 'Размер шрифта'],
         ['Modul přístupového systému (ACS)', 'Access control module (ACS)', 'Zutrittskontrollmodul (ACS)', 'Модуль контроля доступа (ACS)'],
         ['Čtečka přístupového systému (ACS)', 'Access control reader (ACS)', 'Zutrittsleser (ACS)', 'Считыватель системы контроля доступа (ACS)'],

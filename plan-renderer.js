@@ -208,9 +208,16 @@ async function getPlanPdfPage(floor) {
             await window.planLibrariesReady;
             if (!window.pdfjsLib?.getDocument) throw new Error(tr('Knihovna PDF není dostupná.'));
             const bytes = Uint8Array.from(atob(floor.pdfSource.split(',')[1]), c => c.charCodeAt(0));
-            const document = await pdfjsLib.getDocument({ data: bytes }).promise;
-            cached.document = document;
-            return document.getPage(floor.pdfPage || 1);
+            const pdfBase = new URL('vendor/pdfjs/', document.baseURI);
+            cached.loadingTask = pdfjsLib.getDocument({
+                data: bytes, isEvalSupported: false, enableXfa: false,
+                cMapUrl: new URL('cmaps/', pdfBase).href, cMapPacked: true,
+                standardFontDataUrl: new URL('standard_fonts/', pdfBase).href,
+                iccUrl: new URL('iccs/', pdfBase).href, wasmUrl: new URL('wasm/', pdfBase).href
+            });
+            const pdf = await cached.loadingTask.promise;
+            cached.document = pdf;
+            return pdf.getPage(floor.pdfPage || 1);
         })(), raster: null, pending: false, failed: false };
         planPdfCache.set(floor, cached);
     }
@@ -305,9 +312,9 @@ async function importPlanSource(file, floor) {
         const pdf=pdfState.document;
         if(pdf.numPages>1) {
             const answer=await showAppPrompt(tr`Číslo stránky PDF (1–${pdf.numPages})`, '1', tr('Import PDF'));
-            if(answer===null){await pdf.destroy();return null;}
+            if(answer===null){await pdfState.loadingTask.destroy();return null;}
             pdfPage=Number(answer);
-            if(!Number.isInteger(pdfPage)||pdfPage<1||pdfPage>pdf.numPages){await pdf.destroy();throw new Error(tr('Neplatné číslo stránky.'));}
+            if(!Number.isInteger(pdfPage)||pdfPage<1||pdfPage>pdf.numPages){await pdfState.loadingTask.destroy();throw new Error(tr('Neplatné číslo stránky.'));}
         }
         candidate.pdfPage=pdfPage; pdfState.promise=pdf.getPage(pdfPage);
         const page=await getPlanPdfPage(candidate), base=page.getViewport({scale:3});

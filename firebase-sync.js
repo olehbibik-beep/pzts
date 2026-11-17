@@ -2,6 +2,7 @@ const cloudProjectsModal = document.getElementById('cloudProjectsModal');
 const cloudProjectsList = document.getElementById('cloudProjectsList');
 const cloudSyncIndicator = document.getElementById('cloudSyncIndicator');
 const cloudProjectLimit = 5;
+const cloudProjectMaxBytes = 24 * 1024 * 1024;
 // Older releases ordered by updatedAt, so their lists ignore this internal document.
 const cloudListLock = '!goom-cloud-list';
 let cloudUser = null;
@@ -29,14 +30,16 @@ window.resetActiveCloudProject = () => {
 };
 
 function getCloudProjectCollection(firestore, userId) {
-    return firestore.collection('users').doc(userId).collection('projects');
+    const user = firestore.collection('users').doc(userId);
+    return (APP_PRODUCT === 'PZTS' ? user : user.collection('apps').doc(APP_PRODUCT)).collection('projects');
 }
 
 function readCloudRows(collection) {
     return collection.get({ source: 'server' }).then(snapshot => {
         const rows = [];
         snapshot.forEach(doc => {
-            if (doc.id !== cloudListLock) rows.push({ ...doc.data(), id: doc.id });
+            const data = doc.data();
+            if (doc.id !== cloudListLock && data.state !== 'uploading') rows.push({ ...data, id: doc.id });
         });
         return rows.sort((a, b) => cloudRowDate(a) - cloudRowDate(b) || a.id.localeCompare(b.id));
     });
@@ -47,19 +50,21 @@ function cloudRowDate(project) {
 }
 
 function cloudOperationMessage(error, action) {
-    if (error.code === 'goom/cloud-limit') return tr('V cloudu je už 5 projektů. Nejdříve některý odstraňte.');
+    if (error.code === 'goom/cloud-limit' || error.details?.reason === 'project-limit') return tr('V cloudu je už 5 projektů. Nejdříve některý odstraňte.');
+    if (error.code === 'goom/cloud-size' || error.details?.reason === 'project-size') return tr('Cloudový projekt může mít nejvýše 24 MiB. Větší projekt uložte jako soubor .TECH.');
     if (error.code === 'storage/unauthorized') return tr(action === 'open'
         ? 'Firebase Storage nepovolil otevření tohoto projektu.'
         : 'Firebase Storage nepovolil uložení projektu. Obraťte se na správce.');
-    if (error.code === 'storage/object-not-found') return tr('Soubor tohoto projektu v cloudu chybí.');
+    if (error.code === 'storage/object-not-found' || (action === 'open' && error.code === 'functions/not-found'))
+        return tr('Soubor tohoto projektu v cloudu chybí.');
     if (error.code === 'storage/retry-limit-exceeded' || error instanceof TypeError)
         return tr('Cloudový soubor se nepodařilo stáhnout. Zkontrolujte připojení a zkuste to znovu.');
     return error.message;
 }
 
-async function getCloudServices(userId) {
+async function getCloudDatabase(userId) {
     if (cloudUser?.uid !== userId || !window.hasCloudAccess?.()) throw new Error(tr('Cloudové úložiště je součástí PROJECT.'));
-    return window.getFirebaseServices();
+    return window.getFirebaseDatabase();
 }
 
 async function saveCloudProject(userId) {
@@ -68,7 +73,7 @@ async function saveCloudProject(userId) {
         return false;
     }
     const workspace = cloudWorkspace;
-    const { firestore, storage } = await getCloudServices(userId);
+    const firestore = await getCloudDatabase(userId);
     const collection = getCloudProjectCollection(firestore, userId);
     const limitError = () => Object.assign(new Error('Cloud project limit'), { code: 'goom/cloud-limit' });
     if ((await readCloudRows(collection)).length >= cloudProjectLimit) throw limitError();
@@ -81,30 +86,10 @@ async function saveCloudProject(userId) {
     }
     if (workspace !== cloudWorkspace || userId !== cloudUser?.uid) return false;
     const payload = getProjectDataPayload();
-    const serialized = JSON.stringify(payload);
-    const id = crypto.randomUUID();
-    const storagePath = `users/${userId}/projects/${id}/project.json`;
-    const file = storage.ref(storagePath);
-    const lock = collection.doc(cloudListLock);
-    await file.putString(serialized, 'raw', { contentType: 'application/json; charset=utf-8' });
-    try {
-        await firestore.runTransaction(async transaction => {
-            await transaction.get(lock);
-            if ((await readCloudRows(collection)).length >= cloudProjectLimit) throw limitError();
-            const now = window.firebase.firestore.FieldValue.serverTimestamp();
-            transaction.set(collection.doc(id), {
-                name: payload.projectName || tr('Без названия'), revision: 1, storagePath,
-                sizeBytes: new TextEncoder().encode(serialized).length, createdAt: now, updatedAt: now
-            });
-            transaction.set(lock, { nonce: id });
-        });
-    } catch (error) {
-        // Only clean up on a known rejection. A network error may leave commit status unknown.
-        if (['goom/cloud-limit', 'permission-denied'].includes(error.code)) {
-            await file.delete().catch(cleanupError => console.warn('Cloud upload cleanup:', cleanupError));
-        }
-        throw error;
+    if (new TextEncoder().encode(JSON.stringify(payload)).length > cloudProjectMaxBytes) {
+        throw Object.assign(new Error('Cloud project size'), { code: 'goom/cloud-size' });
     }
+    const { id } = await callAccountFunction('goomCloudProjects', { action: 'save', application: APP_PRODUCT, payload }, userId);
     if (workspace === cloudWorkspace && userId === cloudUser?.uid) cloudProjectId = id;
     return true;
 }
@@ -149,7 +134,7 @@ function renderCloudProjects() {
 
 async function refreshCloudProjects(userId) {
     const request = ++cloudListRequest;
-    const { firestore } = await getCloudServices(userId);
+    const firestore = await getCloudDatabase(userId);
     const rows = await readCloudRows(getCloudProjectCollection(firestore, userId));
     if (request !== cloudListRequest || userId !== cloudUser?.uid) return;
     visibleCloudProjects = rows;
@@ -160,18 +145,25 @@ async function openCloudProject(userId, project) {
     if (project.id === cloudProjectId) return false;
     const workspace = cloudWorkspace;
     if (isSystemReady && !await showAppConfirm(tr`Открыть «${project.name || tr('Без названия')}»? Текущий проект будет заменён.`, tr('Открыть облачный проект'))) return false;
-    const { storage } = await getCloudServices(userId);
-    const downloadURL = await storage.ref(project.storagePath).getDownloadURL();
-    const response = await fetch(downloadURL);
-    if (!response.ok) {
-        if (response.status === 404) throw Object.assign(new Error('Missing cloud object'), { code: 'storage/object-not-found' });
-        if (response.status === 401 || response.status === 403) throw Object.assign(new Error('Cloud download denied'), { code: 'storage/unauthorized' });
-        throw new Error(tr('Не удалось загрузить файл проекта из Firebase Storage.'));
-    }
-    const blob = await response.blob();
-    if (workspace !== cloudWorkspace || userId !== cloudUser?.uid) return false;
-    const imported = await importFileContent(new File([blob], `${project.name || 'project'}.TECH`, { type: 'application/json' }), {
-        canApply: () => workspace === cloudWorkspace && userId === cloudUser?.uid && window.hasCloudAccess?.()
+    const canApply = () => workspace === cloudWorkspace && userId === cloudUser?.uid && window.hasCloudAccess?.();
+    let offset = 0, size, generation = null;
+    const chunks = [];
+    do {
+        if (!canApply()) return false;
+        const chunk = await callAccountFunction('goomCloudProjects', { action: 'download', application: APP_PRODUCT,
+            id: project.id, offset, generation }, userId);
+        const bytes = Uint8Array.fromBase64 ? Uint8Array.fromBase64(chunk.data) : Uint8Array.from(atob(chunk.data), char => char.charCodeAt(0));
+        if (!bytes.length || offset + bytes.length > chunk.size || (size != null && chunk.size !== size)) {
+            throw new Error(tr('Не удалось загрузить файл проекта из Firebase Storage.'));
+        }
+        chunks.push(bytes);
+        offset += bytes.length;
+        size = chunk.size;
+        generation = chunk.generation;
+    } while (offset < size);
+    if (!canApply()) return false;
+    const imported = await importFileContent(new File(chunks, `${project.name || 'project'}.TECH`, { type: 'application/json' }), {
+        canApply
     });
     if (!imported || userId !== cloudUser?.uid) return false;
     cloudProjectId = project.id;
@@ -182,22 +174,8 @@ async function openCloudProject(userId, project) {
 
 async function deleteCloudProject(userId, project) {
     if (!await showAppConfirm(tr`Удалить «${project.name || tr('Без названия')}» из облака?`, tr('Удалить проект'))) return false;
-    const { firestore, storage } = await getCloudServices(userId);
-    const collection = getCloudProjectCollection(firestore, userId);
-    const ref = collection.doc(project.id);
-    const lock = collection.doc(cloudListLock);
-    const path = await firestore.runTransaction(async transaction => {
-        await transaction.get(lock);
-        const snapshot = await transaction.get(ref);
-        if (!snapshot.exists) return null;
-        transaction.delete(ref);
-        transaction.set(lock, { nonce: crypto.randomUUID() });
-        return snapshot.data().storagePath;
-    });
+    await callAccountFunction('goomCloudProjects', { action: 'delete', application: APP_PRODUCT, id: project.id }, userId);
     if (cloudProjectId === project.id && userId === cloudUser?.uid) window.resetActiveCloudProject();
-    if (path) await storage.ref(path).delete().catch(error => {
-        if (error.code !== 'storage/object-not-found') console.warn('Cloud file cleanup:', error);
-    });
     await refreshCloudProjects(userId);
     return true;
 }

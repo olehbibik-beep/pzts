@@ -1,6 +1,6 @@
 (() => {
     // Change this version whenever publishing application files together.
-    const version = '20261117-cables-text-51';
+    const version = '20261117-security-52';
     let started = false;
     function loadScript(src) {
         return new Promise((resolve, reject) => {
@@ -26,9 +26,11 @@
         });
         try {
             // Import/export libraries must not delay the welcome screen or run on phones.
+            const pdfBase = new URL('vendor/pdfjs/', document.baseURI);
             const libraries = [
-                loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js').then(() => {
-                    if (window.pdfjsLib) window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+                import(new URL(`legacy/build/pdf.min.mjs?v=${version}`, pdfBase)).then(pdf => {
+                    pdf.GlobalWorkerOptions.workerSrc = new URL(`legacy/build/pdf.worker.min.mjs?v=${version}`, pdfBase).href;
+                    window.pdfjsLib = pdf;
                 }),
                 loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'),
                 loadScript('https://cdn.jsdelivr.net/npm/dxf-parser@1.1.2/dist/dxf-parser.min.js')
