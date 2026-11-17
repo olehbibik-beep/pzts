@@ -1,6 +1,10 @@
 // Czech is the default. Source aliases also cover labels in older saved menu sets.
 (() => {
     const rows = [
+        ['Modul přístupového systému (ACS)', 'Access control module (ACS)', 'Zutrittskontrollmodul (ACS)', 'Модуль контроля доступа (ACS)'],
+        ['Čtečka přístupového systému (ACS)', 'Access control reader (ACS)', 'Zutrittsleser (ACS)', 'Считыватель системы контроля доступа (ACS)'],
+        ['Kouřový hlásič', 'Smoke detector', 'Rauchmelder', 'Дымовой извещатель'],
+        ['Poplachový zabezpečovací a tísňový systém', 'Intruder and hold-up alarm system', 'Einbruch- und Überfallmeldeanlage', 'Система охранной и тревожной сигнализации'],
         ['Pro práci s výkresy a ukládání do zařízení.', 'For editing drawings and saving on your device.', 'Zum Bearbeiten von Plänen und Speichern auf Ihrem Gerät.', 'Для работы с чертежами и сохранения на устройство.'],
         ['Pro práci napříč zařízeními a s vlastními symboly.', 'For working across devices with your own symbols.', 'Für geräteübergreifendes Arbeiten mit eigenen Symbolen.', 'Для работы на нескольких устройствах и со своими значками.'],
         ['Jedno předplatné pro vás a vaše kolegy.', 'One subscription for you and your colleagues.', 'Ein Abo für Sie und Ihre Kollegen.', 'Одна подписка для вас и ваших коллег.'],

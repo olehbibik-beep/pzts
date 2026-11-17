@@ -9,12 +9,22 @@ const COLORS = {
     glassbreak: "#22c55e",  
     panic: "#ef4444",       
     siren: "#ef4444",       
+    acs_module: "#6d28d9",
+    acs_reader: "#6d28d9",
+    smoke: "#dc2626",
     panel: "#0ea5e9",       
     keypad: "#3f3f46",      
     expander: "#0ea5e9",    
     abax: "#0ea5e9",        
     deactivated: "#8d8d99", 
     text: "#ffffff"         
+};
+
+const NEW_TOOLBAR_DEVICE_TYPES = ['acs_module', 'acs_reader', 'smoke'];
+const ADDITIONAL_DEVICE_LABELS = {
+    acs_module: 'Modul přístupového systému (ACS)',
+    acs_reader: 'Čtečka přístupového systému (ACS)',
+    smoke: 'Kouřový hlásič'
 };
 
 // --- ИКОНКИ И ЛОГОТИПЫ ---

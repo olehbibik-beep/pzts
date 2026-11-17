@@ -224,7 +224,7 @@ document.getElementById('deviceSelector').addEventListener('click', (e) => {
             }
             if (dev) { dev.type = selectedTool; if (dev.type !== 'deactivated') dev.oldType = null; changed = true; }
         });
-        if (changed) { saveStateToHistory(); triggerAutoSave(); }
+        if (changed) { includeNewDeviceInLegend(floor, selectedTool); saveStateToHistory(); triggerAutoSave(); }
         requestRedraw();
     } else { activeDeviceIds.clear(); requestRedraw(); }
 });
@@ -481,7 +481,7 @@ window.addEventListener('keydown', (e) => {
             let changed = false;
             activeDeviceIds.forEach(id => {
                 let dev = floor.devices.find(d => d.id === id);
-                if (dev && !['panel', 'keypad', 'expander', 'abax', 'siren', 'textNode', 'ramen'].includes(dev.type)) {
+                if (dev && !independentDeviceNumberTypes.has(dev.type) && !['panel', 'textNode', 'ramen'].includes(dev.type)) {
                     if (dev.type === 'deactivated') { dev.type = dev.oldType || 'pir'; } else { dev.oldType = dev.type; dev.type = 'deactivated'; }
                     changed = true;
                 }
@@ -518,6 +518,7 @@ window.addEventListener('keydown', (e) => {
                 const newId = genId();
                 const pastedDev = { ...d, id: newId, x: lastMouseX + (d.x - centerX), y: lastMouseY + (d.y - centerY), h1x: 0, h1y: 0, h2x: 0, h2y: 0, h3x: 0, h3y: 0, hasCustomRoute: false };
                 floor.devices.push(pastedDev); activeDeviceIds.add(newId);
+                includeNewDeviceInLegend(floor, pastedDev.type);
             });
             saveStateToHistory(); requestRedraw(); triggerAutoSave();
         }
@@ -866,6 +867,7 @@ window.addEventListener('pointerup', (e) => {
                     tempDev.pirRangePixels = floor.pirRangePixels;
                 }
                 floor.devices.push(tempDev);
+                includeNewDeviceInLegend(floor, tempDev.type);
                 calculateDynamicNumbersGlobal(floors);
 
                 if (activeDeviceIds.size === 1) {
@@ -1383,14 +1385,13 @@ if (devNumberInput) {
         }
 
         let isTaken = false;
-        let category = ['expander', 'keypad', 'abax', 'siren'].includes(editingDevice.type) ? editingDevice.type : editingDevice.loopId;
+        const category = getDeviceNumberGroup(editingDevice);
         
         for (let f of floors) {
             if (!f.devices) continue;
             for (let d of f.devices) {
                 if (d.id !== editingDevice.id && (d.manualNumber === newNum || d.number === newNum)) {
-                    let dCat = ['expander', 'keypad', 'abax', 'siren'].includes(d.type) ? d.type : d.loopId;
-                    if (dCat === category) { isTaken = true; break; }
+                    if (getDeviceNumberGroup(d) === category) { isTaken = true; break; }
                 }
             }
             if (isTaken) break;

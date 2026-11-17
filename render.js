@@ -329,6 +329,23 @@ function drawDevice(ctx, dev, skipSelection = false, theme = 'dark', options = {
         ctx.beginPath(); ctx.moveTo(-8*sMult, -4*sMult); ctx.lineTo(-2*sMult, -4*sMult); ctx.lineTo(6*sMult, -12*sMult); ctx.lineTo(6*sMult, 12*sMult); ctx.lineTo(-2*sMult, 4*sMult); ctx.lineTo(-8*sMult, 4*sMult); ctx.closePath(); 
         ctx.fill(); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(22*sMult, -4*sMult); ctx.quadraticCurveTo(26*sMult, 0, 22*sMult, 4*sMult); ctx.stroke();
+    } else if (dev.type === 'acs_module') {
+        ctx.fillStyle = '#fff'; ctx.strokeStyle = COLORS.acs_module; ctx.lineWidth = 2 * sMult;
+        ctx.beginPath(); ctx.roundRect(-14 * sMult, -9 * sMult, 28 * sMult, 18 * sMult, 3 * sMult); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = COLORS.acs_module; ctx.font = `bold ${10 * sMult}px monospace`; ctx.fillText('ACS', 0, 0);
+    } else if (dev.type === 'acs_reader') {
+        ctx.fillStyle = '#fff'; ctx.strokeStyle = COLORS.acs_reader; ctx.lineWidth = 2 * sMult;
+        ctx.beginPath(); ctx.roundRect(-12 * sMult, -11 * sMult, 13 * sMult, 22 * sMult, 3 * sMult); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.arc(-5.5 * sMult, -5 * sMult, 1.75 * sMult, 0, 2 * Math.PI);
+        ctx.fillStyle = COLORS.acs_reader; ctx.fill();
+        drawWirelessWaves(ctx, 2 * sMult, 0, sMult, COLORS.acs_reader);
+    } else if (dev.type === 'smoke') {
+        ctx.fillStyle = '#fff'; ctx.strokeStyle = COLORS.smoke; ctx.lineWidth = 2 * sMult;
+        ctx.beginPath(); ctx.arc(0, 0, 11 * sMult, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.arc(0, 0, 3 * sMult, 0, 2 * Math.PI);
+        ctx.fillStyle = COLORS.smoke; ctx.fill();
+        ctx.beginPath(); ctx.moveTo(-6 * sMult, -5 * sMult); ctx.lineTo(6 * sMult, -5 * sMult);
+        ctx.moveTo(-6 * sMult, 5 * sMult); ctx.lineTo(6 * sMult, 5 * sMult); ctx.stroke();
     } else if (dev.type === 'deactivated') {
         ctx.strokeStyle = COLORS.deactivated; ctx.lineWidth = 2.5 * sMult;
         ctx.beginPath(); ctx.arc(0, 0, 10 * sMult, 0, Math.PI*2); ctx.stroke(); 

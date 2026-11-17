@@ -13,7 +13,8 @@ const toolbarMenuTypeLabels = {
     glassbreak: tr('Датчик разбития стекла'),
     panic: tr('Тревожная кнопка'),
     siren: tr('Сирена'),
-    textNode: tr('Текстовая заметка')
+    textNode: tr('Текстовая заметка'),
+    ...ADDITIONAL_DEVICE_LABELS
 };
 const toolbarMenuTypes = toolbarMenuDeviceButtons.map(button => ({
     type: button.dataset.type,
@@ -75,18 +76,26 @@ function sanitizeToolbarMenu(menu, id, fallbackName) {
     return cleaned;
 }
 
+function addNewToolbarDeviceTypes(menu) {
+    if (!menu.deviceTypes.length || NEW_TOOLBAR_DEVICE_TYPES.every(type => menu.deviceTypes.includes(type))) return menu;
+    const types = new Set([...menu.deviceTypes, ...NEW_TOOLBAR_DEVICE_TYPES]);
+    return { ...menu, deviceTypes: toolbarMenuTypes.filter(({ type }) => types.has(type)).map(({ type }) => type) };
+}
+
 function sanitizeToolbarMenus(value) {
     if (!Array.isArray(value)) return [];
     const seenIds = new Set(builtInToolbarMenus.map(menu => menu.id));
     const legacyDefaultNames = ['Default', 'Основное меню', 'Hlavní nabídka', 'Main menu'];
+    const bundledTypeCount = defaultToolbarMenu.deviceTypes.length;
     return value.filter(menu => menu && typeof menu === 'object' && menu.id !== 'pro')
         .filter(menu => menu.id !== 'default' || Object.keys(menu.icons || {}).length
-            || menu.deviceTypes?.length !== defaultToolbarMenu.deviceTypes.length || !legacyDefaultNames.includes(menu.name))
+            || ![bundledTypeCount, bundledTypeCount - NEW_TOOLBAR_DEVICE_TYPES.length].includes(menu.deviceTypes?.length)
+            || !legacyDefaultNames.includes(menu.name))
         .slice(0, toolbarMenuLimit).map((menu, index) => {
         let id = typeof menu.id === 'string' && menu.id.trim() ? menu.id.trim().slice(0, 80) : `menu-${index + 1}`;
         while (seenIds.has(id)) id += '-copy';
         seenIds.add(id);
-        return sanitizeToolbarMenu(menu, id, tr`Меню ${index + 1}`);
+        return addNewToolbarDeviceTypes(sanitizeToolbarMenu(menu, id, tr`Меню ${index + 1}`));
     });
 }
 
@@ -135,7 +144,7 @@ function updateSharedToolbarMenu(preset, data) {
     if (data) {
         try {
             const cleaned = sanitizeToolbarMenu({ ...data, icons: JSON.parse(data.iconsJson) }, preset.id, preset.name);
-            if (cleaned.deviceTypes.length) menu = cleaned;
+            if (cleaned.deviceTypes.length) menu = addNewToolbarDeviceTypes(cleaned);
         } catch { /* Use the bundled preset if the shared data is invalid. */ }
     }
     const index = toolbarMenus.findIndex(item => item.id === preset.id);
@@ -339,7 +348,7 @@ function getLegacyToolbarPreset() {
         const raw = JSON.parse(localStorage.getItem(toolbarMenuStorageKey))?.presets?.[editingToolbarMenu.id];
         if (!raw) return null;
         const bundled = builtInToolbarMenus.find(preset => preset.id === editingToolbarMenu.id);
-        const legacy = sanitizeToolbarMenu(raw, bundled.id, bundled.name);
+        const legacy = addNewToolbarDeviceTypes(sanitizeToolbarMenu(raw, bundled.id, bundled.name));
         const serialized = JSON.stringify(legacy);
         if (legacy.deviceTypes.length && serialized !== JSON.stringify(bundled) && serialized !== JSON.stringify(editingToolbarMenu)) return legacy;
     } catch { /* No usable legacy preset on this browser. */ }

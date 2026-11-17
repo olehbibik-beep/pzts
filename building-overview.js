@@ -1,5 +1,5 @@
 const overviewFloorLabels=['6NP','5NP','4NP','3NP','2NP','1NP','1PP','2PP','3PP'];
-const overviewAuxiliaryTypes=new Set(['panel','keypad','expander','abax','siren','textNode','ramen','deactivated','cableTool']);
+const overviewAuxiliaryTypes=new Set(['panel','keypad','expander','abax','siren','acs_module','acs_reader','textNode','ramen','deactivated','cableTool']);
 let overviewStats=[];
 let overviewMainPanelFloor=-1;
 function overviewDetectorWord(count){return tr(count===1?'detektor':count>=2&&count<=4?'detektory':'detektorů');}
@@ -57,8 +57,11 @@ function updateOverviewFloorButtons(){
             button.innerHTML='<span class="overview-floor-label"></span><span class="overview-floor-body"><span class="overview-floor-metrics"><strong class="overview-floor-count"></strong><span class="overview-detector-label"></span><span class="overview-zone-count"></span></span><span class="overview-floor-zones"></span></span><span class="overview-panel-badge" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4m6-4v4M9 18v4m6-4v4M2 9h4m-4 6h4m12-6h4m-4 6h4"/><rect x="10" y="10" width="4" height="4"/></svg><span>Ústředna</span></span>';
             button.querySelector('.overview-floor-label').textContent=label;
             const details=()=>showOverviewFloorDetails(getOverviewFloorIndex(label));
-            button.addEventListener('pointerenter',details);button.addEventListener('focus',details);
-            button.addEventListener('pointerleave',()=>{
+            const pointerCanHover = event => event.pointerType === 'pen' || (event.pointerType === 'mouse' && matchMedia('(any-hover: hover)').matches);
+            button.addEventListener('pointerenter',event=>{if(pointerCanHover(event))details();});
+            button.addEventListener('focus',()=>{if(button.matches(':focus-visible'))details();});
+            button.addEventListener('pointerleave',event=>{
+                if(!pointerCanHover(event))return;
                 const focused=group.querySelector(':focus-visible');
                 showOverviewFloorDetails(focused?getOverviewFloorIndex(focused.dataset.overviewFloor):currentFloorIndex);
             });

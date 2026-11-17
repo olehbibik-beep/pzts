@@ -9,7 +9,8 @@ const iconEditorDeviceTypes = [
     ['magnet_wl', tr('Беспроводной контакт')],
     ['glassbreak', tr('Датчик разбития стекла')],
     ['panic', tr('Тревожная кнопка')],
-    ['siren', tr('Сирена')]
+    ['siren', tr('Сирена')],
+    ...Object.entries(ADDITIONAL_DEVICE_LABELS).map(([type, label]) => [type, tr(label)])
 ];
 
 const iconEditorCanvas = document.getElementById('iconEditorCanvas');
@@ -43,7 +44,18 @@ iconEditorDeviceTypes.forEach(([type, label]) => {
     option.textContent = label;
     iconEditorTarget.appendChild(option);
     const button = document.querySelector(`#deviceSelector .device-btn[data-type="${type}"]`);
-    if (button) defaultDeviceButtonContent.set(type, button.innerHTML);
+    if (button) {
+        if (NEW_TOOLBAR_DEVICE_TYPES.includes(type)) {
+            const icon = new SVGPlanContext(32, 32);
+            drawDevice(icon, { type, x: 16, y: 16 }, true, 'dark', { baseSize: 14, defaultIcon: true });
+            const image = document.createElement('img');
+            image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(icon.toSVG())}`;
+            image.alt = '';
+            image.width = image.height = 24;
+            button.replaceChildren(image);
+        }
+        defaultDeviceButtonContent.set(type, button.innerHTML);
+    }
 });
 
 function cloneIconShapes(shapes) {

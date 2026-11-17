@@ -1,5 +1,5 @@
 // A floor annotation in world coordinates; the same vectors are used on screen and on paper.
-const legendDeviceTypes = new Set(['panel','expander','abax','keypad','pir','pir_wl','magnet','magnet_wl','glassbreak','panic','siren']);
+const legendDeviceTypes = new Set(['panel','expander','abax','keypad','pir','pir_wl','magnet','magnet_wl','glassbreak','panic','siren', ...NEW_TOOLBAR_DEVICE_TYPES]);
 let selectedProjectLegend = null;
 let projectLegendDrag = null;
 const projectLegendLayouts = new WeakMap();
@@ -28,6 +28,11 @@ function projectLegendEntries(menu = getActiveToolbarMenu(), icons = customDevic
         type, label: toolbarMenuTypes.find(item => item.type === type)?.title || type,
         shapes: sanitizeIconShapes(icons[type])
     }));
+}
+function includeNewDeviceInLegend(floor, type) {
+    if (!NEW_TOOLBAR_DEVICE_TYPES.includes(type) || !floor.legend || floor.legend.entries.some(entry => entry.type === type)) return;
+    const entry = projectLegendEntries().find(item => item.type === type);
+    if (entry) floor.legend.entries = [...floor.legend.entries, entry];
 }
 function updateProjectLegendsFromMenu(menu) {
     const legends = floors.map(floor => floor.legend).filter(Boolean);

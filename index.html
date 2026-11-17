@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GOOM</title>
     <link rel="icon" type="image/png" href="Logo2.png?v=20261115-35">
-    <script src="i18n.js?v=20261117-pricing-cards-46"></script>
+    <script src="i18n.js?v=20261117-acs-smoke-48"></script>
     <script src="device-support.js?v=20261114-loading-27"></script>
     <style>
         :root {
@@ -44,7 +44,6 @@
         }
         
         .toolbar { background: var(--bg-toolbar); display: flex; flex-direction: column; z-index: 10; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
-        .toolbar::after { content: ''; position: absolute; left: 0; right: 0; bottom: -40px; height: 40px; z-index: 8; }
         
        /* СДВИГАЕМ ЛОГОТИП ВПРАВО, освобождая место для язычка */
         .app-title { 
@@ -443,7 +442,7 @@
 
 
     </style>
-    <link rel="stylesheet" href="ui-theme.css?v=20261117-pricing-cards-46">
+    <link rel="stylesheet" href="ui-theme.css?v=20261117-acs-smoke-48">
 </head>
 <body>
     <div id="deviceSupportNotice" role="alert">
@@ -547,6 +546,9 @@
                     
                     <button class="device-btn" data-type="panic" title="Tísňové tlačítko (PANIC)"><svg width="24" height="24" viewBox="0 0 32 32"><rect x="6" y="6" width="20" height="20" rx="3" ry="3" fill="#ffffff" stroke="#ef4444" stroke-width="2"/><circle cx="16" cy="16" r="5" fill="#ef4444"/></svg></button>
                     <button class="device-btn" data-type="siren" title="Siréna"><svg width="24" height="24" viewBox="0 0 32 32"><path d="M8 12 h6 l8 -8 v24 l-8 -8 h-6 z" fill="#ffffff" stroke="#ef4444" stroke-width="2"/><path d="M26 12 Q28 16 26 20" fill="none" stroke="#ef4444" stroke-width="2"/></svg></button>
+                    <button class="device-btn" data-type="acs_module" title="Modul přístupového systému (ACS)" aria-label="Modul přístupového systému (ACS)">ACS</button>
+                    <button class="device-btn" data-type="acs_reader" title="Čtečka přístupového systému (ACS)" aria-label="Čtečka přístupového systému (ACS)">ACS</button>
+                    <button class="device-btn" data-type="smoke" title="Kouřový hlásič" aria-label="Kouřový hlásič">SD</button>
                     
                     <div class="menu-divider"></div>
                     
@@ -599,8 +601,10 @@
                 <select class="language-picker" data-language-select aria-label="Jazyk"><option value="cs" data-language-name="Čeština">Cz</option><option value="en" data-language-name="English">En</option><option value="de" data-language-name="Deutsch">De</option><option value="ru" data-language-name="Русский">Ru</option></select>
             </div>
             <div class="welcome-panel">
-                
-                <div class="welcome-brand">PZTS</div>
+                <div class="welcome-identity">
+                    <div class="welcome-brand">PZTS</div>
+                    <p class="welcome-system-name">Poplachový zabezpečovací a tísňový systém</p>
+                </div>
                 <div class="welcome-step-content">
                 <div id="welcomeAuthBlock" class="welcome-actions">
                     <h1 class="welcome-heading">Vítejte!</h1>
@@ -1113,6 +1117,6 @@
         <button type="button" data-tablet-action="delete" class="tool-danger"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13m-8 3v7m4-7v7"/></svg></button>
         <button type="button" data-tablet-action="undo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 4-5 5 5 5M4 9h9a6 6 0 0 1 6 6v2"/></svg></button>
     </div>
-    <script src="bootstrap.js?v=20261117-pricing-cards-46"></script>
+    <script src="bootstrap.js?v=20261117-acs-smoke-48"></script>
 </body>
 </html>

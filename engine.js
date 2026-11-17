@@ -64,20 +64,23 @@ function recalcCableHandles(c, d1, d2) {
     c.h3x = d1.x + (d2.x - d1.x)*0.75; c.h3y = d1.y + (d2.y - d1.y)*0.75;
 }
 
+const independentDeviceNumberTypes = new Set(['expander', 'keypad', 'abax', 'siren', 'acs_module', 'acs_reader']);
+
 function getDeviceAddressParts(device) {
     if (!device.number || ['panel', 'abax', 'textNode', 'ramen', 'deactivated', 'cableTool'].includes(device.type)) return { prefix: '', number: '' };
-    const prefix = ['expander', 'keypad', 'siren'].includes(device.type) ? '' : `${device.loopId || 1}/`;
+    const prefix = independentDeviceNumberTypes.has(device.type) ? '' : `${device.loopId || 1}/`;
     return { prefix, number: String(device.number) };
 }
 
 function getDeviceNumberGroup(device) {
     if (['panel', 'deactivated', 'textNode', 'ramen', 'cableTool'].includes(device.type)) return null;
-    if (['expander', 'keypad', 'abax', 'siren'].includes(device.type)) return device.type;
+    if (independentDeviceNumberTypes.has(device.type)) return device.type;
     return `bus:${device.loopId || 1}`;
 }
 
 function mergeAddressReservations(reservations) {
-    const sorted = reservations.filter(range => typeof range?.group === 'string' && /^(expander|keypad|abax|siren|bus:\d+)$/.test(range.group)
+    const sorted = reservations.filter(range => typeof range?.group === 'string'
+        && (independentDeviceNumberTypes.has(range.group) || /^bus:\d+$/.test(range.group))
         && Number.isSafeInteger(range.start) && Number.isSafeInteger(range.end)
         && range.start > 0 && range.end >= range.start).sort((a, b) => a.group.localeCompare(b.group) || a.start - b.start);
     const merged = [];
