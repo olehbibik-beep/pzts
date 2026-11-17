@@ -69,9 +69,19 @@ function getPlanOutputBounds(floor,coverage) {
         if(coverage && ['pir','pir_wl','glassbreak'].includes(device.type)){
             for(const point of getPIRCoveragePoints(floor,device)||[]){left=Math.min(left,point.x-10);top=Math.min(top,point.y-10);right=Math.max(right,point.x+10);bottom=Math.max(bottom,point.y+10);}
         }
-        if(device.manualName){
+        if (device.type === 'textNode') {
+            const labelScale = 1 + (Number(document.getElementById('deviceSizeSlider').value) / 14 - 1) * .5;
+            ctx.save();
+            const { width, height } = getPlanTextLayout(ctx, device, labelScale);
+            ctx.restore();
+            const angle = (device.rotation || 0) * Math.PI / 180;
+            const halfWidth = (Math.abs(width * Math.cos(angle)) + Math.abs(height * Math.sin(angle))) / 2 + 10;
+            const halfHeight = (Math.abs(width * Math.sin(angle)) + Math.abs(height * Math.cos(angle))) / 2 + 10;
+            left = Math.min(left, device.x - halfWidth); right = Math.max(right, device.x + halfWidth);
+            top = Math.min(top, device.y - halfHeight); bottom = Math.max(bottom, device.y + halfHeight);
+        } else if(device.manualName){
             const labelScale=1+(Number(document.getElementById('deviceSizeSlider').value)/14-1)*.5;
-            ctx.save();ctx.font=device.type==='textNode'?planTextNodeFont(device,labelScale):`${13*labelScale}px sans-serif`;
+            ctx.save();ctx.font=`${13*labelScale}px sans-serif`;
             const half=ctx.measureText(device.manualName).width/2+32*labelScale;ctx.restore();
             // A circle around text covers any rotation without clipping corners.
             const radius=half+24*labelScale;left=Math.min(left,device.x-radius);right=Math.max(right,device.x+radius);top=Math.min(top,device.y-radius);bottom=Math.max(bottom,device.y+radius);

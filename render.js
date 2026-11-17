@@ -15,10 +15,10 @@ function drawDirectLeaderLine(ctx, x1, y1, x2, y2, color, lineWidth, arrowStart,
     if (arrowStart) drawArrow(ctx, x1, y1, angle + Math.PI, color);
 }
 
-function drawAdvancedOrthoRoute(ctx, x1, y1, h1x, h1y, h2x, h2y, h3x, h3y, x2, y2, color, lineWidth) {
-    const points = [ {x: x1, y: y1}, {x: h1x, y: h1y}, {x: h2x, y: h2y}, {x: h3x, y: h3y}, {x: x2, y: y2} ];
+function drawCableRoute(ctx, cable, from, to, color, lineWidth) {
+    const points = getCableRoute(cable, from, to);
     ctx.beginPath(); ctx.moveTo(points[0].x, points[0].y);
-    for(let i = 0; i < points.length - 1; i++) { ctx.lineTo(points[i+1].x, points[i].y); ctx.lineTo(points[i+1].x, points[i+1].y); }
+    for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
     ctx.strokeStyle = color; ctx.lineWidth = lineWidth; ctx.stroke();
 }
 
@@ -178,24 +178,35 @@ function animationLoop(timestamp) {
 }
 requestAnimationFrame(animationLoop);
 
-function planTextNodeFont(device, labelScale) {
-    return `${device.plainText === true ? '' : 'bold '}${13 * labelScale}px sans-serif`;
+function getPlanTextSize(device, labelScale = 1) {
+    return Number.isFinite(device.textSize) ? Math.max(8, Math.min(72, Math.round(device.textSize))) : 13 * labelScale;
 }
 
 function planTextNodeContent(device) {
     return device.manualName || tr(device.plainText === true ? 'Text na výkresu' : 'Poznámka');
 }
 
+function getPlanTextLayout(context, device, labelScale) {
+    const size = getPlanTextSize(device, labelScale);
+    const text = planTextNodeContent(device);
+    context.font = `${device.plainText === true ? '' : 'bold '}${size}px sans-serif`;
+    return {
+        text,
+        width: getPlanTextWidth(context, text) + 12 * size / 13,
+        height: 22 * size / 13,
+        radius: Math.max(3, Math.min(6, size * 0.28))
+    };
+}
+
 function hitTestPlanTextNode(device, x, y, labelScale) {
     ctx.save();
-    ctx.font = planTextNodeFont(device, labelScale);
-    const halfWidth = getPlanTextWidth(ctx, planTextNodeContent(device)) / 2;
+    const { width, height } = getPlanTextLayout(ctx, device, labelScale);
     ctx.restore();
     const angle = (device.rotation || 0) * Math.PI / 180;
     const dx = x - device.x, dy = y - device.y;
     const localX = dx * Math.cos(angle) + dy * Math.sin(angle);
     const localY = -dx * Math.sin(angle) + dy * Math.cos(angle);
-    return Math.abs(localX) <= halfWidth + 6 * labelScale && Math.abs(localY) <= 11 * labelScale;
+    return Math.abs(localX) <= width / 2 && Math.abs(localY) <= height / 2;
 }
 
 function drawDevice(ctx, dev, skipSelection = false, theme = 'dark', options = {}) {
@@ -207,25 +218,24 @@ function drawDevice(ctx, dev, skipSelection = false, theme = 'dark', options = {
     if (dev.type === 'textNode') {
         const plainText = dev.plainText === true;
         const selected = activeDeviceIds.has(dev.id) && !isExporting && !skipSelection;
-        const text = planTextNodeContent(dev);
         ctx.save();
         ctx.translate(dev.x, dev.y);
         ctx.rotate((dev.rotation || 0) * Math.PI / 180);
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.font = planTextNodeFont(dev, labelScale);
+        const { text, width, height, radius } = getPlanTextLayout(ctx, dev, labelScale);
         if (!plainText || selected) {
-            const width = getPlanTextWidth(ctx, text) + 12 * labelScale;
-            const height = 22 * labelScale;
+            ctx.beginPath();
+            ctx.roundRect(-width / 2, -height / 2, width, height, radius);
             if (!plainText) {
-                ctx.fillStyle = 'rgba(18, 18, 20, 0.75)';
-                ctx.fillRect(-width / 2, -height / 2, width, height);
+                ctx.fillStyle = '#2d2e32';
+                ctx.fill();
             }
             if (selected) {
                 ctx.strokeStyle = '#0ea5e9';
                 ctx.lineWidth = 2 * labelScale;
                 ctx.setLineDash([6 * labelScale, 4 * labelScale]);
-                ctx.strokeRect(-width / 2, -height / 2, width, height);
+                ctx.stroke();
             }
         }
         ctx.fillStyle = plainText && theme !== 'dark' ? '#171719' : '#ffffff';
@@ -414,7 +424,7 @@ function drawFloorData(ctx, floor, skipSelection = false, theme = getPlanTheme(f
                 if (['panel', 'keypad', 'expander', 'abax'].includes(d1.type) && ['panel', 'keypad', 'expander', 'abax'].includes(d2.type)) { color = "#0ea5e9"; }
                 else if (d1.type === 'siren' || d2.type === 'siren' || d1.type === 'panic' || d2.type === 'panic') { color = "#ef4444"; }
                 else if (d1.type === 'ramen' || d2.type === 'ramen') { color = "#ea580c"; }
-                drawAdvancedOrthoRoute(ctx, d1.x, d1.y, c.h1x, c.h1y, c.h2x, c.h2y, c.h3x, c.h3y, d2.x, d2.y, color, lineWidth);
+                drawCableRoute(ctx, c, d1, d2, color, lineWidth);
                 if (!isExporting && !skipSelection && (selectedTool === 'cableTool' || activeDeviceIds.has(d1.id) || activeDeviceIds.has(d2.id) || (draggedHandle && draggedHandle.cable === c))) {
                     drawHandles(ctx, c, color);
                 }

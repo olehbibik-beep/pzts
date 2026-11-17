@@ -1,6 +1,7 @@
 // Czech is the default. Source aliases also cover labels in older saved menu sets.
 (() => {
     const rows = [
+        ['Velikost písma', 'Font size', 'Schriftgröße', 'Размер шрифта'],
         ['Modul přístupového systému (ACS)', 'Access control module (ACS)', 'Zutrittskontrollmodul (ACS)', 'Модуль контроля доступа (ACS)'],
         ['Čtečka přístupového systému (ACS)', 'Access control reader (ACS)', 'Zutrittsleser (ACS)', 'Считыватель системы контроля доступа (ACS)'],
         ['Kouřový hlásič', 'Smoke detector', 'Rauchmelder', 'Дымовой извещатель'],
@@ -200,6 +201,12 @@
         ['Добавить меню', 'Přidat nabídku', 'Add menu', "Menü hinzufügen", "Добавить меню"], ['Есть несохранённые изменения', 'Máte neuložené změny', 'You have unsaved changes', "Sie haben ungespeicherte Änderungen", "Есть несохранённые изменения"],
         ['Этот набор используется на панели', 'Tato sada se používá v panelu', 'This set is used in the toolbar', "Dieser Satz wird in der Werkzeugleiste verwendet", "Этот набор используется на панели"], ['Выберите набор, измените его и сохраните', 'Vyberte sadu, upravte ji a uložte', 'Choose a set, edit it, and save', "Satz auswählen, bearbeiten und speichern", "Выберите набор, отредактируйте и сохраните"],
         ['Сохранить меню', 'Uložit nabídku', 'Save menu', "Menü speichern", "Сохранить меню"], ['Сохранено', 'Uloženo', 'Saved', "Gespeichert", "Сохранено"], ['Отбросить несохранённые изменения?', 'Zahodit neuložené změny?', 'Discard unsaved changes?', "Ungespeicherte Änderungen verwerfen?", "Отменить несохранённые изменения?"],
+        ['Publikovat pro PROJECT', 'Publikovat pro PROJECT', 'Publish for PROJECT', 'Für PROJECT veröffentlichen', 'Опубликовать для PROJECT'],
+        ['Сначала сохраните меню', 'Nejprve uložte nabídku', 'Save the menu first', 'Menü zuerst speichern', 'Сначала сохраните меню'],
+        ['Опубликовано для PROJECT', 'Publikováno pro PROJECT', 'Published for PROJECT', 'Für PROJECT veröffentlicht', 'Опубликовано для PROJECT'],
+        ['Снять с публикации', 'Zrušit publikaci', 'Unpublish', 'Veröffentlichung zurücknehmen', 'Снять с публикации'],
+        ['Снять меню «{0}» с публикации?', 'Zrušit publikaci nabídky „{0}“?', 'Unpublish the “{0}” menu?', 'Veröffentlichung des Menüs „{0}“ zurücknehmen?', 'Снять меню «{0}» с публикации?'],
+        ['Не удалось обновить набор PROJECT. Проверьте подключение и правила Firebase.', 'Sadu PROJECT nelze aktualizovat. Zkontrolujte připojení a pravidla Firebase.', 'Could not update the PROJECT set. Check your connection and Firebase rules.', 'Die PROJECT-Vorlage konnte nicht aktualisiert werden. Prüfen Sie die Verbindung und die Firebase-Regeln.', 'Не удалось обновить набор PROJECT. Проверьте подключение и правила Firebase.'],
         ['Закрыть редактор меню без сохранения изменений?', 'Zavřít editor nabídek bez uložení změn?', 'Close the menu editor without saving?', "Menüeditor ohne Speichern schließen?", "Закрыть редактор меню без сохранения?"],
         ['Достигнут лимит в 7 меню.', 'Byl dosažen limit 7 nabídek.', 'The limit of 7 menus has been reached.', "Das Limit von sieben Menüs ist erreicht.", "Достигнут лимит в семь меню."], ['Лимит меню', 'Limit nabídek', 'Menu limit', "Menülimit", "Лимит меню"],
         ['Сохранить текущие изменения перед созданием меню?', 'Uložit aktuální změny před vytvořením nabídky?', 'Save the current changes before creating a menu?', "Aktuelle Änderungen vor dem Erstellen eines Menüs speichern?", "Сохранить текущие изменения перед созданием меню?"],

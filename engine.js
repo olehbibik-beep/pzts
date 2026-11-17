@@ -40,28 +40,53 @@ function distToSegmentSquared(p, v, w) {
     t = Math.max(0, Math.min(1, t)); return (p.x - (v.x + t * (w.x - v.x)))**2 + (p.y - (v.y + t * (w.y - v.y)))**2;
 }
 
-function distToSegment(p, v, w) { return Math.sqrt(distToSegmentSquared(p, v, w)); }
+function getCableRoute(cable, from, to) {
+    const { h1x, h1y, h2x, h2y, h3x, h3y } = cable;
+    return [from, { x: h1x, y: from.y }, { x: h1x, y: h1y }, { x: h2x, y: h1y }, { x: h2x, y: h2y },
+        { x: h3x, y: h2y }, { x: h3x, y: h3y }, { x: to.x, y: h3y }, to];
+}
 
 function hitTestCables(canvasX, canvasY, floor, showDeac) {
     const p = {x: canvasX, y: canvasY};
     const devicesById=new Map(floor.devices.map(device=>[device.id,device]));
+    let nearest = 8 ** 2;
+    let hit = null;
     for (let i = floor.cables.length - 1; i >= 0; i--) {
-        let c = floor.cables[i]; const d1=devicesById.get(c.fromId),d2=devicesById.get(c.toId);
-        if (!d1 || !d2) continue;
-        if (!showDeac && (d1.type === 'deactivated' || d2.type === 'deactivated')) continue; 
-        if (d1.type === 'textNode' || d2.type === 'textNode') {
-            if (distToSegment(p, {x: d1.x, y: d1.y}, {x: d2.x, y: d2.y}) < 8) return c.id; continue;
+        const cable = floor.cables[i];
+        const from = devicesById.get(cable.fromId), to = devicesById.get(cable.toId);
+        if (!from || !to || (!showDeac && (from.type === 'deactivated' || to.type === 'deactivated'))) continue;
+        const points = from.type === 'textNode' || to.type === 'textNode' ? [from, to] : getCableRoute(cable, from, to);
+        for (let j = 1; j < points.length; j++) {
+            const distance = distToSegmentSquared(p, points[j - 1], points[j]);
+            if (!(distance < nearest)) continue;
+            nearest = distance;
+            hit = cable.id;
         }
-        const points = [ {x: d1.x, y: d1.y}, {x: c.h1x, y: c.h1y}, {x: c.h2x, y: c.h2y}, {x: c.h3x, y: c.h3y}, {x: d2.x, y: d2.y} ];
-        for(let j = 0; j < points.length - 1; j++) { if (distToSegment(p, points[j], points[j+1]) < 8) return c.id; }
     }
-    return null;
+    return hit;
 }
 
 function recalcCableHandles(c, d1, d2) {
     c.h1x = d1.x + (d2.x - d1.x)*0.25; c.h1y = d1.y + (d2.y - d1.y)*0.25;
     c.h2x = d1.x + (d2.x - d1.x)*0.50; c.h2y = d1.y + (d2.y - d1.y)*0.50;
     c.h3x = d1.x + (d2.x - d1.x)*0.75; c.h3y = d1.y + (d2.y - d1.y)*0.75;
+}
+
+function fixedCableEnds(cable) {
+    // Older custom routes have coordinates but no record of which small handles were moved.
+    return cable.fixedEnds ?? (cable.isCustom ? 3 : 0);
+}
+
+function refreshAutomaticCableEnds(cable, from, to) {
+    const fixed = fixedCableEnds(cable);
+    if (!(fixed & 1)) {
+        cable.h1x = (from.x + cable.h2x) / 2;
+        cable.h1y = (from.y + cable.h2y) / 2;
+    }
+    if (!(fixed & 2)) {
+        cable.h3x = (to.x + cable.h2x) / 2;
+        cable.h3y = (to.y + cable.h2y) / 2;
+    }
 }
 
 const independentDeviceNumberTypes = new Set(['expander', 'keypad', 'abax', 'siren', 'acs_module', 'acs_reader']);

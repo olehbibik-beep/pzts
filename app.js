@@ -323,14 +323,22 @@ for (const [id,format] of [['btnExportPNG','png'],['btnExportPDF','pdf'],['btnEx
 document.getElementById('bipsLoader').addEventListener('change', (e) => { const f = e.target.files[0]; if(f) importFileContent(f); e.target.value = ''; });
 
 let pendingTextFloor = null;
+const planTextForm = document.getElementById('planTextForm');
+const planTextSize = document.getElementById('devTextSize');
 
 function openTextModal(device, placementFloor = null) {
     editingDevice = device;
     pendingTextFloor = placementFloor;
-    const plainText = device.type === 'textNode' && device.plainText === true;
-    document.getElementById('textModalTitle').textContent = tr(plainText ? 'Text na výkresu' : 'Poznámka / Text');
+    const annotation = device.type === 'textNode';
+    const plainText = annotation && device.plainText === true;
+    document.getElementById('textModalTitle').textContent = tr(plainText ? 'Text na výkresu' : annotation ? 'Poznámka' : 'Poznámka / Text');
     devTextInput.required = plainText;
     devTextInput.value = device.manualName || '';
+    planTextSize.disabled = !annotation;
+    planTextSize.parentElement.hidden = !annotation;
+    const labelScale = placementFloor ? 1 : 1 + (Number(deviceSizeSlider.value) / 14 - 1) * .5;
+    planTextSize.defaultValue = Math.round(getPlanTextSize(device, labelScale));
+    planTextSize.value = planTextSize.defaultValue;
     document.getElementById('textModal').style.display = 'flex';
     devTextInput.focus();
 }
@@ -409,7 +417,8 @@ function startDeviceRotation(direction=1,initialStep=0) {
     requestAnimationFrame(rotateFrame);
 }
 
-document.getElementById('btnSaveText').addEventListener('click', () => {
+planTextForm.addEventListener('submit', event => {
+    event.preventDefault();
     const floor = floors[currentFloorIndex];
     if (!editingDevice || !floor || (pendingTextFloor ? pendingTextFloor !== floor : !floor.devices.includes(editingDevice))) {
         closeTextModal();
@@ -418,10 +427,11 @@ document.getElementById('btnSaveText').addEventListener('click', () => {
     devTextInput.value = devTextInput.value.trim();
     if (!devTextInput.reportValidity()) return;
     editingDevice.manualName = devTextInput.value;
+    if (editingDevice.type === 'textNode' && (pendingTextFloor || planTextSize.value !== planTextSize.defaultValue)) {
+        editingDevice.textSize = planTextSize.valueAsNumber;
+    }
     if (pendingTextFloor) {
-        floor.devices.push(editingDevice);
-        activeDeviceIds.clear();
-        activeDeviceIds.add(editingDevice.id);
+        placePlanDevice(floor, editingDevice);
     }
     closeTextModal();
     saveStateToHistory();
@@ -429,14 +439,27 @@ document.getElementById('btnSaveText').addEventListener('click', () => {
     triggerAutoSave();
 });
 document.getElementById('btnCancelText').addEventListener('click', closeTextModal);
-devTextInput.addEventListener('keydown', event => {
+planTextForm.addEventListener('keydown', event => {
     if (event.isComposing) return;
-    if (event.key === 'Enter') document.getElementById('btnSaveText').click();
     if (event.key === 'Escape') {
         event.stopPropagation();
         closeTextModal();
     }
 });
+
+function placePlanDevice(floor, device) {
+    const firstId = activeDeviceIds.size === 1 ? activeDeviceIds.values().next().value : null;
+    const previous = firstId ? floor.devices.find(item => item.id === firstId) : null;
+    floor.devices.push(device);
+    if (!device.plainText) includeNewDeviceInLegend(floor, device.type);
+    if (previous && !previous.plainText && !device.plainText) {
+        const cable = { id: genId(), fromId: previous.id, toId: device.id, isCustom: false };
+        recalcCableHandles(cable, previous, device);
+        floor.cables.push(cable);
+    }
+    activeDeviceIds.clear();
+    activeDeviceIds.add(device.id);
+}
 
 window.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
@@ -598,7 +621,8 @@ function moveDraggedDevices(floor, x, y, freeMove) {
         drag.cables = floor.cables.flatMap(cable => {
             if (!drag.ids.has(cable.fromId) && !drag.ids.has(cable.toId)) return [];
             const from = devicesById.get(cable.fromId), to = devicesById.get(cable.toId);
-            return from && to && from.type !== 'textNode' && to.type !== 'textNode' ? [{ cable, from, to }] : [];
+            if (!from || !to || from.type === 'textNode' || to.type === 'textNode') return [];
+            return [{ cable, from, to, movesTogether: drag.ids.has(from.id) && drag.ids.has(to.id) }];
         });
     }
     x += drag.grabX;
@@ -615,22 +639,23 @@ function moveDraggedDevices(floor, x, y, freeMove) {
         device.x += deltaX;
         device.y += deltaY;
     }
-    for (const { cable, from, to } of drag.cables) {
-        if (!Number.isFinite(cable.h1x)) {
+    for (const { cable, from, to, movesTogether } of drag.cables) {
+        if (!Number.isFinite(cable.h1x) || !cable.isCustom) {
             recalcCableHandles(cable, from, to);
-        } else {
+        } else if (movesTogether) {
             for (let index = 1; index <= 3; index++) {
                 cable[`h${index}x`] += deltaX;
                 cable[`h${index}y`] += deltaY;
             }
+        } else {
+            refreshAutomaticCableEnds(cable, from, to);
         }
-        cable.isCustom = true;
     }
 }
 
 function clearCanvasDrag() {
     finishProjectLegendDrag();
-    if (deviceGroupDrag?.changed || draggedHandle) { saveStateToHistory(); triggerAutoSave(); }
+    if (deviceGroupDrag?.changed || draggedHandle?.changed) { saveStateToHistory(); triggerAutoSave(); }
     stopSelectionPan();
     canvasDragPointer = null;
     deviceGroupDrag = null;
@@ -678,24 +703,28 @@ container.addEventListener('pointerdown', (e) => {
     } else if (e.button === 0) { 
         const floor = floors[currentFloorIndex];
         if (beginProjectLegendDrag(e, canvasX, canvasY)) return;
-        if (selectedTool === 'cableTool') {
-            const hitCableId = hitTestCables(canvasX, canvasY, floor, showDeactivatedDevices);
-            if (hitCableId) { floor.cables = floor.cables.filter(c => c.id !== hitCableId); saveStateToHistory(); requestRedraw(); triggerAutoSave(); return; }
-        }
-
         let foundHandle = null;
         if (floor.showConnections) {
-            for (let c of floor.cables) {
-                let d1 = floor.devices.find(d => d.id === c.fromId); let d2 = floor.devices.find(d => d.id === c.toId);
-                if (d1 && d2 && (d1.type === 'textNode' || d2.type === 'textNode')) continue;
-                if (!showDeactivatedDevices && (d1 && d1.type === 'deactivated' || d2 && d2.type === 'deactivated')) continue;
+            const devicesById = new Map(floor.devices.map(device => [device.id, device]));
+            let nearest = Infinity;
+            for (const c of floor.cables) {
                 if (!activeDeviceIds.has(c.fromId) && !activeDeviceIds.has(c.toId) && selectedTool !== 'cableTool') continue;
+                const from = devicesById.get(c.fromId), to = devicesById.get(c.toId);
+                if (!from || !to || from.type === 'textNode' || to.type === 'textNode') continue;
+                if (!showDeactivatedDevices && (from.type === 'deactivated' || to.type === 'deactivated')) continue;
                 for (let i = 1; i <= 3; i++) {
                     const hitRadius = (i === 2) ? 14 : 10;
-                    if (Math.abs(c['h' + i + 'x'] - canvasX) < hitRadius && Math.abs(c['h' + i + 'y'] - canvasY) < hitRadius) { foundHandle = { cable: c, hIndex: i }; break; }
+                    const grabX = c[`h${i}x`] - canvasX, grabY = c[`h${i}y`] - canvasY;
+                    const distance = grabX ** 2 + grabY ** 2;
+                    if (!(distance < hitRadius ** 2 && distance <= nearest)) continue;
+                    nearest = distance;
+                    foundHandle = { cable: c, from, to, hIndex: i, grabX, grabY, changed: false };
                 }
-                if (foundHandle) break;
             }
+        }
+        if (selectedTool === 'cableTool' && floor.showConnections && !foundHandle) {
+            const hitCableId = hitTestCables(canvasX, canvasY, floor, showDeactivatedDevices);
+            if (hitCableId) { floor.cables = floor.cables.filter(c => c.id !== hitCableId); saveStateToHistory(); requestRedraw(); triggerAutoSave(); return; }
         }
 
         let foundDevice = null; isClickingText = false;
@@ -778,19 +807,20 @@ container.addEventListener('pointermove', (e) => {
         if (deviceGroupDrag?.canMove && (deviceGroupDrag.devices || Math.hypot(e.clientX - clickStartX, e.clientY - clickStartY) >= 5)) {
             moveDraggedDevices(floors[currentFloorIndex], canvasX, canvasY, e.altKey);
             requestRedraw();
-        } else if (draggedHandle) {
-            const targetObj = draggedHandle.cable;
-            let d1 = floors[currentFloorIndex].devices.find(d => d.id === targetObj.fromId);
-            let d2 = floors[currentFloorIndex].devices.find(d => d.id === targetObj.toId);
-            let snap = getSnappedCoords(canvasX, canvasY, floors[currentFloorIndex], scale, null, d1, d2, showDeactivatedDevices);
-            if (e.altKey) { snap.x = canvasX; snap.y = canvasY; snapGuideX = null; snapGuideY = null; }
-            else { snapGuideX = snap.guideX; snapGuideY = snap.guideY; }
-
-            targetObj['h' + draggedHandle.hIndex + 'x'] = snap.x; targetObj['h' + draggedHandle.hIndex + 'y'] = snap.y;
-            targetObj.isCustom = true;
-            if (draggedHandle.hIndex === 2 && d1 && d2) {
-                targetObj.h1x = d1.x + (snap.x - d1.x) / 2; targetObj.h1y = d1.y + (snap.y - d1.y) / 2;
-                targetObj.h3x = snap.x + (d2.x - snap.x) / 2; targetObj.h3y = snap.y + (d2.y - snap.y) / 2;
+        } else if (draggedHandle && (draggedHandle.changed || Math.hypot(e.clientX - clickStartX, e.clientY - clickStartY) >= 5)) {
+            const { cable, from, to, hIndex, grabX, grabY } = draggedHandle;
+            const x = canvasX + grabX, y = canvasY + grabY;
+            const snap = e.altKey ? { x, y, guideX: null, guideY: null }
+                : getSnappedCoords(x, y, pointerFloor, scale, null, from, to, showDeactivatedDevices);
+            snapGuideX = snap.guideX;
+            snapGuideY = snap.guideY;
+            if (cable[`h${hIndex}x`] !== snap.x || cable[`h${hIndex}y`] !== snap.y) {
+                cable.fixedEnds = fixedCableEnds(cable) | (hIndex === 1 ? 1 : hIndex === 3 ? 2 : 0);
+                cable[`h${hIndex}x`] = snap.x;
+                cable[`h${hIndex}y`] = snap.y;
+                cable.isCustom = true;
+                if (hIndex === 2) refreshAutomaticCableEnds(cable, from, to);
+                draggedHandle.changed = true;
             }
             requestRedraw();
         }
@@ -856,9 +886,9 @@ window.addEventListener('pointerup', (e) => {
                 const newId = genId(); const loopId = parseInt(loopSelect.value);
                 
                 let tempDev = { id: newId, x: snap.x, y: snap.y, type: selectedTool, manualName: "", loopId: loopId, rotation: 0, manualNumber: null };
-                if (selectedTool === 'plainText') {
+                if (selectedTool === 'plainText' || selectedTool === 'textNode') {
                     tempDev.type = 'textNode';
-                    tempDev.plainText = true;
+                    if (selectedTool === 'plainText') tempDev.plainText = true;
                     openTextModal(tempDev, floor);
                     requestRedraw();
                     return;
@@ -866,21 +896,7 @@ window.addEventListener('pointerup', (e) => {
                 if (['pir', 'pir_wl'].includes(selectedTool)) {
                     tempDev.pirRangePixels = floor.pirRangePixels;
                 }
-                floor.devices.push(tempDev);
-                includeNewDeviceInLegend(floor, tempDev.type);
-                calculateDynamicNumbersGlobal(floors);
-
-                if (activeDeviceIds.size === 1) {
-                    let firstId = Array.from(activeDeviceIds)[0];
-                    const firstDevice = floor.devices.find(d => d.id === firstId);
-                    let existingIdx = floor.cables.findIndex(c => (c.fromId === firstId && c.toId === newId) || (c.fromId === newId && c.toId === firstId));
-                    if (existingIdx === -1 && firstDevice && firstDevice.plainText !== true) {
-                        let cObj = { id: genId(), fromId: firstId, toId: newId, isCustom: false };
-                        recalcCableHandles(cObj, firstDevice, tempDev);
-                        floor.cables.push(cObj);
-                    }
-                }
-                activeDeviceIds.clear(); activeDeviceIds.add(newId); 
+                placePlanDevice(floor, tempDev);
                 saveStateToHistory();
             } else { activeDeviceIds.clear(); }
         }
@@ -926,8 +942,10 @@ window.addEventListener('pointerup', (e) => {
                 }, 250); 
             }
         } else if (draggedHandle) {
-            if (draggedHandle.hIndex === 2) { floor.cables = floor.cables.filter(c => c.id !== draggedHandle.cable.id); }
-            requestRedraw();
+            if (!draggedHandle.changed && draggedHandle.hIndex === 2) {
+                floor.cables = floor.cables.filter(c => c !== draggedHandle.cable);
+                draggedHandle.changed = true;
+            }
         } else if (clickedCableId) {
             const cId = clickedCableId;
             if (clickTimer && lastClickedDevice === cId) {

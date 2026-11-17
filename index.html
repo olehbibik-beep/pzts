@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GOOM</title>
     <link rel="icon" type="image/png" href="Logo2.png?v=20261115-35">
-    <script src="i18n.js?v=20261117-localized-brand-49"></script>
+    <script src="i18n.js?v=20261117-cables-text-51"></script>
     <script src="device-support.js?v=20261114-loading-27"></script>
     <style>
         :root {
@@ -310,6 +310,7 @@
         .toolbar-menu-presets { display: flex; flex-direction: column; gap: 4px; overflow: visible; padding: 1px 2px; }
         .toolbar-menu-preset { min-height: 36px; padding: 2px 6px; display: flex; align-items: center; gap: 7px; border: 1px solid #3f3f46; border-radius: 6px; background: #f4f4f5; color: #252529; cursor: pointer; }
         .toolbar-menu-preset.selected { border-color: #22c55e; box-shadow: inset 0 0 0 1px #22c55e; opacity: 1; }
+        .toolbar-menu-premium-badge { flex: none; padding: 2px 5px; border-radius: 4px; background: #f8d486; color: #272119; font-size: 9px; font-weight: 700; }
         .toolbar-menu-preset:not(.selected) { opacity: .48; }
         .toolbar-menu-active-indicator { width: 7px; height: 7px; flex: 0 0 7px; border-radius: 50%; background: #a1a1aa; }
         .toolbar-menu-active-indicator.active { background: #22c55e; }
@@ -324,7 +325,7 @@
         .toolbar-menu-remove:disabled { visibility: hidden; }
         .toolbar-menu-editor-actions { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 2px 0 8px; }
         .toolbar-menu-editor-actions .toolbar-menu-editor-actions-group { margin-left: auto; }
-        #btnToolbarMenuSave:disabled { opacity: .48; cursor: default; }
+        #btnToolbarMenuSave:disabled, #btnToolbarMenuPublish:disabled { opacity: .48; cursor: default; }
         .toolbar-menu-add { width: 30px; height: 28px; min-width: 30px; padding: 0 !important; justify-content: center; border: 0 !important; background: transparent !important; color: #8d8d99 !important; font-size: 20px !important; font-weight: 500 !important; box-shadow: none !important; }
         .toolbar-menu-add:hover:not(:disabled) { background: transparent !important; color: #8d8d99 !important; box-shadow: none !important; }
         .toolbar-menu-add:disabled { opacity: .45; cursor: default; }
@@ -384,6 +385,15 @@
         .modal-title { font-size: 20px; font-weight: 600; margin-bottom: 25px; text-align: center; color: #22c55e; display: flex; justify-content: center; align-items: center; gap: 10px;}
         .modal-text { font-size: 13px; color: var(--text-muted); margin-bottom: 22px; text-align: center;}
         .modal-buttons { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;}
+        #planTextForm { width: min(300px, calc(100vw - 24px)); padding: 16px; }
+        #planTextForm .modal-title { margin: 0 0 12px; font-size: 17px; }
+        #planTextForm input { min-height: 34px; padding: 6px 8px; box-sizing: border-box; border: 1px solid #52525b; border-radius: 5px; background: #1c1c1f; color: #fff; font-size: 14px; }
+        #devTextInput { width: 100%; }
+        #devTextSize { width: 58px; }
+        .plan-text-size { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; font-size: 13px; }
+        #planTextForm .modal-buttons { margin-top: 12px; justify-content: flex-end; gap: 6px; }
+        #planTextForm .btn-cad { padding: 6px 10px; font-size: 13px; }
+        #btnSaveText { background: #0ea5e9; color: #101820; font-weight: 700; }
 
         .help-container { position: fixed; bottom: 40px; left: 20px; z-index: 200; display: flex; align-items: center; gap: 15px; }
         .help-btn { 
@@ -937,6 +947,7 @@
                 <div class="toolbar-menu-editor-actions-group">
                     <button id="btnToolbarImportMenus" class="btn-cad" type="button" hidden>Importovat osobní nabídky</button>
                     <button id="btnToolbarLegacyPreset" class="btn-cad" type="button" hidden>Použít starší nabídku z tohoto zařízení</button>
+                    <button id="btnToolbarMenuPublish" class="btn-cad" type="button" hidden>Publikovat pro PROJECT</button>
                     <button id="btnToolbarMenuSave" class="btn-cad" type="button" style="background:#22c55e;color:#121214;font-weight:bold;">Uložit nabídku</button>
                 </div>
             </div>
@@ -1042,14 +1053,15 @@
     </div>
 
    <div id="textModal" class="modal">
-        <div class="modal-content" style="max-width: 320px;">
+        <form id="planTextForm" class="modal-content" role="dialog" aria-modal="true" aria-labelledby="textModalTitle">
             <div class="modal-title" id="textModalTitle">Poznámka / Text</div>
-            <input type="text" id="devTextInput" style="width: 100%; background: #1c1c1f; border: 1px solid #313135; color: #ffffff; padding: 12px 16px; border-radius: 6px; font-size: 14px; outline: none; margin-bottom: 20px; box-sizing: border-box;" placeholder="Zadejte text...">
+            <input type="text" id="devTextInput" aria-label="Zadejte text..." placeholder="Zadejte text...">
+            <label class="plan-text-size"><span>Velikost písma</span><input type="number" id="devTextSize" min="8" max="72" step="1" value="13" required></label>
             <div class="modal-buttons">
                 <button id="btnCancelText" class="btn-cad" type="button">Zrušit</button>
-                <button id="btnSaveText" class="btn-cad" type="button" style="background: #0ea5e9; color: #ffffff; justify-content: center; font-weight: bold; padding: 12px;">Uložit text</button>
+                <button id="btnSaveText" class="btn-cad" type="submit">Uložit text</button>
             </div>
-        </div>
+        </form>
     </div>
 
     <div id="numberModal" class="modal">
@@ -1117,6 +1129,6 @@
         <button type="button" data-tablet-action="delete" class="tool-danger"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13m-8 3v7m4-7v7"/></svg></button>
         <button type="button" data-tablet-action="undo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 4-5 5 5 5M4 9h9a6 6 0 0 1 6 6v2"/></svg></button>
     </div>
-    <script src="bootstrap.js?v=20261117-localized-brand-49"></script>
+    <script src="bootstrap.js?v=20261117-cables-text-51"></script>
 </body>
 </html>
