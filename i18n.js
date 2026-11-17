@@ -1,6 +1,10 @@
 // Czech is the default. Source aliases also cover labels in older saved menu sets.
 (() => {
     const rows = [
+        ['Pro práci s výkresy a ukládání do zařízení.', 'For editing drawings and saving on your device.', 'Zum Bearbeiten von Plänen und Speichern auf Ihrem Gerät.', 'Для работы с чертежами и сохранения на устройство.'],
+        ['Pro práci napříč zařízeními a s vlastními symboly.', 'For working across devices with your own symbols.', 'Für geräteübergreifendes Arbeiten mit eigenen Symbolen.', 'Для работы на нескольких устройствах и со своими значками.'],
+        ['Jedno předplatné pro vás a vaše kolegy.', 'One subscription for you and your colleagues.', 'Ein Abo für Sie und Ihre Kollegen.', 'Одна подписка для вас и ваших коллег.'],
+        ['Vše z PROJECT', 'Everything in PROJECT', 'Alles aus PROJECT', 'Всё из PROJECT'],
         ['Odstranit vybrané prvky?', 'Delete selected devices?', 'Ausgewählte Geräte löschen?', 'Удалить выбранные устройства?'],
         ['Ponechte mezeru v adresách, nebo posuňte další automaticky číslované prvky.', 'Keep the gap in the addresses or shift the numbers of subsequent automatically numbered devices.', 'Lassen Sie die Adresslücke bestehen oder verschieben Sie die Nummern der nachfolgenden automatisch nummerierten Geräte.', 'Оставьте пропуск в адресах или сдвиньте номера следующих устройств с автоматической нумерацией.'],
         ['Odstranit a ponechat mezeru', 'Delete and keep the gap', 'Löschen und Lücke lassen', 'Удалить и оставить пропуск'],
@@ -11,10 +15,6 @@
         ['Přidat starší osobní nabídky z tohoto prohlížeče k právě přihlášenému účtu?', 'Add older personal menus from this browser to the signed-in account?', 'Ältere persönliche Menüs aus diesem Browser dem angemeldeten Konto hinzufügen?', 'Добавить старые личные меню из этого браузера в текущий аккаунт?'],
         ['Použít starší nabídku z tohoto zařízení', 'Use older preset from this device', 'Ältere Vorlage dieses Geräts verwenden', 'Взять старый набор с этого устройства'],
         ['Sdílenou nabídku nelze uložit. Zkontrolujte připojení a pravidla Firebase.', 'Could not publish the shared preset. Check your connection and Firebase rules.', 'Die gemeinsame Vorlage konnte nicht veröffentlicht werden. Prüfen Sie die Verbindung und die Firebase-Regeln.', 'Не удалось опубликовать общий набор. Проверьте подключение и правила Firebase.'],
-        ['Funkce tarifů', 'Compare features', 'Funktionen im Vergleich', 'Возможности тарифов'],
-        ['V ceně', 'Included', 'Enthalten', 'Включено'],
-        ['Není součástí', 'Not included', 'Nicht enthalten', 'Недоступно'],
-        ['Export a tisk', 'Export and print', 'Export und Druck', 'Экспорт и печать'],
         ['Světlý a tmavý výkres', 'Light and dark drawing modes', 'Heller und dunkler Planmodus', 'Светлый и тёмный режимы чертежа'],
         ['Sada nástrojů PROJECT', 'PROJECT tool set', 'PROJECT-Werkzeugsatz', 'Набор инструментов PROJECT'],
         ['Průvodce prvním projektem', 'First project guide', 'Einführung ins erste Projekt', 'Помощник по первому проекту'],

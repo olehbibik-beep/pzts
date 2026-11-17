@@ -224,52 +224,53 @@ body::after {
 #btnAccountCloudProjects:focus-visible { outline: 2px solid #d2f6a6; outline-offset: 2px; }
 #btnAccountCloudProjects svg { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .pro-card { margin-top: 16px; padding-top: 14px; }
-#proUpgradeModal .account-card { --pricing-bg: #ebedef; width: min(1020px, calc(100vw - 32px)); max-width: 1020px; padding: 16px 22px 20px; background: var(--pricing-bg); color: #20252d; }
+#proUpgradeModal .account-card { --pricing-bg: #f1f2f4; width: min(960px, calc(100vw - 32px)); max-width: 960px; padding: 16px 22px 20px; background: var(--pricing-bg); color: #20252d; }
 .pro-pricing .modal-blueprint-host { display: none; }
-.pro-pricing > .account-header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; top: -16px; gap: 8px; padding-block: 4px; background: var(--pricing-bg); }
+.pro-pricing > .account-header { top: -16px; justify-content: flex-start; gap: 8px; margin-bottom: 6px; padding-block: 4px; background: var(--pricing-bg); }
 .pro-pricing .account-header h2 { font-size: clamp(17px, 2.6vw, 23px); }
 .pro-close { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 5px; background: transparent; color: #333943; font: 28px/1 system-ui; cursor: pointer; }
 .pro-close:hover { background: #dce0e5; }
 .pro-pricing :is(.pro-close, .pro-plan-action):focus-visible { outline: 2px solid #35557e; outline-offset: 2px; }
-.pro-period { display: flex; gap: 3px; padding: 3px; border-radius: 6px; background: #dfe3e7; }
+.pro-period { display: flex; width: fit-content; margin: 0 auto 20px; gap: 3px; padding: 4px; border-radius: 7px; background: #e0e4e9; }
 .pro-period label { position: relative; }
 .pro-period input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
-.pro-period label span { display: block; padding: 7px 8px; border-radius: 4px; font-size: 12px; color: #414854; }
-.pro-period label:has(:checked) span { background: #fff; color: #20252d; box-shadow: 0 1px 3px #1e27331c; }
+.pro-period label span { display: block; padding: 8px 12px; border-radius: 5px; font-size: 13px; color: #414854; }
+.pro-period label:has(:checked) span { background: #262e3b; color: #fff; box-shadow: 0 1px 3px #1e273331; }
 .pro-period label:has(:focus-visible) span { outline: 2px solid #35557e; }
 .pro-period b { padding: 1px 4px; border-radius: 4px; background: #d9f4bb; color: #305212; white-space: nowrap; }
-.pro-comparison-scroll { overflow-x: auto; }
-.pro-comparison { width: 100%; min-width: 570px; table-layout: fixed; border-spacing: 6px 0; }
-.pro-feature-column { width: 29%; }
-.pro-comparison .pro-feature-intro { padding: 0 8px 10px; vertical-align: bottom; text-align: left; font-size: clamp(16px, 2.2vw, 21px); font-weight: 750; }
-.pro-plan-header { height: 60px; box-sizing: border-box; padding: 7px 5px; text-align: center; vertical-align: middle; background: #dce0e5; border-radius: 5px 5px 0 0; }
-.pro-plan-header.pro-plan-standard { background: #f6d58a; }
-.pro-plan-header.pro-plan-company { background: #bee7f6; }
+.pro-plans { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(9px, 1.8vw, 18px); }
+.pro-plan { display: flex; flex-direction: column; min-width: 0; overflow: hidden; border-radius: 7px; background: #fff; box-shadow: 0 4px 14px #222b3817; }
+.pro-plan-standard { box-shadow: 0 5px 16px #916c3029; }
+.pro-plan-header { min-height: 74px; box-sizing: border-box; display: grid; align-content: center; padding: 8px; text-align: center; background: #dce0e5; }
+.pro-plan-standard .pro-plan-header { background: #f6d58a; }
+.pro-plan-company .pro-plan-header { background: #bee7f6; }
 .pro-plan-header h3 { margin: 0; font-size: clamp(14px, 2.1vw, 20px); line-height: 1.15; text-transform: uppercase; }
 .pro-plan-caption { margin: 3px 0 0; font-size: 12px; font-weight: 400; }
 .pro-plan-standard .pro-plan-caption { font-weight: 700; }
-.pro-plan-actions td { padding: 8px 0 12px; }
+.pro-plan-body { flex: 1; display: grid; grid-template-rows: minmax(62px, auto) minmax(52px, auto) minmax(44px, auto) 1fr; gap: 8px; padding: 12px clamp(10px, 1.8vw, 18px) 16px; }
+.pro-plan-summary { margin: 0; color: #485260; font-size: 13px; line-height: 1.36; }
 .pro-plan-actions .pro-plan-action { width: 100%; min-height: 46px; justify-content: center; border: 0; border-radius: 4px; padding: 5px; background: #282e39; color: #fff; font-weight: 650; text-align: center; }
 .pro-plan-actions .pro-plan-action:hover:not(:disabled) { background: #3e4755; }
 .pro-plan-actions .pro-plan-action:disabled { background: #e4e7eb; color: #424955; cursor: default; opacity: 1; }
 .pro-plan-basic .pro-plan-action:disabled { background: #dce0e5; }
 .pro-price-free, .pro-price-option { text-align: center; }
-.pro-price-free { font-size: clamp(18px, 2.6vw, 26px); }
-.pro-price-option { padding: 4px 0; vertical-align: top; }
-.pro-price-option > small { display: inline-block; color: #505967; font-size: 12px; }
-.pro-pricing:has([name="proPeriod"][value="monthly"]:checked) [data-period="monthly"] > small,
-.pro-pricing:has([name="proPeriod"][value="annual"]:checked) [data-period="annual"] > small { color: #20252d; text-decoration: underline; text-decoration-color: #82d322; text-underline-offset: 3px; }
+.pro-price-free { align-content: start; font-size: clamp(20px, 2.6vw, 26px); }
+.pro-price-option { display: none; }
+.pro-pricing:has([name="proPeriod"][value="monthly"]:checked) .pro-price-option[data-period="monthly"],
+.pro-pricing:has([name="proPeriod"][value="annual"]:checked) .pro-price-option[data-period="annual"] { display: block; }
+.pro-price-option > small { display: block; margin-top: 3px; color: #505967; font-size: 12px; }
 .pro-price { display: flex; flex-flow: row wrap; justify-content: center; align-items: baseline; gap: 2px 5px; margin-top: 2px; font-size: clamp(14px, 2.1vw, 21px); font-variant-numeric: tabular-nums; font-weight: 650; }
 .pro-price > [data-pro-price] { white-space: nowrap; }
 .pro-price-option[data-period="annual"] .pro-price { color: #315510; }
 .pro-price .pro-price-separator { color: #596270; font-weight: 400; }
 .pro-price strong { font-size: clamp(16px, 2.55vw, 26px); }
-.pro-comparison tbody th, .pro-comparison tbody td { padding: 8px; box-shadow: inset 0 -1px #e2e5e8; }
-.pro-comparison tbody th { text-align: left; color: #262e38; font-size: clamp(13px, 1.55vw, 16px); font-weight: 650; }
-.pro-comparison tbody td { text-align: center; background: #fff; }
-.pro-comparison tbody tr:nth-child(even) td { background: #f6f7f8; }
-.pro-mark { display: inline-grid; width: 23px; height: 23px; place-items: center; border-radius: 50%; color: #67717e; font: 700 15px/1 system-ui; }
-.pro-mark.included { background: #b5e875; color: #254510; }
+.pro-plan-features { display: grid; align-content: start; gap: 8px; margin: 7px 0 0; padding: 0; list-style: none; color: #343d47; font-size: 13px; line-height: 1.35; }
+.pro-plan-features li { display: grid; grid-template-columns: 16px minmax(0, 1fr); align-items: start; gap: 7px; }
+.pro-plan-features li::before { content: ''; width: 16px; height: 16px; border-radius: 50%; background: #ddf4c6 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='m4.5 8 2.3 2.3 4.7-4.7' fill='none' stroke='%23395720' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.6'/%3E%3C/svg%3E") center/cover; }
+@media (max-width: 580px) {
+    .pro-plans { grid-template-columns: minmax(0, 1fr); }
+    .pro-plan-body { grid-template-rows: auto auto minmax(44px, auto) 1fr; }
+}
 .pro-pricing-footer { display: grid; gap: 5px; margin-top: 14px; }
 .pro-pricing-footer p { margin: 0; }
 .pro-pricing-footer :is(.account-note, .pro-status) { color: #485260; }
@@ -348,9 +349,6 @@ body::after {
     #userAccountModal .account-header { padding-top: 42px; }
     #proUpgradeModal .account-card { padding: 16px; }
     .account-details { grid-template-columns: 65px minmax(0,1fr); }
-}
-@media (max-width: 580px) {
-    .pro-pricing .pro-period { grid-column: 2; justify-self: start; }
 }
 @media (max-height: 650px) {
     #welcomeModal .welcome-card { height: min(580px, calc(100dvh - 64px)); }

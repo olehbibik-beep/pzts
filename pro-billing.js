@@ -6,39 +6,6 @@
     const buyButtons = [...document.querySelectorAll('[data-buy-tier]')];
     const manageButtons = [...document.querySelectorAll('[data-manage-tier]')];
     const czkPerEuro = 24.425; // Czech National Bank published rate for 2026-11-13.
-    const features = [
-        ['Import a úpravy výkresů', 0],
-        ['Místní uložení projektů .TECH', 0],
-        ['Export a tisk', 0],
-        ['Světlý a tmavý výkres', 0],
-        ['Průvodce prvním projektem', 0],
-        ['Sada nástrojů PROJECT', 1],
-        ['Editor nabídek a ikon', 1],
-        ['Až 5 projektů v cloudu', 1],
-        ['Vyhledávání detektorů ve všech podlažích', 1],
-        ['Výstupy bez vodoznaku', 1],
-        ['Až 3 další účty PROJECT', 2]
-    ];
-    function renderComparison() {
-        const rows = features.map(([title, firstTier]) => {
-            const row = document.createElement('tr');
-            const label = document.createElement('th');
-            label.scope = 'row';
-            label.textContent = tr(title);
-            row.append(label);
-            for (let tier = 0; tier < 3; tier++) {
-                const mark = document.createElement('span');
-                const included = tier >= firstTier;
-                mark.className = included ? 'pro-mark included' : 'pro-mark';
-                mark.setAttribute('role', 'img');
-                mark.setAttribute('aria-label', tr(included ? 'V ceně' : 'Není součástí'));
-                mark.textContent = included ? '✓' : '–';
-                row.insertCell().append(mark);
-            }
-            return row;
-        });
-        byId('proComparisonFeatures').replaceChildren(...rows);
-    }
     function render() {
         const active = Boolean(window.hasProAccess?.());
         byId('accountProStatus').textContent = tr(active ? 'PROJECT je aktivní.' : 'Váš účet používá bezplatnou verzi.');
@@ -120,7 +87,6 @@
         if (!window.hasProAccess?.() && returnMessage) byId('accountProStatus').textContent = tr(returnMessage);
     }
     document.addEventListener('goom-account-changed', () => { render(); handleReturn(); });
-    window.addEventListener('goom-language-changed', () => { renderComparison(); render(); });
-    renderComparison();
+    window.addEventListener('goom-language-changed', render);
     render();
 })();

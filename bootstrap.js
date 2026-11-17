@@ -1,6 +1,6 @@
 (() => {
     // Change this version whenever publishing application files together.
-    const version = '20261117-device-addresses-45';
+    const version = '20261117-pricing-cards-46';
     let started = false;
     function loadScript(src) {
         return new Promise((resolve, reject) => {

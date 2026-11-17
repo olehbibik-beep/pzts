@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GOOM</title>
     <link rel="icon" type="image/png" href="Logo2.png?v=20261115-35">
-    <script src="i18n.js?v=20261117-device-addresses-45"></script>
+    <script src="i18n.js?v=20261117-pricing-cards-46"></script>
     <script src="device-support.js?v=20261114-loading-27"></script>
     <style>
         :root {
@@ -443,7 +443,7 @@
 
 
     </style>
-    <link rel="stylesheet" href="ui-theme.css?v=20261116-pricing-layout-44">
+    <link rel="stylesheet" href="ui-theme.css?v=20261117-pricing-cards-46">
 </head>
 <body>
     <div id="deviceSupportNotice" role="alert">
@@ -726,59 +726,76 @@
             <div class="account-header">
                 <button id="btnProClose" class="pro-close" type="button" aria-label="Zavřít">×</button>
                 <h2 id="proUpgradeTitle">Tarify a předplatné</h2>
-                <div class="pro-period" role="group" aria-label="Zvolte období">
-                    <label><input type="radio" name="proPeriod" value="monthly" checked><span>Měsíčně</span></label>
-                    <label><input type="radio" name="proPeriod" value="annual"><span>Ročně <b>−12 %</b></span></label>
-                </div>
             </div>
-            <div class="pro-comparison-scroll">
-              <table class="pro-comparison" aria-labelledby="proUpgradeTitle">
-                <colgroup><col class="pro-feature-column"><col span="3"></colgroup>
-                <thead>
-                    <tr>
-                        <td></td>
-                        <td class="pro-price-free" headers="proBasicTitle" rowspan="2"><strong>Zdarma</strong></td>
-                        <td class="pro-price-option" headers="proStandardTitle" data-period="monthly">
-                            <small>Měsíčně</small><span class="pro-price"><span data-pro-price="monthly" data-currency="EUR"></span><span class="pro-price-separator" aria-hidden="true">/</span><strong data-pro-price="monthly" data-currency="CZK"></strong></span>
-                        </td>
-                        <td class="pro-price-option" headers="proCompanyTitle" data-period="monthly">
-                            <small>Měsíčně</small><span class="pro-price"><span data-pro-price="companyMonthly" data-currency="EUR"></span><span class="pro-price-separator" aria-hidden="true">/</span><strong data-pro-price="companyMonthly" data-currency="CZK"></strong></span>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td></td>
-                        <td class="pro-price-option" headers="proStandardTitle" data-period="annual">
-                            <small>Ročně</small><span class="pro-price"><span data-pro-price="annual" data-currency="EUR"></span><span class="pro-price-separator" aria-hidden="true">/</span><strong data-pro-price="annual" data-currency="CZK"></strong></span>
-                        </td>
-                        <td class="pro-price-option" headers="proCompanyTitle" data-period="annual">
-                            <small>Ročně</small><span class="pro-price"><span data-pro-price="companyAnnual" data-currency="EUR"></span><span class="pro-price-separator" aria-hidden="true">/</span><strong data-pro-price="companyAnnual" data-currency="CZK"></strong></span>
-                        </td>
-                    </tr>
-                    <tr class="pro-plan-actions">
-                        <td></td>
-                        <td class="pro-plan-basic" headers="proBasicTitle"><button class="btn-cad pro-plan-action" type="button" disabled>Aktivní</button></td>
-                        <td headers="proStandardTitle">
+            <div class="pro-period" role="group" aria-label="Zvolte období">
+                <label><input type="radio" name="proPeriod" value="monthly" checked><span>Měsíčně</span></label>
+                <label><input type="radio" name="proPeriod" value="annual"><span>Ročně <b>−12 %</b></span></label>
+            </div>
+            <div class="pro-plans">
+                <article class="pro-plan pro-plan-basic" aria-labelledby="proBasicTitle">
+                    <header class="pro-plan-header"><h3 id="proBasicTitle">Základní</h3></header>
+                    <div class="pro-plan-body">
+                        <div class="pro-price-free"><strong>Zdarma</strong></div>
+                        <p class="pro-plan-summary">Pro práci s výkresy a ukládání do zařízení.</p>
+                        <div class="pro-plan-actions"><button class="btn-cad pro-plan-action" type="button" disabled>Aktivní</button></div>
+                        <ul class="pro-plan-features" role="list">
+                            <li>Import a úpravy výkresů</li>
+                            <li>Místní uložení projektů .TECH</li>
+                            <li>Export a tisk s vodoznakem</li>
+                            <li>Světlý a tmavý výkres</li>
+                            <li>Průvodce prvním projektem</li>
+                        </ul>
+                    </div>
+                </article>
+                <article class="pro-plan pro-plan-standard" aria-labelledby="proStandardTitle">
+                    <header class="pro-plan-header">
+                        <h3 id="proStandardTitle">PROJECT</h3><p class="pro-plan-caption">Doporučujeme</p>
+                    </header>
+                    <div class="pro-plan-body">
+                        <div class="pro-price-option" data-period="monthly">
+                            <span class="pro-price"><span data-pro-price="monthly" data-currency="EUR"></span><span class="pro-price-separator" aria-hidden="true">/</span><strong data-pro-price="monthly" data-currency="CZK"></strong></span><small>Měsíčně</small>
+                        </div>
+                        <div class="pro-price-option" data-period="annual">
+                            <span class="pro-price"><span data-pro-price="annual" data-currency="EUR"></span><span class="pro-price-separator" aria-hidden="true">/</span><strong data-pro-price="annual" data-currency="CZK"></strong></span><small>Ročně</small>
+                        </div>
+                        <p class="pro-plan-summary">Pro práci napříč zařízeními a s vlastními symboly.</p>
+                        <div class="pro-plan-actions">
                             <button id="btnProPurchase" class="btn-cad pro-plan-action" type="button" data-buy-tier="pro">Koupit PROJECT</button>
                             <button class="btn-cad pro-plan-action" type="button" data-manage-tier="pro" hidden>Spravovat předplatné</button>
-                        </td>
-                        <td headers="proCompanyTitle">
+                        </div>
+                        <ul class="pro-plan-features" role="list">
+                            <li>Vše ze základní verze</li>
+                            <li>Sada nástrojů PROJECT</li>
+                            <li>Editor nabídek a ikon</li>
+                            <li>Až 5 projektů v cloudu</li>
+                            <li>Vyhledávání detektorů ve všech podlažích</li>
+                            <li>Výstupy bez vodoznaku</li>
+                        </ul>
+                    </div>
+                </article>
+                <article class="pro-plan pro-plan-company" aria-labelledby="proCompanyTitle">
+                    <header class="pro-plan-header">
+                        <h3 id="proCompanyTitle">Firemní PROJECT</h3><p class="pro-plan-caption">Pro týmy</p>
+                    </header>
+                    <div class="pro-plan-body">
+                        <div class="pro-price-option" data-period="monthly">
+                            <span class="pro-price"><span data-pro-price="companyMonthly" data-currency="EUR"></span><span class="pro-price-separator" aria-hidden="true">/</span><strong data-pro-price="companyMonthly" data-currency="CZK"></strong></span><small>Měsíčně</small>
+                        </div>
+                        <div class="pro-price-option" data-period="annual">
+                            <span class="pro-price"><span data-pro-price="companyAnnual" data-currency="EUR"></span><span class="pro-price-separator" aria-hidden="true">/</span><strong data-pro-price="companyAnnual" data-currency="CZK"></strong></span><small>Ročně</small>
+                        </div>
+                        <p class="pro-plan-summary">Jedno předplatné pro vás a vaše kolegy.</p>
+                        <div class="pro-plan-actions">
                             <button id="btnCompanyProPurchase" class="btn-cad pro-plan-action" type="button" data-buy-tier="company">Koupit firemní PROJECT</button>
                             <button class="btn-cad pro-plan-action" type="button" data-manage-tier="company" hidden>Spravovat předplatné</button>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th class="pro-feature-intro" scope="col">Funkce tarifů</th>
-                        <th id="proBasicTitle" class="pro-plan-header" scope="col"><h3>Základní</h3></th>
-                        <th id="proStandardTitle" class="pro-plan-header pro-plan-standard" scope="col">
-                            <h3>PROJECT</h3><p class="pro-plan-caption">Doporučujeme</p>
-                        </th>
-                        <th id="proCompanyTitle" class="pro-plan-header pro-plan-company" scope="col">
-                            <h3>Firemní PROJECT</h3><p class="pro-plan-caption">Pro týmy</p>
-                        </th>
-                    </tr>
-                </thead>
-                <tbody id="proComparisonFeatures"></tbody>
-              </table>
+                        </div>
+                        <ul class="pro-plan-features" role="list">
+                            <li>Vše z PROJECT</li>
+                            <li>Až 3 další účty PROJECT</li>
+                            <li>Přístup kolegů po dobu firemního předplatného</li>
+                        </ul>
+                    </div>
+                </article>
             </div>
             <div class="pro-pricing-footer">
                 <p id="proPurchaseStatus" class="pro-status" role="status" aria-live="polite"></p>
@@ -1096,6 +1113,6 @@
         <button type="button" data-tablet-action="delete" class="tool-danger"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13m-8 3v7m4-7v7"/></svg></button>
         <button type="button" data-tablet-action="undo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 4-5 5 5 5M4 9h9a6 6 0 0 1 6 6v2"/></svg></button>
     </div>
-    <script src="bootstrap.js?v=20261117-device-addresses-45"></script>
+    <script src="bootstrap.js?v=20261117-pricing-cards-46"></script>
 </body>
 </html>
