@@ -1,7 +1,28 @@
 (() => {
     // Change this version whenever publishing application files together.
-    const version = '20261117-intro-bg-55';
+    const version = '20261117-pdf-cctv-fix-56';
     let started = false;
+    let pdfLoading = null;
+    let pdfAttempt = 0;
+    const pdfBase = new URL('vendor/pdfjs/', document.baseURI);
+    window.ensurePlanPdfLibrary = () => {
+        if (window.pdfjsLib?.getDocument) return Promise.resolve(window.pdfjsLib);
+        if (!pdfLoading) {
+            // Use .js for ES modules too: static hosts already serve it as JavaScript.
+            // A fresh URL lets an upload or connection repair recover without reloading the editor.
+            const retry = pdfAttempt++;
+            pdfLoading = import(new URL(`legacy/build/pdf.min.js?v=${version}&attempt=${retry}`, pdfBase)).then(pdf => {
+                pdf.GlobalWorkerOptions.workerSrc = new URL(`legacy/build/pdf.worker.min.js?v=${version}`, pdfBase).href;
+                window.pdfjsLib = pdf;
+                return pdf;
+            }).catch(error => {
+                pdfLoading = null;
+                console.warn('PDF library:', error);
+                throw new Error(tr('Knihovnu PDF nelze načíst. Obnovte stránku a zkuste to znovu.'));
+            });
+        }
+        return pdfLoading;
+    };
     function loadScript(src) {
         return new Promise((resolve, reject) => {
             const script = document.createElement('script');
@@ -26,12 +47,8 @@
         });
         try {
             // Import/export libraries must not delay the welcome screen or run on phones.
-            const pdfBase = new URL('vendor/pdfjs/', document.baseURI);
             const libraries = [
-                import(new URL(`legacy/build/pdf.min.mjs?v=${version}`, pdfBase)).then(pdf => {
-                    pdf.GlobalWorkerOptions.workerSrc = new URL(`legacy/build/pdf.worker.min.mjs?v=${version}`, pdfBase).href;
-                    window.pdfjsLib = pdf;
-                }),
+                window.ensurePlanPdfLibrary(),
                 loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'),
                 loadScript('https://cdn.jsdelivr.net/npm/dxf-parser@1.1.2/dist/dxf-parser.min.js')
             ].map(promise => promise.catch(error => console.warn('Библиотека импорта/экспорта недоступна:', error)));

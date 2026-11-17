@@ -205,7 +205,7 @@ async function getPlanPdfPage(floor) {
     let cached = planPdfCache.get(floor);
     if (!cached) {
         cached = { promise: (async () => {
-            await window.planLibrariesReady;
+            await window.ensurePlanPdfLibrary();
             if (!window.pdfjsLib?.getDocument) throw new Error(tr('Knihovna PDF není dostupná.'));
             const bytes = Uint8Array.from(atob(floor.pdfSource.split(',')[1]), c => c.charCodeAt(0));
             const pdfBase = new URL('vendor/pdfjs/', document.baseURI);
@@ -220,6 +220,10 @@ async function getPlanPdfPage(floor) {
             return pdf.getPage(floor.pdfPage || 1);
         })(), raster: null, pending: false, failed: false };
         planPdfCache.set(floor, cached);
+        cached.promise = cached.promise.catch(error => {
+            if (planPdfCache.get(floor) === cached) planPdfCache.delete(floor);
+            throw error;
+        });
     }
     return cached.promise;
 }
