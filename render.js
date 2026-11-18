@@ -461,6 +461,8 @@ function drawFreePlanWatermark(target, width, height, theme, footerHeight = 0) {
 }
 
 function redraw() {
+    const shortcut=document.getElementById('emptyProjectShortcut');
+    if(shortcut)shortcut.hidden=Boolean(window.isGoomReadOnly?.()||!isSystemReady||isOverviewMode||currentFloorIndex<0||!floors[currentFloorIndex]||floors[currentFloorIndex].image||floors[currentFloorIndex].devices.length||isExporting);
     if(typeof syncPlanLoading==='function')syncPlanLoading();
     if (!isSystemReady || floors.length === 0) return;
     ctx.setTransform(canvasPixelRatio, 0, 0, canvasPixelRatio, 0, 0); ctx.clearRect(0, 0, planCanvasWidth(), planCanvasHeight());

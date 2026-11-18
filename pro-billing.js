@@ -26,14 +26,27 @@
         }
         document.getElementById('btnOpenToolbarMenuEditor').classList.toggle('pro-lock', !active && !window.hasAdminAccess?.());
     }
-    window.requestProUpgrade = () => {
+    window.openProjectUpgrade = () => {
+        hideUpgradeHint();
         if (!window.getFirebaseUser()) { showWelcomeScreen(); return; }
         byId('proUpgradeModal').style.display = 'flex';
         byId('proPurchaseStatus').textContent = window.hasProAccess?.() ? tr('PROJECT je aktivní.')
             : APP_PRODUCT === 'CCTV' ? tr('Předplatné CCTV zatím nelze zakoupit.') : '';
         render(); window.clearGoomTooltips?.();
     };
-    byId('btnUpdatePro').addEventListener('click', window.requestProUpgrade);
+    const hint=document.createElement('div');hint.id='projectUpgradeHint';hint.hidden=true;hint.setAttribute('role','status');
+    hint.innerHTML='<button type="button" id="projectUpgradeAction"><span>UPGRADE</span><strong>PROJECT</strong><span aria-hidden="true">↗</span></button><button type="button" id="projectUpgradeDismiss" aria-label="'+tr('Zavřít')+'">×</button>';
+    document.body.append(hint);let hintTimer;
+    function hideUpgradeHint(){clearTimeout(hintTimer);hint.hidden=true;}
+    function scheduleHide(){clearTimeout(hintTimer);hintTimer=setTimeout(hideUpgradeHint,8000);}
+    window.requestProUpgrade=()=>{window.clearGoomTooltips?.();hint.hidden=false;hint.getAnimations().forEach(a=>a.cancel());
+        if(!matchMedia('(prefers-reduced-motion: reduce)').matches)hint.animate([{transform:'translate(-50%,30px)',opacity:0},{transform:'translate(-50%,0)',opacity:1}],{duration:220,easing:'ease-out'});
+        scheduleHide();};
+    hint.addEventListener('mouseenter',()=>clearTimeout(hintTimer));hint.addEventListener('mouseleave',scheduleHide);
+    hint.addEventListener('focusin',()=>clearTimeout(hintTimer));hint.addEventListener('focusout',scheduleHide);
+    byId('projectUpgradeAction').onclick=window.openProjectUpgrade;byId('projectUpgradeDismiss').onclick=hideUpgradeHint;
+    document.addEventListener('goom-account-changed',hideUpgradeHint);
+    byId('btnUpdatePro').addEventListener('click', window.openProjectUpgrade);
     byId('btnProClose').addEventListener('click', () => { byId('proUpgradeModal').style.display = 'none'; });
     async function startCheckout(event) {
         if (APP_PRODUCT === 'CCTV' || purchasePending || window.hasOwnPaidPro?.()) return;

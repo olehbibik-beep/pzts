@@ -464,9 +464,15 @@ function placePlanDevice(floor, device) {
     activeDeviceIds.add(device.id);
 }
 
+const emptyProjectShortcut=document.getElementById('emptyProjectShortcut');
+for(const name of ['pointerdown','pointerup','pointermove'])emptyProjectShortcut.addEventListener(name,event=>event.stopPropagation());
+emptyProjectShortcut.onclick=event=>{event.stopPropagation();document.getElementById('btnLogo').click();};
 window.addEventListener('keydown', (e) => {
     if (window.isGoomReadOnly?.()) return;
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.target.closest('input,textarea,select,[contenteditable="true"]') || e.isComposing) return;
+    if ((e.code==='KeyF'||e.key.toLowerCase()==='f')&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!e.shiftKey&&isSystemReady&&!isOverviewMode&&!Array.from(document.querySelectorAll('.modal')).some(m=>['flex','block'].includes(m.style.display))) {
+        e.preventDefault();document.getElementById('btnLogo').click();return;
+    }
     if (isOverviewMode) {
         if (e.key === 'Escape') closeBuildingOverview();
         return;

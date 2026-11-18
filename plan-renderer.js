@@ -101,7 +101,12 @@ function getDarkPlanImage(image,paperLevel) {
 function getLightPlanImage(image, satellite = false) {
     let cached = planLightCache.get(image);
     if (!cached) { cached = new Map(); planLightCache.set(image, cached); }
-    if (cached.has(satellite)) return cached.get(satellite);
+    const key=satellite ? (satellite.layer || 'satellite') : false;
+    if (cached.has(key)) return cached.get(key);
+    if(satellite && satellite.layer!=='topo'){
+        const result=document.createElement('canvas');result.width=image.naturalWidth||image.width;result.height=image.naturalHeight||image.height;
+        drawMapLinework(result.getContext('2d'),image,satellite.attribution);cached.set(key,result);return result;
+    }
     const result = document.createElement('canvas');
     result.width = image.naturalWidth || image.width; result.height = image.naturalHeight || image.height;
     const context = result.getContext('2d', {willReadFrequently:true});
@@ -117,29 +122,16 @@ function getLightPlanImage(image, satellite = false) {
     const paper=estimatePlanPaper(image);
     for (let i=0; i<gray.length; i++) {
         let value;
-        if (satellite) {
-            const w=result.width,x=i%w,y=Math.floor(i/w);
-            if (!x || !y || x===w-1 || y===result.height-1) value=255;
-            else {
-                const dx=-gray[i-w-1]+gray[i-w+1]-2*gray[i-1]+2*gray[i+1]-gray[i+w-1]+gray[i+w+1];
-                const dy=-gray[i-w-1]-2*gray[i-w]-gray[i-w+1]+gray[i+w-1]+2*gray[i+w]+gray[i+w+1];
-                value=Math.hypot(dx,dy)>105?0:255;
-            }
-        } else value=(inverted?255-gray[i]:gray[i]*255/paper)<225?0:255;
+        value=(inverted?255-gray[i]:gray[i]*255/paper)<225?0:255;
         const p=i*4; pixels.data[p]=pixels.data[p+1]=pixels.data[p+2]=value;pixels.data[p+3]=255;
     }
     context.putImageData(pixels,0,0);
-    if(satellite){
-        const height=Math.max(14,Math.round(result.height*28/796));
-        context.fillStyle='#fff';context.fillRect(0,result.height-height,result.width,height);
-        context.fillStyle='#111';context.font=`${Math.max(7,result.width/1280*13)}px sans-serif`;
-        context.fillText('Source: Esri, Vantor, Earthstar Geographics, and the GIS User Community',Math.max(3,result.width/128),result.height-height*.3);
-    }
-    cached.set(satellite,result);return result;
+
+    cached.set(key,result);return result;
 }
 function presentedPlanImage(image, floor, theme) {
     return theme==='dark'?getDarkPlanImage(image,floor.wallMask?.paperLevel||255)
-        :theme==='light'?getLightPlanImage(image,Boolean(floor.satellite)):image;
+        :theme==='light'?getLightPlanImage(image,floor.satellite||false):image;
 }
 function drawVectorPlan(target, vector, theme) {
     target.save(); target.strokeStyle = theme === 'dark' ? '#f2f4f7' : '#121214';
@@ -157,7 +149,8 @@ function drawPlanSource(target, floor, theme = getPlanTheme(floor), imageOverrid
     const width = floor.image.naturalWidth || floor.image.width, height = floor.image.naturalHeight || floor.image.height;
     const bounds=getPlanSourceBounds(floor);
     target.save();
-    if (floor.vectorPlan) drawVectorPlan(target, floor.vectorPlan, theme);
+    if(theme==='light'&&floor.satellite&&floor.satellite.layer!=='topo')drawMapLinework(target,floor.image,floor.satellite.attribution);
+    else if (floor.vectorPlan) drawVectorPlan(target, floor.vectorPlan, theme);
     else {
         const tile=imageOverride?.planTile?imageOverride:null;
         if(tile&&(!tile.width||!tile.height)){target.restore();return;}

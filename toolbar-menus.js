@@ -268,7 +268,9 @@ function applyToolbarMenu(menu, persist = true) {
     cycleButton.title = canEditToolbarMenus() ? tr`Текущий набор: ${menu.name}. Нажмите, чтобы переключить` : menu.name;
     cycleButton.setAttribute('aria-label', tr`Текущий набор меню: ${menu.name}. Переключить набор`);
     document.getElementById('activeToolbarMenuName').textContent = menu.name;
-    cycleButton.disabled = !canEditToolbarMenus();
+    cycleButton.disabled = false;
+    cycleButton.setAttribute('data-project-locked',String(!canEditToolbarMenus()));
+    cycleButton.classList.toggle('pro-lock',!canEditToolbarMenus());
 
     if (persist) {
         preferredSharedToolbarMenuId = null;
@@ -668,7 +670,8 @@ document.getElementById('toolbarMenuShare').addEventListener('change', event => 
     updateToolbarMenuEditorStatus();
 });
 document.getElementById('btnCycleToolbarMenu').addEventListener('click', async () => {
-    if (isToolbarMenuCycling || !canEditToolbarMenus()) return;
+    if(!canEditToolbarMenus()){window.requestProUpgrade?.();return;}
+    if (isToolbarMenuCycling) return;
     const tools = document.getElementById('deviceSetTools');
     const animate = !matchMedia('(prefers-reduced-motion: reduce)').matches;
     isToolbarMenuCycling = true;

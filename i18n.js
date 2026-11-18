@@ -1,6 +1,15 @@
 // Czech is the default. Source aliases also cover labels in older saved menu sets.
 (() => {
     const rows = [
+        ['Mapa','Map','Karte','Карта'],
+        ['Typ mapy','Map type','Kartentyp','Тип карты'],
+        ['Topografická mapa','Topographic map','Topografische Karte','Топографическая карта'],
+        ['Moje poloha','My location','Mein Standort','Моё местоположение'],
+        ['Zjišťování polohy…','Finding your location…','Standort wird ermittelt…','Определение местоположения…'],
+        ['Polohu nelze zjistit. Zadejte adresu nebo souřadnice.','Location unavailable. Enter an address or coordinates.','Standort nicht verfügbar. Adresse oder Koordinaten eingeben.','Местоположение недоступно. Введите адрес или координаты.'],
+        ['Polohu nelze zjistit. Povolte přístup k poloze nebo zadejte adresu.','Location unavailable. Allow location access or enter an address.','Standort nicht verfügbar. Standortzugriff erlauben oder Adresse eingeben.','Не удалось определить местоположение. Разрешите доступ к геолокации или введите адрес.'],
+        ['Za chvíli zkuste hledat znovu.','Try searching again in a moment.','Bitte gleich erneut suchen.','Повторите поиск через пару секунд.'],
+        ['Vytvořit nový projekt','Create a new project','Neues Projekt erstellen','Создать новый проект'],
         ['Černé čáry na bílém pozadí','Black lines on white','Schwarze Linien auf Weiß','Чёрные линии на белом фоне'],
         ['Prohlížení cloudových plánů','Cloud plan viewer','Cloud-Planansicht','Просмотр облачных планов'],
         ['Pouze prohlížení','View only','Nur ansehen','Только просмотр'],
