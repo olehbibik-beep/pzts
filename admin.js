@@ -14,7 +14,8 @@
     let changing = false;
     let loaded = false;
     let visitRequest = 0;
-    let feedbackCursor = null, feedbackLoading = false;
+    let feedbackCursor = null, feedbackLoading = false, feedbackRevision = 0;
+    let feedbackEntries = [], selectedFeedback = new Set(), feedbackWriting = false;
     const nav = [...document.querySelectorAll('[data-view]')];
     const viewTitles = { overview: 'Обзор', users: 'Пользователи', access: 'PROJECT и доступ', activity: 'Активность', feedback: 'Обратная связь' };
     const server = { source: 'server' };
@@ -66,6 +67,8 @@
         byId('adminMoreFeedback').hidden = true;
         feedbackCursor = null;
         feedbackLoading = false;
+        feedbackRevision++; feedbackEntries = []; selectedFeedback.clear(); feedbackWriting = false;
+        byId('adminUserFilter').value = 'all';
         if (dialog.open) dialog.close();
         byId('adminUserPrograms').replaceChildren();
         byId('adminUserTitle').textContent = '';
@@ -97,9 +100,9 @@
     async function readUser(profile, canReadPurchase) {
         const uid = profile.id;
         const get = name => db.collection(name).doc(uid).get(server);
-        const [role, grant, visit, purchase] = await Promise.all([
+        const [role, grant, visit, purchase, usage] = await Promise.all([
             get('goomAdmins'), get('goomProgramGrants'), readOptional(get('goomEditorActivity')),
-            canReadPurchase ? readOptional(get('cloudLicenses')) : unavailable
+            canReadPurchase ? readOptional(get('cloudLicenses')) : unavailable, readOptional(get('goomEditorUsage'))
         ]);
         const data = profile.data();
         const license = purchase === unavailable ? null : purchase.data();
@@ -107,29 +110,42 @@
             && license.source === 'stripe' && license.paymentStatus === 'paid' && ['monthly', 'annual'].includes(license.billingMode);
         const programs = Object.fromEntries(Object.keys(programLabels).map(app => [app, {
             manualUntil: grant.data()?.expiresAt?.[app]?.toMillis() ?? null,
+            companyUntil: license?.companySeat && license.companySeat.email === data.email?.toLowerCase() ? license.companySeat.applicationExpiresAt?.[app]?.toMillis?.() ?? null : null,
+            tier: license?.applicationPlans?.[app] || 'pro',
             paidUntil: validPurchase && Array.isArray(license.applications) && license.applications.includes(app)
                 ? license.applicationExpiresAt?.[app]?.toMillis?.() ?? null : null
         }]));
         return {
-            uid, name: data.displayName || '', email: data.email || '', role: role.data()?.role || 'user',
+            uid, name: data.displayName || '', email: data.email || '', accountType: data.accountType, usage: usage === unavailable ? null : usage.data(), role: role.data()?.role || 'user',
             programs, billingAvailable: purchase !== unavailable, visit: visit === unavailable ? unavailable : visit.data()
         };
     }
 
-    async function readUsers(query, cursor) {
-        const profiles = db.collection('users');
-        const canReadPurchase = session.role === 'owner';
-        if (query && !query.includes('@')) {
-            if (query.length > 128 || query.includes('/') || query === '.' || query === '..') {
+    async function readUsers(search, cursor, options = {}) {
+        const profiles = db.collection('users'), canReadPurchase = session.role === 'owner';
+        const field = options.exact ? 'uid' : byId('adminSearchField').value;
+        const filter = options.exact ? 'all' : byId('adminUserFilter').value;
+        if (search && field === 'uid') {
+            if (search.length > 128 || search.includes('/') || search === '.' || search === '..')
                 throw Object.assign(new Error('Invalid UID'), { code: 'invalid-argument' });
-            }
-            const profile = await profiles.doc(query).get({ source: 'server' });
+            const profile = await profiles.doc(search).get(server);
             return { users: profile.exists ? [await readUser(profile, canReadPurchase)] : [], nextPage: null };
         }
-        let list = query ? profiles.where('email', '==', query) : profiles.orderBy(firebase.firestore.FieldPath.documentId());
+        let list;
+        if (search) list = profiles.orderBy(field).startAt(search).endAt(search + '\uf8ff');
+        else if (filter === 'manual') list = db.collection('goomProgramGrants').where('expiresAt.' + program, '>', firebase.firestore.Timestamp.fromMillis(Date.now())).orderBy('expiresAt.' + program, 'desc');
+        else if (filter === 'paid') list = db.collection('cloudLicenses').where('applicationExpiresAt.' + program, '>', firebase.firestore.Timestamp.fromMillis(Date.now())).orderBy('applicationExpiresAt.' + program, 'desc');
+        else if (filter === 'recent') list = db.collection('goomEditorActivity').orderBy('lastSeen', 'desc');
+        else if (filter === 'time') list = db.collection('goomEditorUsage').orderBy('applications.' + program, 'desc');
+        else list = profiles.orderBy(firebase.firestore.FieldPath.documentId());
         if (cursor) list = list.startAfter(cursor);
-        const page = await list.limit(pageSize).get({ source: 'server' });
-        return { users: await Promise.all(page.docs.map(profile => readUser(profile, canReadPurchase))), nextPage: !query && page.size === pageSize ? page.docs.at(-1) : null };
+        const page = await list.limit(pageSize).get(server);
+        const records = await Promise.all(page.docs.map(async snapshot => {
+            const profile = search || filter === 'all' ? snapshot : await profiles.doc(snapshot.id).get(server);
+            return profile.exists ? readUser(profile, canReadPurchase) : null;
+        }));
+        return { users: records.filter(user => user && (filter !== 'paid' || user.programs[program].paidUntil > Date.now())),
+            nextPage: page.size === pageSize ? page.docs.at(-1) : null };
     }
 
     async function writeChange(action, { uid, role, application, days }) {
@@ -186,8 +202,9 @@
             button.append(element('strong', application), element('span', programLabels[application]));
             button.addEventListener('click', () => {
                 program = application;
+                tokens = [null]; pageIndex = 0;
                 renderPrograms();
-                renderUsers();
+                void loadUsers(0);
                 byId('adminPrograms').querySelector('[aria-pressed="true"]').focus();
             });
             return button;
@@ -271,39 +288,53 @@
         }));
     }
 
+    function durationLabel(seconds) {
+        if (!Number.isFinite(seconds)) return 'Ещё нет данных';
+        if (seconds < 60) return '< 1 мин';
+        const minutes = Math.floor(seconds / 60), hours = Math.floor(minutes / 60);
+        return hours ? hours + ' ч ' + minutes % 60 + ' мин' : minutes + ' мин';
+    }
+    function accessState(user, application) {
+        const access = user.programs[application], now = Date.now();
+        if (access.paidUntil > now) return { label: access.tier === 'company' ? 'COMPANY PROJECT' : 'PROJECT', kind: 'paid', icon: '▣', until: access.paidUntil };
+        if (access.companyUntil > now) return { label: 'PROJECT · команда', kind: 'company', icon: '♧', until: access.companyUntil };
+        if (access.manualUntil > now) return { label: 'PROJECT · вручную', kind: 'manual', icon: '◆', until: access.manualUntil };
+        return { label: user.billingAvailable ? 'BASIC' : 'Оплата: нет доступа', kind: 'basic', icon: '○' };
+    }
     function renderUsers() {
         const rows = users.map(user => {
-            const row = element('tr');
-            const account = element('td');
-            account.append(element('strong', user.name || user.email || user.uid));
-            if (user.name && user.email) account.append(element('span', user.email, 'subline'));
-            const manual = user.programs[program].manualUntil;
-            const paid = element('td');
-            const purchase = paidLabel(user, program);
-            paid.append(element('span', purchase, purchase.startsWith('До ') ? 'badge paid' : 'subline'));
-            const access = element('td');
-            access.append(element('span', manual > Date.now() ? `До ${dateLabel(manual)}` : '—', manual > Date.now() ? 'badge manual' : 'subline'));
-            const action = element('td');
-            const button = element('button', 'Открыть');
-            button.type = 'button';
-            button.setAttribute('aria-label', `Открыть ${user.email || user.uid}`);
-            button.addEventListener('click', () => {
-                selectedUser = user;
-                status('', false, 'adminUserStatus');
-                renderUserDialog();
-                dialog.showModal();
-            });
-            action.append(button);
-            const role = element('td');
-            role.append(element('span', roleLabels[user.role] || roleLabels.user, 'badge'));
-            row.append(account, role, paid, access, element('td', visitLabel(user.visit), 'activity-column'), action);
-            return row;
+            const row = element('tr'), account = element('td'), identity = element('div', undefined, 'account-cell');
+            const avatar = element('span', (user.name || user.email || '?').slice(0, 1).toUpperCase(), 'avatar');
+            const name = element('div'); name.append(element('strong', user.name || user.email || user.uid));
+            if (user.email) name.append(element('span', user.email, 'subline'));
+            if (user.role !== 'user') name.append(element('span', '◇ ' + roleLabels[user.role], 'role-label'));
+            identity.append(avatar, name); account.append(identity);
+            const programs = element('td'), indicators = element('div', undefined, 'program-indicators');
+            for (const app of Object.keys(programLabels)) {
+                const state = accessState(user, app), badge = element('span', app, 'program-dot ' + state.kind);
+                badge.title = app + ' · ' + state.label + (state.until ? ' · до ' + dateLabel(state.until) : '');
+                badge.setAttribute('aria-label', badge.title); indicators.append(badge);
+            }
+            programs.append(indicators);
+            const tier = element('td'), state = accessState(user, program);
+            tier.append(element('span', state.icon + ' ' + state.label, 'badge ' + state.kind));
+            if (state.until) tier.append(element('span', 'До ' + dateLabel(state.until), 'subline'));
+            const activity = element('td', undefined, 'activity-column');
+            const active = user.usage?.activeSeconds > 0 && user.usage.updatedAt?.toMillis() > Date.now() - 90000;
+            activity.append(element('span', active ? '● Активен' : visitLabel(user.visit), active ? 'online-label' : 'subline'));
+            const time = element('span', '◷ ' + durationLabel(user.usage?.applications?.[program]), 'subline');
+            time.title = program + ': активное время с момента обновления. Все программы: ' + durationLabel(user.usage?.activeSeconds); activity.append(time);
+            const action = element('td'), button = element('button', '⋯', 'row-action'); button.type = 'button';
+            button.setAttribute('aria-label', 'Открыть ' + (user.email || user.uid));
+            button.addEventListener('click', () => { selectedUser = user; status('', false, 'adminUserStatus'); renderUserDialog(); dialog.showModal(); });
+            action.append(button); row.append(account, programs, tier, activity, action); return row;
         });
+        if (loaded && !rows.length) { const row = element('tr'), cell = element('td', 'Пользователи не найдены.'); cell.colSpan = 5; row.append(cell); rows.push(row); }
         byId('adminUsers').replaceChildren(...rows);
         byId('adminPrev').disabled = pageIndex === 0;
         byId('adminNext').disabled = !nextPage;
-        byId('adminPage').textContent = !loaded ? 'Загружаем…' : users.length ? query ? `Найдено: ${users.length}` : `Страница ${pageIndex + 1}` : 'Нет пользователей';
-        byId('adminUsersHint').textContent = `${program} · аккаунты, которые уже вошли в редактор GooM`;
+        byId('adminPage').textContent = !loaded ? 'Загружаем…' : 'Страница ' + (pageIndex + 1) + ' · ' + users.length + ' аккаунтов';
+        byId('adminUsersHint').textContent = program + ' · по 25 аккаунтов, показатели относятся к этой странице';
         renderSummary();
     }
 
@@ -311,6 +342,8 @@
         const currentEpoch = epoch;
         const revision = ++pageRequest;
         const pageToken = search === query ? tokens[index] : null;
+        byId('adminTable').setAttribute('aria-busy', 'true');
+        byId('adminPrev').disabled = byId('adminNext').disabled = true;
         try {
             const result = await readUsers(search, pageToken);
             if (currentEpoch !== epoch || revision !== pageRequest) return;
@@ -326,7 +359,7 @@
         } catch (error) {
             if (currentEpoch !== epoch || revision !== pageRequest) return;
             handleError(error, currentEpoch);
-        }
+        } finally { if (revision === pageRequest && currentEpoch === epoch) { byId('adminTable').removeAttribute('aria-busy'); byId('adminPrev').disabled = pageIndex === 0; byId('adminNext').disabled = !nextPage; } }
     }
 
     async function loadVisits() {
@@ -373,63 +406,75 @@
     }
 
     function feedbackRow(entry) {
-        const item = element('li', undefined, 'feedback-item');
-        const heading = element('div', undefined, 'feedback-item-heading');
-        const identity = element('div');
-        identity.append(element('strong', entry.name || entry.email));
-        const email = element('a', entry.email, 'feedback-item-email');
-        email.href = `mailto:${encodeURIComponent(entry.email).replace('%40', '@')}`;
-        identity.append(email);
-        heading.append(identity, element('span', `${dateLabel(entry.sentAt?.toMillis())} · ${entry.application}`, 'muted'));
-        item.append(heading, element('p', entry.message, 'feedback-item-message'));
-        return item;
+        const item = element('li', undefined, 'feedback-item' + (entry.readAt ? '' : ' unread')); item.dataset.id = entry.id;
+        const select = element('input'); select.type = 'checkbox'; select.checked = selectedFeedback.has(entry.id); select.setAttribute('aria-label', 'Выбрать сообщение от ' + entry.email);
+        select.addEventListener('change', () => { select.checked ? selectedFeedback.add(entry.id) : selectedFeedback.delete(entry.id); updateFeedbackTools(); });
+        const content = element('div', undefined, 'feedback-content'), heading = element('div', undefined, 'feedback-item-heading');
+        const identity = element('div'); identity.append(element('strong', entry.name || entry.email));
+        const email = element('a', entry.email, 'feedback-item-email'); email.href = 'mailto:' + encodeURIComponent(entry.email).replace('%40', '@'); identity.append(email);
+        heading.append(identity, element('span', dateLabel(entry.sentAt?.toMillis()) + ' · ' + entry.application, 'muted'));
+        const message = element('p', entry.message, 'feedback-item-message');
+        const actions = element('div', undefined, 'feedback-actions'), read = element('button', entry.readAt ? '✉ Непрочитанное' : '✓ Прочитать'); read.type = 'button';
+        read.addEventListener('click', () => void changeFeedback('read', [entry.id], !entry.readAt));
+        const remove = element('button', 'Удалить', 'danger'); remove.type = 'button'; remove.addEventListener('click', () => void changeFeedback('delete', [entry.id]));
+        actions.append(element('span', entry.readAt ? 'Прочитано' : 'Новое', 'badge ' + (entry.readAt ? '' : 'paid')), read, remove);
+        content.append(heading, message, actions); item.append(select, content); return item;
     }
-
-    async function loadFeedback(more = false) {
-        if (!session || feedbackLoading || (more && !feedbackCursor)) return;
-        const currentEpoch = epoch;
-        const list = byId('adminFeedback');
-        const next = byId('adminMoreFeedback');
-        const refresh = byId('adminRefreshFeedback');
-        const statusId = 'adminFeedbackStatus';
-        feedbackLoading = true;
-        next.disabled = refresh.disabled = true;
-        if (!more) {
-            feedbackCursor = null;
-            list.replaceChildren();
-            next.hidden = true;
-        }
-        status('Загружаем сообщения…', false, statusId);
+    function visibleFeedback() { return feedbackEntries.filter(entry => !byId('adminUnreadOnly').checked || !entry.readAt); }
+    function updateFeedbackTools() {
+        const visible = visibleFeedback(), selected = selectedFeedback.size;
+        byId('adminReadFeedback').disabled = byId('adminDeleteFeedback').disabled = feedbackWriting || !selected;
+        const all = byId('adminSelectFeedback'); all.checked = !!visible.length && visible.every(entry => selectedFeedback.has(entry.id)); all.indeterminate = !!selected && !all.checked;
+        byId('adminFeedbackCount').textContent = 'Загружено: ' + feedbackEntries.length + ' · новых: ' + feedbackEntries.filter(entry => !entry.readAt).length + (selected ? ' · выбрано: ' + selected : '');
+    }
+    function renderFeedback() {
+        byId('adminFeedback').replaceChildren(...visibleFeedback().map(feedbackRow)); updateFeedbackTools();
+        status(visibleFeedback().length ? '' : 'В загруженных сообщениях ничего нет.', false, 'adminFeedbackStatus');
+    }
+    async function changeFeedback(action, ids, read = true) {
+        if (!session || feedbackWriting || !ids.length) return;
+        if (action === 'delete' && !confirm('Удалить сообщений: ' + ids.length + '? Восстановить их будет нельзя.')) return;
+        const currentEpoch = epoch; feedbackWriting = true; feedbackRevision++; updateFeedbackTools();
+        byId('adminFeedback').querySelectorAll('button,input').forEach(control => control.disabled = true);
+        let failure = '';
         try {
-            let page = db.collection('goomFeedback').orderBy('sentAt', 'desc').limit(pageSize);
-            if (more) page = page.startAfter(feedbackCursor);
-            const result = await page.get(server);
-            if (currentEpoch !== epoch) return;
-            list.append(...result.docs.map(snapshot => feedbackRow(snapshot.data())));
-            feedbackCursor = result.size === pageSize ? result.docs.at(-1) : null;
-            next.hidden = !feedbackCursor;
-            status(list.childElementCount ? '' : 'Сообщений пока нет.', false, statusId);
+            for (let offset = 0; offset < ids.length; offset += 25) {
+                if (currentEpoch !== epoch) return;
+                const chunk = ids.slice(offset, offset + 25), batch = db.batch();
+                for (const id of chunk) { const ref = db.collection('goomFeedback').doc(id); action === 'delete' ? batch.delete(ref) : batch.update(ref, { readAt: read ? firebase.firestore.FieldValue.serverTimestamp() : null, readBy: read ? session.uid : null }); }
+                await batch.commit();
+                if (currentEpoch !== epoch) return;
+                if (action === 'delete') feedbackEntries = feedbackEntries.filter(entry => !chunk.includes(entry.id));
+                else feedbackEntries.forEach(entry => { if (chunk.includes(entry.id)) entry.readAt = read ? firebase.firestore.Timestamp.fromMillis(Date.now()) : null; });
+                chunk.forEach(id => selectedFeedback.delete(id));
+            }
+        } catch (error) { failure = readableError(error); }
+        finally { if (currentEpoch === epoch) { feedbackWriting = false; renderFeedback(); if (failure) status(failure, true, 'adminFeedbackStatus'); } }
+    }
+    async function loadFeedback(more = false) {
+        if (!session || feedbackLoading || feedbackWriting || (more && !feedbackCursor)) return;
+        const currentEpoch = epoch, revision = ++feedbackRevision, next = byId('adminMoreFeedback'), refresh = byId('adminRefreshFeedback');
+        feedbackLoading = true; next.disabled = refresh.disabled = true;
+        if (!more) { feedbackCursor = null; feedbackEntries = []; selectedFeedback.clear(); next.hidden = true; byId('adminFeedback').replaceChildren(); }
+        status('Загружаем сообщения…', false, 'adminFeedbackStatus');
+        try {
+            let query = db.collection('goomFeedback').orderBy('sentAt', 'desc').limit(pageSize); if (more) query = query.startAfter(feedbackCursor);
+            const result = await query.get(server); if (currentEpoch !== epoch || revision !== feedbackRevision) return;
+            const known = new Set(feedbackEntries.map(entry => entry.id));
+            feedbackEntries.push(...result.docs.filter(snapshot => !known.has(snapshot.id)).map(snapshot => ({ ...snapshot.data(), id: snapshot.id })));
+            feedbackCursor = result.size === pageSize ? result.docs.at(-1) : null; next.hidden = !feedbackCursor; renderFeedback();
         } catch (error) {
             if (currentEpoch !== epoch) return;
-            if (error.code === 'permission-denied') {
-                list.replaceChildren();
-                feedbackCursor = null;
-                next.hidden = true;
-            }
-            status(readableError(error), true, statusId);
-        } finally {
-            if (currentEpoch === epoch) {
-                feedbackLoading = false;
-                next.disabled = refresh.disabled = false;
-            }
-        }
+            if (error.code === 'permission-denied') { feedbackEntries = []; selectedFeedback.clear(); byId('adminFeedback').replaceChildren(); feedbackCursor = null; next.hidden = true; }
+            status(readableError(error), true, 'adminFeedbackStatus');
+        } finally { if (currentEpoch === epoch) { feedbackLoading = false; next.disabled = refresh.disabled = false; updateFeedbackTools(); } }
     }
 
     function renderUserDialog() {
         const user = selectedUser;
         byId('adminUserTitle').textContent = user.name || user.email || user.uid;
         byId('adminUserUid').textContent = `${user.email || ''} · ${user.uid} · ${roleLabels[user.role]}`;
-        byId('adminUserVisit').textContent = `Последнее посещение редактора · ${visitLabel(user.visit)}`;
+        byId('adminUserVisit').textContent = `Последнее посещение · ${visitLabel(user.visit)} · Активное время: ${durationLabel(user.usage?.activeSeconds)} (после обновления)`;
         const canEdit = user.uid !== session.uid && user.role !== 'owner' && (session.role === 'owner' || user.role === 'user');
         const canEditRole = canEdit && session.role === 'owner';
         const canGrant = canEdit || (user.uid === session.uid && session.role === 'owner');
@@ -477,7 +522,7 @@
         try {
             const { changed } = await writeChange(action, { uid, ...fields });
             if (currentEpoch !== epoch) return;
-            const { users: matches } = await readUsers(uid);
+            const { users: matches } = await readUsers(uid, null, { exact: true });
             if (currentEpoch !== epoch) return;
             await Promise.all([loadUsers(), loadAudit()]);
             if (currentEpoch !== epoch) return;
@@ -503,6 +548,7 @@
             const verified = await readSession();
             if (currentEpoch !== epoch) return;
             session = verified;
+            byId('adminUserFilter').querySelector('[value=paid]').disabled = session.role !== 'owner';
             byId('adminIdentity').textContent = `${user.email || user.uid} · ${roleLabels[session.role]}`;
             program = session.programs[0];
             showView('overview');
@@ -542,13 +588,19 @@
     byId('adminSignOut').addEventListener('click', async () => {
         try { await auth.signOut(); } catch (error) { status(readableError(error), true); }
     });
-    byId('adminSearch').addEventListener('submit', event => { event.preventDefault(); void loadUsers(0, byId('adminQuery').value.trim()); });
-    byId('adminReset').addEventListener('click', () => { byId('adminQuery').value = ''; void loadUsers(0, ''); });
+    byId('adminSearch').addEventListener('submit', event => { event.preventDefault(); byId('adminUserFilter').value = 'all'; tokens = [null]; void loadUsers(0, byId('adminQuery').value.trim()); });
+    byId('adminUserFilter').addEventListener('change', () => { byId('adminQuery').value = ''; tokens = [null]; void loadUsers(0, ''); });
+    byId('adminSearchField').addEventListener('change', () => { const field = byId('adminSearchField').value; byId('adminQuery').placeholder = field === 'uid' ? 'Точный UID' : field === 'email' ? 'E-mail начинается с…' : 'Имя начинается с…'; byId('adminSearchHint').textContent = field === 'uid' ? 'Точное совпадение UID.' : 'Поиск по началу ' + (field === 'email' ? 'e-mail' : 'имени') + ', с учётом регистра. По 25 на страницу.'; });
+    byId('adminReset').addEventListener('click', () => { byId('adminQuery').value = ''; byId('adminUserFilter').value = 'all'; tokens = [null]; void loadUsers(0, ''); });
     byId('adminPrev').addEventListener('click', () => { if (pageIndex > 0) void loadUsers(pageIndex - 1); });
     byId('adminNext').addEventListener('click', () => { if (nextPage) void loadUsers(pageIndex + 1); });
     byId('adminRefreshAudit').addEventListener('click', loadAudit);
     byId('adminRefreshVisits').addEventListener('click', loadVisits);
     byId('adminRefreshFeedback').addEventListener('click', () => loadFeedback());
+    byId('adminUnreadOnly').addEventListener('change', () => { selectedFeedback.clear(); renderFeedback(); });
+    byId('adminSelectFeedback').addEventListener('change', event => { selectedFeedback.clear(); if (event.target.checked) visibleFeedback().forEach(entry => selectedFeedback.add(entry.id)); renderFeedback(); });
+    byId('adminReadFeedback').addEventListener('click', () => void changeFeedback('read', [...selectedFeedback]));
+    byId('adminDeleteFeedback').addEventListener('click', () => void changeFeedback('delete', [...selectedFeedback]));
     byId('adminMoreFeedback').addEventListener('click', () => loadFeedback(true));
     nav.forEach(button => button.addEventListener('click', () => showView(button.dataset.view)));
     byId('adminCloseDialog').addEventListener('click', () => dialog.close());

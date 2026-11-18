@@ -3,44 +3,223 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function owner(uid) { return request.auth != null && request.auth.uid == uid; }
+    function adminRole(uid) {
+      let role = get(/databases/$(database)/documents/goomAdmins/$(uid));
+      return role == null ? 'user' : role.data.role;
+    }
+    function administrator() {
+      return request.auth != null && request.auth.token.email_verified == true
+        && adminRole(request.auth.uid) in ['owner', 'admin'];
+    }
+    function canManage(uid) {
+      return administrator() && request.auth.uid != uid
+        && adminRole(uid) != 'owner'
+        && (adminRole(request.auth.uid) == 'owner' || adminRole(uid) == 'user')
+        && exists(/databases/$(database)/documents/users/$(uid));
+    }
+    function hasAudit(uid, action, before, after, application) {
+      let event = getAfter(/databases/$(database)/documents/goomAdminAudit/$(request.resource.data.auditId)).data;
+      return event.actorUid == request.auth.uid && event.targetUid == uid && event.action == action
+        && event.before == before && event.after == after && event.application == application
+        && event.createdAt == request.time;
+    }
+    function grantChange(uid, previous) {
+      let next = request.resource.data;
+      let app = next.application;
+      let expiry = next.expiresAt.get(app, null);
+      return (canManage(uid) || (administrator() && owner(uid) && adminRole(uid) == 'owner'))
+        && next.keys().hasOnly(['application', 'expiresAt', 'updatedAt', 'auditId'])
+        && app in ['PZTS', 'EPS', 'CCTV', 'SK']
+        && next.updatedAt == request.time
+        && next.expiresAt.diff(previous).affectedKeys().hasOnly([app])
+        && expiry != previous.get(app, null)
+        && ((expiry == null && !(app in next.expiresAt))
+          || (expiry is timestamp && expiry > request.time && expiry <= request.time + duration.value(365, 'd') + duration.value(5, 'm')))
+        && hasAudit(uid, 'grant', previous.get(app, null), expiry, app);
+    }
     function validIco(ico) {
       let sum = int(ico[0]) * 8 + int(ico[1]) * 7 + int(ico[2]) * 6 + int(ico[3]) * 5
         + int(ico[4]) * 4 + int(ico[5]) * 3 + int(ico[6]) * 2;
       return ico.matches('[0-9]{8}') && int(ico[7]) == (11 - sum % 11) % 10;
     }
-    function licensed(uid, application) {
-      let license = get(/databases/$(database)/documents/cloudLicenses/$(uid)).data;
-      return owner(uid) && request.auth.token.email_verified == true
-        && license.status == 'active' && license.uid == uid && license.plan == 'pro'
+    function paidOrCompany(uid, application) {
+      let snapshot = get(/databases/$(database)/documents/cloudLicenses/$(uid));
+      let license = snapshot == null ? null : snapshot.data;
+      let seat = license == null ? null : license.get('companySeat', null);
+      return (seat != null && request.auth.token.email is string
+        && seat.email == request.auth.token.email.lower() && application in seat.applicationExpiresAt
+        && seat.applicationExpiresAt[application] > request.time)
+        || (license != null && license.get('status', '') == 'active' && license.uid == uid && license.plan == 'pro'
         && license.paymentStatus == 'paid' && license.source == 'stripe'
-        && license.billingMode == 'monthly'
+        && license.billingMode in ['monthly', 'annual']
         && application in license.applications
-        && license.applicationExpiresAt[application] > request.time;
+        && application in license.applicationExpiresAt
+        && license.applicationExpiresAt[application] > request.time);
+    }
+    function granted(uid, application) {
+      let snapshot = get(/databases/$(database)/documents/goomProgramGrants/$(uid));
+      let grant = snapshot == null ? null : snapshot.data;
+      return grant != null && application in grant.expiresAt && grant.expiresAt[application] > request.time;
+    }
+    function licensed(uid, application) {
+      return owner(uid) && request.auth.token.email_verified == true && (paidOrCompany(uid, application) || granted(uid, application));
     }
     function validProfile() {
       let p = request.resource.data;
       return p.keys().hasOnly(['displayName', 'email', 'accountType', 'ico', 'locale', 'createdAt', 'updatedAt'])
         && p.keys().hasAll(['displayName', 'email', 'accountType', 'ico', 'locale', 'createdAt', 'updatedAt'])
         && p.displayName is string && p.displayName.size() > 0 && p.displayName.size() <= 120
-        && p.email == request.auth.token.email && p.locale in ['cs', 'en']
+        && p.email == request.auth.token.email && p.locale in ['cs', 'en', 'de', 'ru']
         && ((p.accountType == 'personal' && p.ico == '') || (p.accountType == 'company' && validIco(p.ico)))
         && p.updatedAt == request.time;
     }
     match /users/{uid} {
-      allow get: if owner(uid);
+      allow get: if owner(uid) || administrator();
+      allow list: if administrator() && request.query.limit <= 25;
       allow create: if owner(uid) && validProfile() && request.resource.data.createdAt == request.time;
       allow update: if owner(uid) && validProfile() && request.resource.data.createdAt == resource.data.createdAt;
     }
-    match /cloudLicenses/{uid} {
+    match /proCompanyTeams/{uid} {
       allow get: if owner(uid);
+      allow write: if false;
+    }
+    match /cloudLicenses/{uid} {
+      allow get: if owner(uid) || (administrator() && adminRole(request.auth.uid) == 'owner');
+      allow list: if administrator() && adminRole(request.auth.uid) == 'owner' && request.query.limit <= 25;
       // Only the trusted billing backend writes paid entitlements via the Admin SDK.
       allow write: if false;
     }
+    function validPreset(application) {
+      let data = request.resource.data;
+      return data.keys().hasOnly(['name', 'deviceTypes', 'iconsJson'])
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 32
+        && data.deviceTypes is list && data.deviceTypes.size() >= 1 && data.deviceTypes.size() <= 15
+        && (application == 'CCTV'
+          ? data.deviceTypes.hasOnly(['cctv_bullet', 'cctv_dome', 'cctv_ptz', 'cctv_nvr', 'cctv_poe', 'cctv_doorbell', 'acs_reader', 'cctv_antenna', 'cctv_receiver', 'textNode'])
+          : data.deviceTypes.hasOnly(['panel', 'expander', 'abax', 'keypad', 'pir', 'pir_wl', 'magnet',
+            'magnet_wl', 'glassbreak', 'panic', 'siren', 'acs_module', 'acs_reader', 'smoke', 'textNode']))
+        && data.iconsJson is string && data.iconsJson.size() <= 300000;
+    }
+    match /goomToolbarPresets/{application}/sets/{preset} {
+      allow get: if request.auth != null && application in ['PZTS', 'EPS', 'CCTV', 'SK']
+        && (preset == 'default' || (preset == 'pro' && (administrator() || licensed(request.auth.uid, application))));
+      allow create, update: if administrator() && application in ['PZTS', 'EPS', 'CCTV', 'SK']
+        && preset in ['default', 'pro'] && validPreset(application);
+    }
+    match /goomToolbarPresets/{application}/premiumSets/{preset} {
+      allow get, list: if request.auth != null && application in ['PZTS', 'EPS', 'CCTV', 'SK']
+        && (administrator() || licensed(request.auth.uid, application));
+      allow create, update: if administrator() && application in ['PZTS', 'EPS', 'CCTV', 'SK']
+        && preset.matches('shared-[a-f0-9-]{36}') && validPreset(application);
+      allow delete: if administrator() && application in ['PZTS', 'EPS', 'CCTV', 'SK']
+        && preset.matches('shared-[a-f0-9-]{36}');
+    }
+    function feedbackSender(uid) {
+      return owner(uid) && request.auth.token.email_verified == true && request.auth.token.email is string;
+    }
+    match /goomFeedback/{messageId} {
+      allow get: if administrator();
+      allow list: if administrator() && request.query.limit <= 25;
+      allow create: if feedbackSender(request.resource.data.uid) && validFeedback();
+      allow update: if administrator()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readAt', 'readBy'])
+        && ((request.resource.data.readAt == request.time && request.resource.data.readBy == request.auth.uid)
+          || (request.resource.data.readAt == null && request.resource.data.readBy == null));
+      allow delete: if administrator();
+
+      function validFeedback() {
+        let data = request.resource.data;
+        let sender = getAfter(/databases/$(database)/documents/goomFeedbackSenders/$(data.uid)).data;
+        return data.keys().hasOnly(['uid', 'email', 'name', 'application', 'message', 'sentAt'])
+          && data.email == request.auth.token.email
+          && data.name is string && data.name.size() <= 120 && data.name == request.auth.token.get('name', '')
+          && data.application in ['PZTS', 'EPS', 'CCTV', 'SK']
+          && data.message is string && data.message.size() <= 800 && data.message.matches('(?s).*\\S.*')
+          && data.sentAt == request.time && sender.sentAt == request.time && sender.messageId == messageId;
+      }
+    }
+    match /goomFeedbackSenders/{uid} {
+      allow get: if feedbackSender(uid);
+      allow create: if feedbackSender(uid) && recordsNewFeedback();
+      allow update: if feedbackSender(uid) && request.time >= resource.data.sentAt + duration.value(30, 's') && recordsNewFeedback();
+
+      function recordsNewFeedback() {
+        let data = request.resource.data;
+        return data.keys().hasOnly(['sentAt', 'messageId']) && data.sentAt == request.time
+          && data.messageId is string && data.messageId.matches('[A-Za-z0-9]{20}')
+          && !exists(/databases/$(database)/documents/goomFeedback/$(data.messageId))
+          && getAfter(/databases/$(database)/documents/goomFeedback/$(data.messageId)).data.uid == uid
+          && getAfter(/databases/$(database)/documents/goomFeedback/$(data.messageId)).data.sentAt == request.time;
+      }
+    }
+    match /goomEditorActivity/{uid} {
+      allow get: if administrator();
+      allow list: if administrator() && request.query.limit <= 25;
+      allow create, update: if owner(uid)
+        && exists(/databases/$(database)/documents/users/$(uid))
+        && request.resource.data.keys().hasOnly(['lastSeen', 'application'])
+        && request.resource.data.lastSeen == request.time
+        && request.resource.data.application in ['PZTS', 'EPS', 'CCTV', 'SK'];
+    }
+    match /goomEditorUsage/{uid} {
+      allow get: if administrator() || (owner(uid) && request.auth.token.email_verified == true);
+      allow list: if administrator() && request.query.limit <= 25;
+      allow create: if usageOwner(uid) && validUsage() && request.resource.data.activeSeconds == 0;
+      allow update: if usageOwner(uid) && validUsage()
+        && request.resource.data.activeSeconds >= resource.data.activeSeconds
+        && request.resource.data.activeSeconds - resource.data.activeSeconds <= 60
+        && (request.resource.data.activeSeconds - resource.data.activeSeconds) * 1000
+          <= request.time.toMillis() - resource.data.updatedAt.toMillis()
+        && request.resource.data.applications.diff(resource.data.applications).affectedKeys().hasOnly([request.resource.data.application]);
+      function usageOwner(uid) {
+        return owner(uid) && request.auth.token.email_verified == true
+          && exists(/databases/$(database)/documents/users/$(uid));
+      }
+      function validUsage() {
+        let data = request.resource.data;
+        let apps = data.applications;
+        return data.keys().hasOnly(['application', 'applications', 'activeSeconds', 'updatedAt'])
+          && data.application in ['PZTS', 'EPS', 'CCTV', 'SK'] && data.updatedAt == request.time
+          && apps.keys().hasOnly(['PZTS', 'EPS', 'CCTV', 'SK'])
+          && apps.PZTS is int && apps.PZTS >= 0 && apps.EPS is int && apps.EPS >= 0
+          && apps.CCTV is int && apps.CCTV >= 0 && apps.SK is int && apps.SK >= 0
+          && data.activeSeconds is int && data.activeSeconds == apps.PZTS + apps.EPS + apps.CCTV + apps.SK;
+      }
+    }
+    match /goomProgramGrants/{uid} {
+      allow get: if owner(uid) || administrator();
+      allow list: if administrator() && request.query.limit <= 25;
+      allow create: if grantChange(uid, {});
+      allow update: if grantChange(uid, resource.data.expiresAt);
+    }
+    match /goomAdmins/{uid} {
+      allow get: if (owner(uid) && request.auth.token.email_verified == true) || administrator();
+      allow create, update: if canManage(uid) && adminRole(request.auth.uid) == 'owner'
+        && request.resource.data.keys().hasOnly(['role', 'updatedBy', 'updatedAt', 'auditId'])
+        && request.resource.data.role in ['admin', 'user']
+        && request.resource.data.role != adminRole(uid)
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.updatedAt == request.time
+        && hasAudit(uid, 'role', adminRole(uid), request.resource.data.role, null);
+    }
+    match /goomAdminAudit/{id} {
+      allow list: if administrator() && request.query.limit <= 25;
+      allow create: if administrator()
+        && request.resource.data.keys().hasOnly(['action', 'actorUid', 'targetUid', 'before', 'after', 'application', 'createdAt'])
+        && request.resource.data.actorUid == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && ((request.resource.data.action == 'role'
+          && getAfter(/databases/$(database)/documents/goomAdmins/$(request.resource.data.targetUid)).data.auditId == id
+          && getAfter(/databases/$(database)/documents/goomAdmins/$(request.resource.data.targetUid)).data.updatedAt == request.time)
+        || (request.resource.data.action == 'grant'
+          && getAfter(/databases/$(database)/documents/goomProgramGrants/$(request.resource.data.targetUid)).data.auditId == id
+          && getAfter(/databases/$(database)/documents/goomProgramGrants/$(request.resource.data.targetUid)).data.updatedAt == request.time));
+    }
     match /users/{userId}/projects/{projectId} {
-      allow read, write: if licensed(userId, 'PZTS');
+      allow read: if licensed(userId, 'PZTS');
     }
     match /users/{uid}/apps/{application}/projects/{projectId} {
-      allow read, write: if application in ['PZTS', 'EPS', 'CCTV', 'SK'] && licensed(uid, application);
+      allow read: if application in ['PZTS', 'EPS', 'CCTV', 'SK'] && licensed(uid, application);
     }
   }
 }

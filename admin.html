@@ -4,12 +4,12 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>GooM — администрирование</title>
-    <link rel="stylesheet" href="admin.css?v=20261117-feedback-intro-53">
+    <link rel="stylesheet" href="admin.css?v=20261119-admin-compact-70">
     <script defer src="config.js?v=20261110-whale-25"></script>
     <script defer src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script defer src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
     <script defer src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
-    <script defer src="admin.js?v=20261117-feedback-intro-53"></script>
+    <script defer src="admin.js?v=20261119-admin-compact-70"></script>
 </head>
 <body>
     <header class="admin-header">
@@ -59,14 +59,16 @@
                 <div class="section-header">
                     <div><h2 id="usersTitle">Пользователи</h2><p class="muted" id="adminUsersHint">Аккаунты, которые уже вошли в редактор GooM.</p></div>
                     <form id="adminSearch" class="search" role="search">
-                        <input id="adminQuery" type="search" maxlength="320" placeholder="Точный e-mail или UID" aria-label="Поиск по e-mail или UID">
+                        <select id="adminSearchField" aria-label="Поле поиска"><option value="email">E-mail</option><option value="displayName">Имя</option><option value="uid">UID</option></select>
+                        <input id="adminQuery" type="search" maxlength="320" placeholder="E-mail начинается с…" aria-label="Поиск пользователей">
                         <button type="submit">Найти</button>
                         <button type="button" id="adminReset">Все</button>
                     </form>
                 </div>
+                <div class="list-tools"><label>Показать <select id="adminUserFilter"><option value="all">Все аккаунты</option><option value="paid">Оплаченный PROJECT</option><option value="manual">Ручной PROJECT</option><option value="recent">Недавние посещения</option><option value="time">Активное время ↓</option></select></label><span class="muted" id="adminSearchHint">Поиск по началу e-mail. По 25 пользователей на страницу.</span></div>
                 <div class="table-scroll">
                     <table id="adminTable">
-                        <thead><tr><th scope="col">Аккаунт</th><th scope="col">Роль</th><th scope="col">Оплаченный PROJECT</th><th scope="col">Ручной доступ</th><th scope="col" class="activity-column">Последнее посещение</th><th scope="col"><span class="sr-only">Действия</span></th></tr></thead>
+                        <thead><tr><th scope="col">Аккаунт</th><th scope="col">Программы и доступ</th><th scope="col">Тариф</th><th scope="col" class="activity-column">Активность / время</th><th scope="col"><span class="sr-only">Действия</span></th></tr></thead>
                         <tbody id="adminUsers"></tbody>
                     </table>
                 </div>
@@ -84,8 +86,9 @@
                 <div class="section-header"><div><h2 id="auditTitle">Журнал изменений</h2><p class="muted">Последние 25 изменений доступа и ролей.</p></div><button type="button" id="adminRefreshAudit">Обновить</button></div>
                 <ul id="adminEvents" class="events"></ul>
             </section>
-            <section id="adminFeedbackSection" class="card" aria-label="Входящие сообщения" hidden>
+            <section id="adminFeedbackSection" class="card feedback-panel" aria-label="Входящие сообщения" hidden>
                 <div class="section-header"><h2>Входящие сообщения</h2><button type="button" id="adminRefreshFeedback">Обновить</button></div>
+                <div class="feedback-tools"><label class="feedback-select"><input id="adminSelectFeedback" type="checkbox"> Выбрать показанные</label><button id="adminReadFeedback" type="button" disabled>Прочитать выбранные</button><button id="adminDeleteFeedback" class="danger" type="button" disabled>Удалить выбранные</button><label><input id="adminUnreadOnly" type="checkbox"> Только непрочитанные</label><span class="muted" id="adminFeedbackCount"></span></div>
                 <p id="adminFeedbackStatus" class="status" role="status" hidden></p>
                 <ul id="adminFeedback" class="events"></ul>
                 <div class="pagination"><button type="button" id="adminMoreFeedback" hidden>Показать более ранние</button></div>

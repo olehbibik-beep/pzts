@@ -1,6 +1,6 @@
 (() => {
     // Change this version whenever publishing application files together.
-    const version = '20261118-a4-hybrid-60';
+    const version = '20261119-admin-usage-62';
     let started = false;
     let pdfLoading = null;
     let pdfAttempt = 0;
@@ -55,7 +55,7 @@
                 ] : [])
             ].map(promise => promise.catch(error => console.warn('Библиотека импорта/экспорта недоступна:', error)));
             window.planLibrariesReady = Promise.all(libraries);
-            for (const name of ['modal-ui', 'busy-ui', 'config', 'state', 'project-legend', 'engine', 'storage', 'dialogs', 'render', 'map-contours', 'plan-renderer', 'render-performance', 'mobile-viewer', 'editor-interactions', 'editor-session', 'building-overview', 'svg-context', 'plan-export', 'app', 'satellite-map', 'photo-plan', 'onboarding', 'firebase-auth', 'account-profile', 'pro-billing', 'firebase-sync', 'icon-editor', 'toolbar-menus', 'select-controls', 'tablet-tools', 'feedback', 'welcome-intro']) {
+            for (const name of ['modal-ui', 'busy-ui', 'config', 'state', 'project-legend', 'engine', 'storage', 'dialogs', 'render', 'map-contours', 'plan-renderer', 'render-performance', 'mobile-viewer', 'editor-interactions', 'editor-session', 'building-overview', 'svg-context', 'plan-export', 'app', 'satellite-map', 'photo-plan', 'onboarding', 'firebase-auth', 'editor-usage', 'account-profile', 'pro-billing', 'firebase-sync', 'icon-editor', 'toolbar-menus', 'select-controls', 'tablet-tools', 'feedback', 'welcome-intro']) {
                 if (name === 'state' && window.goomProduct === 'CCTV') await loadScript(`cctv.js?v=${version}`);
                 await loadScript(`${name}.js?v=${version}`);
             }
