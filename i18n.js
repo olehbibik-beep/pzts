@@ -1,6 +1,10 @@
 // Czech is the default. Source aliases also cover labels in older saved menu sets.
 (() => {
     const rows = [
+        ['Fotografie plánu z tabletu','Plan photography on a tablet','Planfotos auf dem Tablet','Фото плана с планшета'],
+        ["Hybridní mapa","Hybrid map","Hybridkarte","Гибридная карта"],
+        ["Zpracování…","Processing…","Verarbeitung…","Обработка…"],
+        ["Fotografie plánu je dostupná na tabletu s PROJECT.","Plan photography is available on tablets with PROJECT.","Planfotos sind auf Tablets mit PROJECT verfügbar.","Фото плана доступно на планшете с PROJECT."],
         ["Fotografie plánu","Plan photograph","Plan fotografieren","Фотография плана"],
         ["Posuňte čtyři rohy na okraje papíru.","Move the four corners to the edges of the paper.","Die vier Ecken an die Papierkanten verschieben.","Переместите четыре угла на края листа."],
         ["Rohy fotografie plánu","Plan photograph corners","Ecken des Planfotos","Углы фотографии плана"],

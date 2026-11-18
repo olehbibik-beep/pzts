@@ -103,3 +103,27 @@
 #appFooter { position:relative; }
 #planSourceInfo { position:absolute;left:14px;top:50%;transform:translateY(-50%);width:18px;height:18px;padding:0;background:transparent;color:#aaaab2;border:1px solid #777780;border-radius:50%;font:12px serif;cursor:pointer; }
 #planSourceInfo[hidden] { display:none; }
+#emptyProjectKey { pointer-events:auto;display:inline-grid;place-items:center;width:30px;height:30px;padding:0;border:1px solid #72727b;border-radius:7px;background:transparent;color:#d6d6dd;font:14px sans-serif;cursor:pointer; }
+#emptyProjectKey:hover,#emptyProjectKey:focus-visible { background:#ffffff12;color:#fff; }
+.plan-source-actions .btn-cad { min-height:38px;padding:7px 9px;font-size:12px;gap:7px;justify-content:center;white-space:nowrap; }
+.plan-source-actions .btn-cad span { white-space:nowrap; }
+.plan-source-actions svg { width:18px;height:18px; }
+#appFooter { position:fixed;bottom:0;left:0;width:100%;height:28px;box-sizing:border-box;border:0;border-radius:0 0 10px 10px;background:#1c1c1f;box-shadow:none; }
+#appFooter .floor-controls { gap:14px; }
+#appFooter .floor-name { font:600 11px sans-serif;min-width:28px;padding:0;color:#c8c8d0;letter-spacing:0; }
+#appFooter .footer-icon { min-height:0;min-width:0;height:28px; }
+.canvas-container { margin-bottom:28px; }
+.mobile-viewer .canvas-container { margin-bottom:0; }
+#projectUpgradeHint { width:360px;max-width:calc(100vw - 32px);height:40px;padding:0 8px;border:0;border-radius:8px;background:#34343b;box-shadow:none;bottom:max(44px,env(safe-area-inset-bottom)); }
+#projectUpgradeAction { flex:1;justify-content:center;gap:10px;padding:0 10px;min-height:40px;letter-spacing:.03em; }
+#projectUpgradeAction span:first-child,#projectUpgradeAction strong { font-size:13px;line-height:1.2; }
+#projectUpgradeAction strong { font-weight:750;color:#b9ed72; }
+#projectUpgradeDismiss { min-height:32px;padding:0 8px;border:0;font-size:17px;color:#d5d5dc; }
+.pro-entitlement-active { display:grid;place-items:center;min-height:44px;background:#dcecc6;color:#294512;font-weight:700;border-radius:5px;text-align:center;padding:0 8px; }
+.goom-busy-whale { position:absolute;inset:0;z-index:80000;display:grid;place-items:center;pointer-events:none;background:#1a1a2022;border-radius:inherit; }
+body>.goom-busy-whale { position:fixed; }
+.goom-busy-whale img { width:70px;height:70px;object-fit:contain;animation:plan-whale-spin 1.5s linear infinite;filter:drop-shadow(0 3px 8px #0006); }
+@media(prefers-reduced-motion:reduce) { .goom-busy-whale img { animation:none; } }
+#satelliteMapModal .satellite-map-card { width:min(1100px,calc(100vw - 32px),calc((100dvh - 180px)*1.4142857)); }
+#satelliteCanvas { aspect-ratio:297/210; }
+.satellite-map-layers .btn-cad { font-size:11px;padding:6px 8px; }

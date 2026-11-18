@@ -469,6 +469,7 @@ function drawFreePlanWatermark(target, width, height, theme, footerHeight = 0) {
 const planSourceInfo=document.createElement('button');planSourceInfo.id='planSourceInfo';planSourceInfo.type='button';planSourceInfo.textContent='i';planSourceInfo.hidden=true;planSourceInfo.setAttribute('aria-label',tr('Informace o mapě'));document.getElementById('appFooter').append(planSourceInfo);
 planSourceInfo.onclick=()=>{const source=floors[currentFloorIndex]?.satellite;if(source)void showAppAlert(source.attribution,tr('Informace o mapě'));};
 function redraw() {
+    const floorStatus=document.getElementById('footerCurrentFloor'),floorName=isSystemReady?floors[currentFloorIndex]?.name||'':'';if(floorStatus&&floorStatus.textContent!==floorName)floorStatus.textContent=floorName;
     planSourceInfo.hidden=!isSystemReady||!floors[currentFloorIndex]?.satellite;
     const shortcut=document.getElementById('emptyProjectShortcut');
     if(shortcut)shortcut.hidden=Boolean(window.isGoomReadOnly?.()||!isSystemReady||isOverviewMode||currentFloorIndex<0||!floors[currentFloorIndex]||floors[currentFloorIndex].image||floors[currentFloorIndex].devices.length||isExporting);

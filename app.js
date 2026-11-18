@@ -184,7 +184,14 @@ document.getElementById('btnDetectionSettings').addEventListener('click',openDet
 document.getElementById('wallThresholdInput').addEventListener('input',()=>{
     refreshWallSensitivityLabel();clearTimeout(wallPreviewTimer);wallPreviewTimer=setTimeout(applyWallPreview,80);
 });
-document.getElementById('planThemeInput').addEventListener('change',event=>{if(wallSettingsSession){wallSettingsSession.floor.planTheme=event.target.value;requestRedraw();}});
+document.getElementById('planThemeInput').addEventListener('change',async event=>{
+    const session=wallSettingsSession,theme=event.target.value;if(!session)return;
+    const endTheme=window.startGoomBusy?.();
+    try{await window.goomBusyPaint?.();if(wallSettingsSession!==session||document.getElementById('planThemeInput').value!==theme)return;
+        const floor=session.floor;if(theme==='light'&&floor.image)getLightPlanImage(floor.image,floor.satellite||false);
+        floor.planTheme=theme;requestRedraw();
+    }finally{endTheme?.();}
+});
 document.getElementById('wallPreviewInput').addEventListener('change',event=>{if(floors[currentFloorIndex])floors[currentFloorIndex].previewWalls=event.target.checked;requestRedraw();});
 document.getElementById('btnCloseDetectionSettings').addEventListener('click',()=>{cancelWallSettings();detectionSettingsModal.style.display='none';});
 new MutationObserver(()=>{if(detectionSettingsModal.style.display==='none')cancelWallSettings();}).observe(detectionSettingsModal,{attributes:true,attributeFilter:['style']});
@@ -464,6 +471,9 @@ function placePlanDevice(floor, device) {
     activeDeviceIds.add(device.id);
 }
 
+const emptyProjectKey=document.getElementById('emptyProjectKey');
+for(const name of ['pointerdown','pointerup','pointermove'])emptyProjectKey.addEventListener(name,event=>event.stopPropagation());
+emptyProjectKey.onclick=event=>{event.stopPropagation();document.getElementById('btnLogo').click();};
 window.addEventListener('keydown', (e) => {
     if (window.isGoomReadOnly?.()) return;
     if (e.target.closest('input,textarea,select,[contenteditable="true"]') || e.isComposing) return;
@@ -1263,14 +1273,16 @@ document.getElementById('imageLoader').addEventListener('change', async function
  const floor=floors[currentFloorIndex],file=e.target.files[0];e.target.value='';
  if(!floor||!file||!isSystemReady||window.isGoomReadOnly?.())return;
  isSystemReady=false;container.setAttribute('aria-busy','true');requestRedraw();
+ const endImport=window.startGoomBusy?.();
  try {
+  await window.goomBusyPaint?.();
   await new Promise(requestAnimationFrame);
   const imported=await importPlanSource(file,floor);
   if(imported){window.resetActiveCloudProject?.();Object.assign(floor,imported);isSystemReady=true;changeFloor();saveStateToHistory();triggerAutoSave();
    if(imported.vectorPlan?.unsupported.length)showAppAlert(tr`Nepodporované prvky DXF: ${imported.vectorPlan.unsupported.join(', ')}`,tr('Import DXF'));
   }
  } catch(error){console.error(error);showAppAlert(error.message,tr('Chyba načítání výkresu'));}
- finally{isSystemReady=true;container.removeAttribute('aria-busy');requestRedraw();}
+ finally{endImport?.();isSystemReady=true;container.removeAttribute('aria-busy');requestRedraw();}
 });
 
 function importFileContent(file, options = {}) {

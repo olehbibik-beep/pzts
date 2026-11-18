@@ -12,9 +12,12 @@
         byId('accountProStatus').classList.toggle('active', active);
         const tier = window.getOwnProTier?.();
         for (const button of buyButtons) {
-            button.hidden = APP_PRODUCT === 'CCTV' || button.dataset.buyTier === tier;
-            button.disabled = purchasePending || Boolean(tier);
+            button.hidden = active || APP_PRODUCT === 'CCTV';
+            button.disabled = purchasePending || active;
         }
+        const basicAction=document.querySelector('.pro-plan-basic .pro-plan-action');if(basicAction)basicAction.textContent=tr(active?'Základní':'Aktivní');
+        for(const card of document.querySelectorAll('.pro-plan-standard,.pro-plan-company')){let badge=card.querySelector('.pro-entitlement-active');if(!badge){badge=document.createElement('div');badge.className='pro-entitlement-active';card.querySelector('.pro-plan-actions').append(badge);}badge.textContent=tr('PROJECT je aktivní.');badge.hidden=!active||(tier==='company'?card.classList.contains('pro-plan-standard'):card.classList.contains('pro-plan-company'));}
+        byId('btnUpdatePro').textContent=tr(active?'PROJECT je aktivní.':'Ceník PROJECT');
         for (const button of manageButtons) button.hidden = button.dataset.manageTier !== tier;
         for (const price of document.querySelectorAll('[data-pro-price]')) {
             const currency = price.dataset.currency;
@@ -35,7 +38,7 @@
         render(); window.clearGoomTooltips?.();
     };
     const hint=document.createElement('div');hint.id='projectUpgradeHint';hint.hidden=true;hint.setAttribute('role','status');
-    hint.innerHTML='<button type="button" id="projectUpgradeAction"><span>UPGRADE</span><strong>PROJECT</strong><span aria-hidden="true">↗</span></button><button type="button" id="projectUpgradeDismiss" aria-label="'+tr('Zavřít')+'">×</button>';
+    hint.innerHTML='<button type="button" id="projectUpgradeAction"><span>UPGRADE</span><strong>PROJECT</strong></button><button type="button" id="projectUpgradeDismiss" aria-label="'+tr('Zavřít')+'">×</button>';
     document.body.append(hint);let hintTimer;
     function hideUpgradeHint(){clearTimeout(hintTimer);hint.hidden=true;}
     function scheduleHide(){clearTimeout(hintTimer);hintTimer=setTimeout(hideUpgradeHint,8000);}
@@ -49,7 +52,7 @@
     byId('btnUpdatePro').addEventListener('click', window.openProjectUpgrade);
     byId('btnProClose').addEventListener('click', () => { byId('proUpgradeModal').style.display = 'none'; });
     async function startCheckout(event) {
-        if (APP_PRODUCT === 'CCTV' || purchasePending || window.hasOwnPaidPro?.()) return;
+        if (APP_PRODUCT === 'CCTV' || purchasePending || window.hasProAccess?.()) return;
         const company = event.currentTarget.dataset.buyTier === 'company';
         if (!window.getFirebaseUser()?.emailVerified) {
             byId('proPurchaseStatus').textContent = tr('Před nákupem potvrďte svou e-mailovou adresu v nastavení účtu.');

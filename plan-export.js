@@ -9,9 +9,9 @@ async function printPlanDirect(){
         return;
     }
     const printedProjectName = projectName;
-    planExportBusy=true;container.setAttribute('aria-busy','true');
+    planExportBusy=true;container.setAttribute('aria-busy','true');const endPrint=window.startGoomBusy?.();
     try{
-        clearPrintPage();
+        await window.goomBusyPaint?.();clearPrintPage();
         const printPage = document.getElementById('printPage');
         printPage.toggleAttribute('data-tablet-print', matchMedia('(any-pointer: coarse)').matches);
         await new Promise(requestAnimationFrame);
@@ -50,7 +50,7 @@ async function printPlanDirect(){
         await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
         window.print();
     }catch(error){console.error(error);clearPrintPage();showAppAlert(error.message,tr('Ошибка печати'));}
-    finally{planExportBusy=false;container.removeAttribute('aria-busy');}
+    finally{endPrint?.();planExportBusy=false;container.removeAttribute('aria-busy');}
 }
 function clearPrintPage(){
     document.getElementById('printPage').replaceChildren();
@@ -154,10 +154,12 @@ function downloadPlanBlob(blob,extension,floor){
 }
 async function exportPlanFile(format){
     if(planExportBusy||!isSystemReady||!floors[currentFloorIndex])return;
-    planExportBusy=true;const floor=floors[currentFloorIndex],options=planOutputOptions(floor);
+    planExportBusy=true;const endOutput=window.startGoomBusy?.();
+    const floor=floors[currentFloorIndex],options=planOutputOptions(floor);
     const buttons=[...document.querySelectorAll('#saveModal button:not(:disabled)')];buttons.forEach(b=>b.disabled=true);
     const status=document.getElementById('outputStatus');status.textContent=tr('Příprava výstupu…');saveModal.setAttribute('aria-busy','true');
     try{
+        await window.goomBusyPaint?.();
         await new Promise(requestAnimationFrame);
         const result=await makePlanOutput(floor,options,format==='svg');
         if(format==='svg')downloadPlanBlob(new Blob([result.svg],{type:'image/svg+xml;charset=utf-8'}),'svg',floor);
@@ -174,7 +176,7 @@ async function exportPlanFile(format){
         }
         status.textContent=tr('Výstup je připraven.');
     }catch(error){console.error(error);status.textContent=tr('Výstup se nezdařil.');showAppAlert(error.message,tr('Exportovat projekt'));}
-    finally{buttons.forEach(b=>b.disabled=false);saveModal.removeAttribute('aria-busy');planExportBusy=false;}
+    finally{endOutput?.();buttons.forEach(b=>b.disabled=false);saveModal.removeAttribute('aria-busy');planExportBusy=false;}
 }
 document.getElementById('btnOutputClose').addEventListener('click',()=>{if(!planExportBusy)saveModal.style.display='none';});
 new MutationObserver(()=>{if(saveModal.style.display==='flex')updatePlanOutputPreview();}).observe(saveModal,{attributes:true,attributeFilter:['style']});

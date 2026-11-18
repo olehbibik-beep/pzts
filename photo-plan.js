@@ -8,10 +8,14 @@
     let image=null,corners=[],active=-1,floor=null,uid=null,sequence=0,pending=false;
     function close(){sequence++;modal.style.display='none';active=-1;}
     document.getElementById('photoPlanClose').onclick=close;modal.addEventListener('click',event=>{if(event.target===modal)close();});
-    document.getElementById('btnMenuPhoto').onclick=()=>{if(!isSystemReady||!floors[currentFloorIndex])return;floor=floors[currentFloorIndex];uid=window.getFirebaseUser?.()?.uid;input.click();};
+    const photoButton=document.getElementById('btnMenuPhoto');
+    const allowed=()=>window.isGoomTablet?.()&&window.hasProAccess?.();
+    const syncPhotoAccess=()=>{photoButton.classList.toggle('pro-lock',!allowed());photoButton.dataset.projectLocked=String(!window.hasProAccess?.());photoButton.dataset.tabletOnly=String(!window.isGoomTablet?.());if(!allowed())close();};
+    document.addEventListener('goom-account-changed',syncPhotoAccess);syncPhotoAccess();
+    photoButton.onclick=()=>{if(!window.hasProAccess?.()){window.requestProUpgrade?.();return;}if(!window.isGoomTablet?.()){void showAppAlert(tr('Fotografie plánu je dostupná na tabletu s PROJECT.'),tr('Fotografie plánu'));return;}if(!isSystemReady||!floors[currentFloorIndex])return;floor=floors[currentFloorIndex];uid=window.getFirebaseUser?.()?.uid;input.click();};
     function draw(){if(!image)return;ctx.drawImage(image,0,0,canvas.width,canvas.height);ctx.save();ctx.strokeStyle='#87d0ee';ctx.fillStyle='#87d0ee';ctx.lineWidth=2;ctx.beginPath();corners.forEach((p,i)=>i?ctx.lineTo(...p):ctx.moveTo(...p));ctx.closePath();ctx.stroke();
         corners.forEach((p,i)=>{ctx.beginPath();ctx.arc(...p,8,0,2*Math.PI);ctx.fill();ctx.fillStyle='#102029';ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.fillText(i+1,p[0],p[1]+4);ctx.fillStyle='#87d0ee';});ctx.restore();}
-    input.onchange=async()=>{const file=input.files[0];input.value='';if(!file||!floor||!isSystemReady)return;const attempt=++sequence;
+    input.onchange=async()=>{const file=input.files[0];input.value='';if(!file||!floor||!isSystemReady||!allowed())return;const attempt=++sequence;
         try{const loaded=await loadPlanImage(await fileDataURL(file));if(attempt!==sequence||floors[currentFloorIndex]!==floor||uid!==window.getFirebaseUser?.()?.uid)return;
             image=loaded;const factor=Math.min(1,1100/Math.max(image.naturalWidth,image.naturalHeight));canvas.width=Math.round(image.naturalWidth*factor);canvas.height=Math.round(image.naturalHeight*factor);
             corners=detectPhotoPageCorners(image).map(p=>[p[0]*canvas.width,p[1]*canvas.height]);status.textContent='';mainMenuModal.style.display='none';modal.style.display='flex';draw();
@@ -22,16 +26,16 @@
     canvas.onpointermove=event=>{if(active<0||pending)return;const p=position(event);corners[active]=[Math.max(0,Math.min(canvas.width-1,p[0])),Math.max(0,Math.min(canvas.height-1,p[1]))];draw();};
     for(const name of ['pointerup','pointercancel','lostpointercapture'])canvas.addEventListener(name,()=>{active=-1;});
     canvas.onkeydown=event=>{if(event.key==='Tab'||pending)return;const moves={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]};if(!moves[event.key])return;event.preventDefault();if(active<0)active=0;const d=moves[event.key];corners[active]=[Math.max(0,Math.min(canvas.width-1,corners[active][0]+d[0]*(event.shiftKey?10:1))),Math.max(0,Math.min(canvas.height-1,corners[active][1]+d[1]*(event.shiftKey?10:1)))];draw();};
-    add.onclick=async()=>{if(pending||!image||floors[currentFloorIndex]!==floor||uid!==window.getFirebaseUser?.()?.uid||window.isGoomReadOnly?.())return;
-        const attempt=sequence;pending=true;add.disabled=true;status.textContent=tr('Zpracování fotografie…');
-        try{await new Promise(requestAnimationFrame);const points=corners.map(p=>[p[0]/canvas.width,p[1]/canvas.height]);
+    add.onclick=async()=>{if(pending||!allowed()||!image||floors[currentFloorIndex]!==floor||uid!==window.getFirebaseUser?.()?.uid||window.isGoomReadOnly?.())return;
+        const attempt=sequence;pending=true;add.disabled=true;const endPhoto=window.startGoomBusy?.();status.textContent=tr('Zpracování fotografie…');
+        try{await window.goomBusyPaint?.();const points=corners.map(p=>[p[0]/canvas.width,p[1]/canvas.height]);
             const result=rectifyPhotoPlan(image,points,document.getElementById('photoPlanClean').checked),imgData=result.toDataURL('image/png'),loaded=await loadPlanImage(imgData);
-            if(attempt!==sequence||modal.style.display!=='flex'||floors[currentFloorIndex]!==floor||uid!==window.getFirebaseUser?.()?.uid)return;
+            if(!allowed()||attempt!==sequence||modal.style.display!=='flex'||floors[currentFloorIndex]!==floor||uid!==window.getFirebaseUser?.()?.uid)return;
             const candidate={...floor,image:loaded,imgData,pdfSource:null,rasterSource:null,vectorPlan:null,pdfPage:1,satellite:null,sourceName:tr('Fotografie plánu'),planTheme:'light'};candidate.wallMask=createWallMask(candidate,candidate.wallThreshold);
             planPdfCache.get(floor)?.loadingTask?.destroy();planPdfCache.delete(floor);planOriginalCache.delete(floor);planTileCache.delete(floor);
             Object.assign(floor,candidate);window.resetActiveCloudProject?.();close();changeFloor();saveStateToHistory();triggerAutoSave();requestRedraw();
         }catch(error){status.textContent=tr('Zkontrolujte rohy fotografie a zkuste to znovu.');}
-        finally{pending=false;add.disabled=false;}
+        finally{endPhoto?.();pending=false;add.disabled=false;}
     };
     document.addEventListener('goom-auth-state-changed',()=>{if(uid&&uid!==window.getFirebaseUser?.()?.uid)close();});
 })();

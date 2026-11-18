@@ -7,7 +7,7 @@
         const touch = navigator.maxTouchPoints > 0 || matchMedia('(pointer: coarse)').matches;
         const screenShortSide = Math.min(screen.width, screen.height);
         const phone = phoneUA || (!explicitTablet && touch && screenShortSide > 0 && screenShortSide < 600);
-        return { phone, supported: phone || window.innerWidth >= 600 };
+        return { phone, tablet:!phone&&(explicitTablet||touch&&matchMedia('(pointer: coarse)').matches&&screenShortSide>=600), supported: phone || window.innerWidth >= 600 };
     }
 
     let previousSupport;
@@ -30,6 +30,7 @@
     }
 
     window.isGoomDeviceSupported = () => getDeviceSupport().supported;
+    window.isGoomTablet = () => getDeviceSupport().tablet;
     window.isGoomReadOnly = () => getDeviceSupport().phone;
     window.addEventListener('resize', updateDeviceSupport);
     document.addEventListener('DOMContentLoaded', updateDeviceSupport);
