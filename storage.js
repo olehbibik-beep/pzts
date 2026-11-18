@@ -27,8 +27,8 @@ function sanitizeFloors(floorDataArray) {
             wallThreshold: Number.isFinite(f.wallThreshold) ? Math.min(255, Math.max(0, f.wallThreshold)) : 100,
             pirRangePixels: 300,
             planTheme: ['original','light'].includes(f.planTheme) ? f.planTheme : 'dark',
-            satellite: ['Esri World Imagery','Esri World Topographic Map'].includes(f.satellite?.provider) && Array.isArray(f.satellite.center) && f.satellite.center.length === 2 && f.satellite.center.every(Number.isFinite)
-                ? {provider:f.satellite.provider,layer:f.satellite.provider==='Esri World Topographic Map'?'topo':'satellite',center:[Math.max(-85,Math.min(85,f.satellite.center[0])),((f.satellite.center[1]+180)%360+360)%360-180],zoom:Math.max(2,Math.min(24,Math.round(Number(f.satellite.zoom)||17))),attribution:String(f.satellite.attribution||'').slice(0,300)} : null,
+            satellite: ['Esri World Imagery','Esri World Imagery Clarity','Esri World Topographic Map'].includes(f.satellite?.provider) && Array.isArray(f.satellite.center) && f.satellite.center.length === 2 && f.satellite.center.every(Number.isFinite)
+                ? {provider:f.satellite.provider,footerHeight:f.satellite.footerHeight===0?0:28,layer:f.satellite.provider==='Esri World Topographic Map'?'topo':'satellite',center:[Math.max(-85,Math.min(85,f.satellite.center[0])),((f.satellite.center[1]+180)%360+360)%360-180],zoom:Math.max(2,Math.min(24,Math.round(Number(f.satellite.zoom)||17))),attribution:String(f.satellite.attribution||'').slice(0,300)} : null,
             vectorPlan: sanitizeVectorPlan(f.vectorPlan),
             pdfSource: typeof f.pdfSource === 'string' && /^data:application\/pdf(?:;[^,]*)?;base64,/.test(f.pdfSource) ? f.pdfSource : null,
             pdfPage: Number.isInteger(f.pdfPage) && f.pdfPage > 0 ? f.pdfPage : 1,

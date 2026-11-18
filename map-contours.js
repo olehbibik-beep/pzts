@@ -26,11 +26,11 @@ function closedMapPath(points) {
     for(let j=1;j<=corners.length;j++){const c=corners[j%corners.length];path+=`L${format(c.start)}`;if(c.round)path+=`Q${format(c.b)} ${format(c.end)}`;}
     return path+'Z';
 }
-function getMapLinework(image) {
-    let result=mapLineworkCache.get(image);if(result)return result;
+function getMapLinework(image,footerHeight=0) {
+    let modes=mapLineworkCache.get(image);if(!modes){modes=new Map();mapLineworkCache.set(image,modes);}let result=modes.get(footerHeight);if(result)return result;
     const width=image.naturalWidth||image.width,height=image.naturalHeight||image.height;
     // Work at saved map resolution; zoom and SVG export draw the resulting paths directly.
-    const w=width,h=Math.max(1,height-Math.round(height*28/796)),n=w*h;
+    const w=width,h=Math.max(1,height-footerHeight),n=w*h;
     const sample=document.createElement('canvas');sample.width=w;sample.height=h;
     const ctx=sample.getContext('2d',{willReadFrequently:true});ctx.drawImage(image,0,0);
     const rgba=ctx.getImageData(0,0,w,h).data,gray=new Float32Array(n),temp=new Float32Array(n),smooth=new Float32Array(n);
@@ -77,13 +77,12 @@ function getMapLinework(image) {
         if(Math.abs(area)<20)continue;
         const path=closedMapPath(points);if(path)paths.push(path);
     }
-    result={width,height,paths};mapLineworkCache.set(image,result);return result;
+    result={width,height,paths};modes.set(footerHeight,result);return result;
 }
-function drawMapLinework(target,image,credit) {
-    const vector=getMapLinework(image);target.save();target.fillStyle='#fff';target.fillRect(0,0,vector.width,vector.height);
-    target.strokeStyle='#000';target.lineWidth=1.15;target.lineCap='round';target.lineJoin='round';const d=vector.paths.join(' ');
+function drawMapLinework(target,image,metadata) {
+    const legacyFooter=metadata?.provider&&metadata.footerHeight!==0?Math.round((image.naturalHeight||image.height)*28/796):0;
+    const vector=getMapLinework(image,legacyFooter);target.save();target.fillStyle='#fff';target.fillRect(0,0,vector.width,vector.height);
+    target.strokeStyle='#777d82';target.lineWidth=.65;target.lineCap='round';target.lineJoin='round';const d=vector.paths.join(' ');
     if(d){if(target.strokePath)target.strokePath(d);else {vector.nativePath ||= new Path2D(d);target.stroke(vector.nativePath);}}
-    const footer=Math.max(14,Math.round(vector.height*28/796));target.fillStyle='#fff';target.fillRect(0,vector.height-footer,vector.width,footer);
-    target.fillStyle='#111';target.font=`${Math.max(7,vector.width/1280*13)}px sans-serif`;
-    target.fillText(credit||'Source: Esri, Vantor, Earthstar Geographics, and the GIS User Community',Math.max(3,vector.width/128),vector.height-footer*.3);target.restore();
+    target.restore();
 }

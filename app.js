@@ -464,9 +464,6 @@ function placePlanDevice(floor, device) {
     activeDeviceIds.add(device.id);
 }
 
-const emptyProjectShortcut=document.getElementById('emptyProjectShortcut');
-for(const name of ['pointerdown','pointerup','pointermove'])emptyProjectShortcut.addEventListener(name,event=>event.stopPropagation());
-emptyProjectShortcut.onclick=event=>{event.stopPropagation();document.getElementById('btnLogo').click();};
 window.addEventListener('keydown', (e) => {
     if (window.isGoomReadOnly?.()) return;
     if (e.target.closest('input,textarea,select,[contenteditable="true"]') || e.isComposing) return;

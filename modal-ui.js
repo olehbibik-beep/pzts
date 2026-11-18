@@ -93,3 +93,26 @@
     };
     reducedMotion.addEventListener('change', () => { if (reducedMotion.matches) contentAnimation?.cancel(); });
 })();
+
+// Every editor dialog shares the same left close button and right aligned title.
+(() => {
+    function normalize(){
+        document.querySelectorAll('.modal-content:not(.welcome-card),.app-dialog-card').forEach(card=>{
+            if(card.dataset.dialogStyled)return;const root=card.closest('.modal,.app-dialog-backdrop,dialog');if(!root)return;card.dataset.dialogStyled='true';
+            let title=card.querySelector('.modal-title,h2,.app-dialog-title');
+            if(!title){title=document.createElement('h2');title.textContent=tr('Nabídka');card.prepend(title);}
+            let close=[...card.querySelectorAll('button')].find(b=>/(?:Close|Cancel)$/.test(b.id)||b.classList.contains('icon-editor-close'));
+            let heading;
+            if(title.querySelector('button')&&title.querySelector('span')){heading=title;title=title.querySelector('span');}
+            else if(title.parentElement!==card&&title.parentElement!==root&&title.parentElement.contains(close)&&!title.parentElement.matches('form'))heading=title.parentElement;
+            else {heading=document.createElement('div');title.before(heading);heading.append(title);}
+            heading.classList.add('goom-dialog-heading');title.classList.add('goom-dialog-title');
+            if(!close){close=document.createElement('button');close.type='button';
+                close.onclick=()=>{if(root.id==='appDialog'){window.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));}else if(root instanceof HTMLDialogElement)root.close();else root.style.display='none';};
+            }
+            close.classList.add('goom-dialog-close');close.textContent='×';close.setAttribute('aria-label',tr('Zavřít'));close.setAttribute('title',tr('Zavřít'));heading.prepend(close);
+        });
+    }
+    normalize();let queued=false;
+    new MutationObserver(()=>{if(queued)return;queued=true;queueMicrotask(()=>{queued=false;normalize();});}).observe(document.body,{childList:true,subtree:true});
+})();

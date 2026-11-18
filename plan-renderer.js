@@ -105,7 +105,7 @@ function getLightPlanImage(image, satellite = false) {
     if (cached.has(key)) return cached.get(key);
     if(satellite && satellite.layer!=='topo'){
         const result=document.createElement('canvas');result.width=image.naturalWidth||image.width;result.height=image.naturalHeight||image.height;
-        drawMapLinework(result.getContext('2d'),image,satellite.attribution);cached.set(key,result);return result;
+        drawMapLinework(result.getContext('2d'),image,satellite);cached.set(key,result);return result;
     }
     const result = document.createElement('canvas');
     result.width = image.naturalWidth || image.width; result.height = image.naturalHeight || image.height;
@@ -146,10 +146,11 @@ function drawVectorPlan(target, vector, theme) {
 }
 function drawPlanSource(target, floor, theme = getPlanTheme(floor), imageOverride) {
     if (!floor.image) return;
+    if(floor.satellite&&Array.isArray(target.elements)&&typeof target.escape==='function')target.elements.push('<metadata>'+target.escape(JSON.stringify({provider:floor.satellite.provider,attribution:floor.satellite.attribution}))+'</metadata>');
     const width = floor.image.naturalWidth || floor.image.width, height = floor.image.naturalHeight || floor.image.height;
     const bounds=getPlanSourceBounds(floor);
     target.save();
-    if(theme==='light'&&floor.satellite&&floor.satellite.layer!=='topo')drawMapLinework(target,floor.image,floor.satellite.attribution);
+    if(theme==='light'&&floor.satellite&&floor.satellite.layer!=='topo')drawMapLinework(target,floor.image,floor.satellite);
     else if (floor.vectorPlan) drawVectorPlan(target, floor.vectorPlan, theme);
     else {
         const tile=imageOverride?.planTile?imageOverride:null;

@@ -1,8 +1,8 @@
 (() => {
     if (window.isGoomReadOnly?.()) return;
     const layers = {
-        satellite: {service:'World_Imagery',provider:'Esri World Imagery',title:'Satelitní mapa',credit:'Source: Esri, Vantor, Earthstar Geographics, and the GIS User Community'},
-        topo: {service:'World_Topo_Map',provider:'Esri World Topographic Map',title:'Topografická mapa',credit:'Sources: Esri, HERE, Garmin, Intermap, increment P Corp., GEBCO, USGS, FAO, NPS, NRCAN, GeoBase, IGN, Kadaster NL, Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), (c) OpenStreetMap contributors, and the GIS User Community'}
+        satellite: {url:'https://clarity.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/MapServer',provider:'Esri World Imagery Clarity',title:'Satelitní mapa',credit:'Source: Esri, Vantor, Earthstar Geographics, IGN, and the GIS User Community'},
+        topo: {url:'https://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer',provider:'Esri World Topographic Map',title:'Topografická mapa',credit:'Sources: Esri, HERE, Garmin, Intermap, increment P Corp., GEBCO, USGS, FAO, NPS, NRCAN, GeoBase, IGN, Kadaster NL, Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), (c) OpenStreetMap contributors, and the GIS User Community'}
     };
     const icon = path => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${path}</svg>`;
     const modal=document.createElement('div');modal.id='satelliteMapModal';modal.className='modal';
@@ -15,7 +15,7 @@
         <div class="satellite-map-zoom"><button type="button" class="btn-cad" id="satelliteZoomIn" aria-label="${tr('Přiblížit')}">+</button><button type="button" class="btn-cad" id="satelliteZoomOut" aria-label="${tr('Oddálit')}">−</button></div>
         <button type="button" class="btn-cad map-icon-button" id="satelliteMapAdd" aria-label="${tr('Přidat mapu do plánu')}" title="${tr('Přidat mapu do plánu')}">${icon('<path d="m22 2-7 20-4-9-9-4Z"/><path d="m22 2-11 11"/>')}</button>
         <p id="satelliteMapStatus" role="status" hidden></p>
-        <div class="satellite-map-attribution"><a id="satelliteProviderCredit" target="_blank" rel="noopener"></a><span> · ${tr('Vyhledávání')}: <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap</a> / Photon</span></div></div></section>`;
+        <details class="satellite-map-attribution"><summary aria-label="${tr('Informace o mapě')}" title="${tr('Informace o mapě')}">i</summary><div><a id="satelliteProviderCredit" target="_blank" rel="noopener"></a><span> · ${tr('Vyhledávání')}: <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap</a> / Photon</span></div></details></div></section>`;
     document.body.append(modal);
     const preview=document.getElementById('satelliteCanvas'),context=preview.getContext('2d');
     const status=document.getElementById('satelliteMapStatus'),add=document.getElementById('satelliteMapAdd'),menuButton=document.getElementById('btnMenuSatellite');
@@ -32,7 +32,7 @@
             const item={image:new Image(),loaded:false,error:false};tiles.set(key,item);item.image.crossOrigin='anonymous';
             item.image.onload=()=>{item.loaded=true;schedule();};item.image.onerror=()=>{item.error=true;schedule();};
             // Missing imagery must return 404, never the provider's gray placeholder image.
-            item.image.src=`https://services.arcgisonline.com/ArcGIS/rest/services/${layers[layer].service}/MapServer/tile/${z}/${y}/${x}?blankTile=false`;
+            item.image.src=`${layers[layer].url}/tile/${z}/${y}/${x}?blankTile=false`;
             if(tiles.size>400)tiles.delete(tiles.keys().next().value);
         }
         const item=tiles.get(key);
@@ -66,7 +66,7 @@
     function selectLayer(value){layer=layers[value]?value:'satellite';
         modal.querySelectorAll('[data-map-layer]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.mapLayer===layer)));
         const credit=document.getElementById('satelliteProviderCredit');credit.textContent=layers[layer].credit;
-        credit.href=`https://services.arcgisonline.com/ArcGIS/rest/services/${layers[layer].service}/MapServer`;draw();
+        credit.href=layers[layer].url;draw();
     }
     modal.querySelectorAll('[data-map-layer]').forEach(button=>button.onclick=()=>selectLayer(button.dataset.mapLayer));
     function point(event){const rect=preview.getBoundingClientRect();return {x:(event.clientX-rect.left)*preview.width/rect.width,y:(event.clientY-rect.top)*preview.height/rect.height};}
@@ -123,10 +123,9 @@
         if(add.disabled||saving||!window.hasProAccess?.()||!floor||floors[currentFloorIndex]!==floor||window.getFirebaseUser?.()?.uid!==targetUid)return;
         saving=true;add.disabled=true;
         try{
-            const selected={provider:layers[layer].provider,layer,center:unproject(center),zoom,attribution:layers[layer].credit};
-            const snapshot=document.createElement('canvas');snapshot.width=preview.width;snapshot.height=preview.height+28;
-            const target=snapshot.getContext('2d');target.drawImage(preview,0,0);target.fillStyle='#fff';target.fillRect(0,preview.height,snapshot.width,28);
-            target.fillStyle='#111';target.font='13px sans-serif';const creditSize=Math.min(13,13*(snapshot.width-20)/target.measureText(selected.attribution).width);target.font=`${creditSize}px sans-serif`;target.fillText(selected.attribution,10,preview.height+19);
+            const selected={provider:layers[layer].provider,layer,center:unproject(center),zoom,attribution:layers[layer].credit,footerHeight:0};
+            const snapshot=document.createElement('canvas');snapshot.width=preview.width;snapshot.height=preview.height;
+            const target=snapshot.getContext('2d');target.drawImage(preview,0,0);
             const imgData=snapshot.toDataURL('image/png'),image=await loadPlanImage(imgData);
             if(sequence!==openSequence||modal.style.display!=='flex'||!window.hasProAccess?.()||floors[currentFloorIndex]!==floor||window.getFirebaseUser?.()?.uid!==targetUid)return;
             planPdfCache.get(floor)?.loadingTask?.destroy();planPdfCache.delete(floor);planOriginalCache.delete(floor);planTileCache.delete(floor);

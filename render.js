@@ -15,6 +15,13 @@ function drawDirectLeaderLine(ctx, x1, y1, x2, y2, color, lineWidth, arrowStart,
     if (arrowStart) drawArrow(ctx, x1, y1, angle + Math.PI, color);
 }
 
+function cableRouteColor(from,to) {
+    const types=[from.type,to.type].map(type=>type==='deactivated'?null:type);
+    if(types.some(type=>type?.startsWith('acs_')||type==='cctv_doorbell'))return '#a78bfa';
+    const modules=['panel','keypad','expander','abax','cctv_nvr','cctv_poe','cctv_antenna','cctv_receiver'];
+    if(types.every(type=>modules.includes(type)))return '#38bdf8';
+    return '#22c55e';
+}
 function drawCableRoute(ctx, cable, from, to, color, lineWidth) {
     const points = getCableRoute(cable, from, to);
     ctx.beginPath(); ctx.moveTo(points[0].x, points[0].y);
@@ -415,9 +422,8 @@ function drawFloorData(ctx, floor, skipSelection = false, theme = getPlanTheme(f
                 if (d1.type === 'textNode') arrowEnd = true; if (d2.type === 'textNode') arrowStart = true;
                 drawDirectLeaderLine(ctx, d1.x, d1.y, d2.x, d2.y, color, lineWidth, arrowStart, arrowEnd);
             } else {
-                let color = "#22c55e"; let lineWidth = 3.5;
-                if (['panel', 'keypad', 'expander', 'abax'].includes(d1.type) && ['panel', 'keypad', 'expander', 'abax'].includes(d2.type)) { color = "#0ea5e9"; }
-                else if (d1.type === 'siren' || d2.type === 'siren' || d1.type === 'panic' || d2.type === 'panic') { color = "#ef4444"; }
+                const color=cableRouteColor(d1,d2);
+                const lineWidth=isExporting||skipSelection?5.5:Math.max(5.5,2.5/Math.max(.01,scale));
                 drawCableRoute(ctx, c, d1, d2, color, lineWidth);
                 if (!isExporting && !skipSelection && (selectedTool === 'cableTool' || activeDeviceIds.has(d1.id) || activeDeviceIds.has(d2.id) || (draggedHandle && draggedHandle.cable === c))) {
                     drawHandles(ctx, c, color);
@@ -460,7 +466,10 @@ function drawFreePlanWatermark(target, width, height, theme, footerHeight = 0) {
     target.restore();
 }
 
+const planSourceInfo=document.createElement('button');planSourceInfo.id='planSourceInfo';planSourceInfo.type='button';planSourceInfo.textContent='i';planSourceInfo.hidden=true;planSourceInfo.setAttribute('aria-label',tr('Informace o mapě'));document.getElementById('appFooter').append(planSourceInfo);
+planSourceInfo.onclick=()=>{const source=floors[currentFloorIndex]?.satellite;if(source)void showAppAlert(source.attribution,tr('Informace o mapě'));};
 function redraw() {
+    planSourceInfo.hidden=!isSystemReady||!floors[currentFloorIndex]?.satellite;
     const shortcut=document.getElementById('emptyProjectShortcut');
     if(shortcut)shortcut.hidden=Boolean(window.isGoomReadOnly?.()||!isSystemReady||isOverviewMode||currentFloorIndex<0||!floors[currentFloorIndex]||floors[currentFloorIndex].image||floors[currentFloorIndex].devices.length||isExporting);
     if(typeof syncPlanLoading==='function')syncPlanLoading();

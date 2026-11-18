@@ -1,6 +1,15 @@
 // Czech is the default. Source aliases also cover labels in older saved menu sets.
 (() => {
     const rows = [
+        ["Fotografie plánu","Plan photograph","Plan fotografieren","Фотография плана"],
+        ["Posuňte čtyři rohy na okraje papíru.","Move the four corners to the edges of the paper.","Die vier Ecken an die Papierkanten verschieben.","Переместите четыре угла на края листа."],
+        ["Rohy fotografie plánu","Plan photograph corners","Ecken des Planfotos","Углы фотографии плана"],
+        ["Vyčistit pozadí","Clean the background","Hintergrund bereinigen","Очистить фон"],
+        ["Přidat do plánu","Add to plan","Zum Plan hinzufügen","Добавить в план"],
+        ["Fotografii nelze otevřít. Vyberte obrázek JPG nebo PNG.","Cannot open this photograph. Select a JPG or PNG image.","Foto kann nicht geöffnet werden. JPG oder PNG auswählen.","Не удалось открыть фотографию. Выберите JPG или PNG."],
+        ["Zpracování fotografie…","Processing photograph…","Foto wird verarbeitet…","Обработка фотографии…"],
+        ["Zkontrolujte rohy fotografie a zkuste to znovu.","Check the photograph corners and try again.","Fotoecken prüfen und erneut versuchen.","Проверьте углы фотографии и повторите попытку."],
+        ["Informace o mapě","Map information","Karteninformationen","Сведения о карте"],
         ['Mapa','Map','Karte','Карта'],
         ['Typ mapy','Map type','Kartentyp','Тип карты'],
         ['Topografická mapa','Topographic map','Topografische Karte','Топографическая карта'],
