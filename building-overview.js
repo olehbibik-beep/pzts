@@ -1,5 +1,5 @@
 const overviewFloorLabels=['6NP','5NP','4NP','3NP','2NP','1NP','1PP','2PP','3PP'];
-const overviewAuxiliaryTypes=new Set(['panel','keypad','expander','abax','siren','acs_module','acs_reader','textNode','ramen','deactivated','cableTool']);
+const overviewAuxiliaryTypes=new Set(['panel','keypad','expander','abax','siren','acs_module','acs_reader','textNode','deactivated','cableTool']);
 let overviewStats=[];
 let overviewMainPanelFloor=-1;
 const overviewIsCctv = APP_PRODUCT === 'CCTV';
@@ -14,7 +14,7 @@ function getOverviewFloorIndex(label){
     return floors.findIndex(floor=>String(floor.name).replace(/\s/g,'').toUpperCase()===label);
 }
 function getFloorOverviewStats(floor){
-    const active=floor.devices.filter(device=>!['deactivated','textNode','ramen','cableTool'].includes(device.type));
+    const active=floor.devices.filter(device=>!['deactivated','textNode','cableTool'].includes(device.type));
     const detectors=active.filter(device=>overviewIsCctv ? Object.hasOwn(CCTV_CAMERAS, device.type) : !overviewAuxiliaryTypes.has(device.type));
     const buses=new Map();
     for(const device of detectors){

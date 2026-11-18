@@ -465,6 +465,7 @@ function placePlanDevice(floor, device) {
 }
 
 window.addEventListener('keydown', (e) => {
+    if (window.isGoomReadOnly?.()) return;
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
     if (isOverviewMode) {
         if (e.key === 'Escape') closeBuildingOverview();
@@ -490,10 +491,6 @@ window.addEventListener('keydown', (e) => {
     }
 
     if(document.querySelector('.modal[data-modal-open="true"],.app-dialog-backdrop:not([hidden])'))return;
-    if (e.altKey && e.key.toLowerCase() === 'r') {
-        selectedTool = 'ramen'; document.querySelectorAll('.device-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById('ramenModal').style.display = 'flex'; e.preventDefault(); return;
-    }
 
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { undo(); return; }
 
@@ -507,7 +504,7 @@ window.addEventListener('keydown', (e) => {
             let changed = false;
             activeDeviceIds.forEach(id => {
                 let dev = floor.devices.find(d => d.id === id);
-                if (dev && !independentDeviceNumberTypes.has(dev.type) && !['panel', 'textNode', 'ramen'].includes(dev.type)) {
+                if (dev && !independentDeviceNumberTypes.has(dev.type) && !['panel', 'textNode'].includes(dev.type)) {
                     if (dev.type === 'deactivated') { dev.type = dev.oldType || 'pir'; } else { dev.oldType = dev.type; dev.type = 'deactivated'; }
                     changed = true;
                 }
@@ -912,7 +909,7 @@ window.addEventListener('pointerup', (e) => {
                 clearTimeout(clickTimer); clickTimer = null; lastClickedDevice = null;
                 if (dev.type === 'textNode') { 
                     openTextModal(dev); 
-                } else if (!['panel', 'deactivated', 'ramen', 'cableTool'].includes(dev.type)) {
+                } else if (!['panel', 'deactivated', 'cableTool'].includes(dev.type)) {
                     openNumberModal(dev);
                 }
             } else {
@@ -983,6 +980,7 @@ window.addEventListener('blur', () => {
 });
 
 function loadDefaultFloors(showWelcome = false, newProjectName = tr("Nový projekt")) {
+    if (window.isGoomReadOnly?.()) return;
     window.projectOwnerUid=window.getFirebaseUser?.()?.uid||null;
     resetPlacementTool();
     window.resetActiveCloudProject?.();
@@ -1012,10 +1010,12 @@ function loadDefaultFloors(showWelcome = false, newProjectName = tr("Nový proje
 }
     
 function showWelcomeScreen(step = 'auth') {
+    if (window.isGoomReadOnly?.() && !['auth','email'].includes(step)) step = 'projects';
     resetPlacementTool();
     if (!['auth', 'email'].includes(step) && !window.getFirebaseUser?.()) step = 'auth';
     const modal = document.getElementById('welcomeModal');
     modal.dataset.step = step;
+    window.refreshMobileViewer?.();
     modal.style.display = 'flex';
     document.getElementById('welcomeAuthBlock').hidden = step !== 'auth';
     document.getElementById('welcomeEmailBlock').hidden = step !== 'email';
@@ -1038,6 +1038,7 @@ function showWelcomeScreen(step = 'auth') {
 
 let deviceDeletionPending = false;
 async function deleteSelectedDevices() {
+    if (window.isGoomReadOnly?.()) return;
     const projectFloors = floors;
     const floor = projectFloors[currentFloorIndex];
     if (!floor || !isSystemReady || isOverviewMode || deviceDeletionPending) return;
@@ -1248,6 +1249,7 @@ function changeFloor() {
     clearDetectorSearchHighlight();
     finishProjectLegendDrag(); selectedProjectLegend = null; updateProjectLegendButton();
     if(!floors[currentFloorIndex]) return;
+    window.refreshMobileViewer?.();
     
     updateConnectionButton();
 
@@ -1256,7 +1258,7 @@ function changeFloor() {
 
 document.getElementById('imageLoader').addEventListener('change', async function(e) {
  const floor=floors[currentFloorIndex],file=e.target.files[0];e.target.value='';
- if(!floor||!file||!isSystemReady)return;
+ if(!floor||!file||!isSystemReady||window.isGoomReadOnly?.())return;
  isSystemReady=false;container.setAttribute('aria-busy','true');requestRedraw();
  try {
   await new Promise(requestAnimationFrame);
@@ -1269,6 +1271,7 @@ document.getElementById('imageLoader').addEventListener('change', async function
 });
 
 function importFileContent(file, options = {}) {
+    if (window.isGoomReadOnly?.() && options.source !== 'cloud') return Promise.resolve(false);
     const wasSystemReady = isSystemReady;
     return new Promise(resolve => {
     const reader = new FileReader();
@@ -1299,7 +1302,7 @@ function importFileContent(file, options = {}) {
             if (options.canApply && !options.canApply()) { resolve(false); return; }
             window.resetActiveCloudProject?.();
             if (data && data.currentMaxLines) currentMaxLines = data.currentMaxLines;
-            customDeviceIcons = data && data.customDeviceIcons && typeof data.customDeviceIcons === 'object' ? data.customDeviceIcons : {};
+            customDeviceIcons = sanitizeProjectIcons(data?.customDeviceIcons);
             let slider = document.getElementById('deviceSizeSlider');
             if (data && data.deviceSize && slider) slider.value = data.deviceSize;
             

@@ -10,7 +10,7 @@
     window.updateTabletTools = () => {
         const items = selected();
         const modal = [...document.querySelectorAll('.modal')].some(element => element.style.display === 'flex' || element.style.display === 'block');
-        const visible = tabletInput && isSystemReady && !isOverviewMode && !modal;
+        const visible = !window.isGoomReadOnly?.() && tabletInput && isSystemReady && !isOverviewMode && !modal;
         updateDeviceRotationHandles(visible,items);
         const state = `${visible}:${items.map(item => item.id).join(',')}:${selectedTool}:${window.tabletPanMode}:${historyIndex}:${getGoomLanguage()}`;
         if (previousState === state) return;
@@ -20,7 +20,7 @@
             button.setAttribute('aria-label', tr(labels[action]));
             button.setAttribute('data-tooltip', tr(labels[action]));
             button.disabled = ['rotate', 'duplicate', 'delete'].includes(action) ? !items.length
-                : action === 'address' ? items.length !== 1 || ['panel', 'textNode', 'ramen', 'deactivated'].includes(items[0]?.type)
+                : action === 'address' ? items.length !== 1 || ['panel', 'textNode', 'deactivated'].includes(items[0]?.type)
                     : action === 'note' ? items.length !== 1
                     : action === 'undo' ? historyIndex <= 0 : false;
             if (action === 'select') button.setAttribute('aria-pressed', String(selectedTool === 'select' && !window.tabletPanMode));

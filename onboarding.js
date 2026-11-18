@@ -41,6 +41,7 @@ function finishOnboarding() {
 }
 
 window.startGoomOnboarding = () => {
+    if (window.isGoomReadOnly?.()) return;
     const uid = window.getFirebaseUser?.()?.uid;
     if (!uid || onboardingUid === uid || completedOnboarding.has(uid)) return;
     try { if (localStorage.getItem(onboardingStorageKey(uid))) return; } catch {}

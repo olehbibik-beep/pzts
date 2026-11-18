@@ -1,6 +1,6 @@
 (() => {
     // Change this version whenever publishing application files together.
-    const version = '20261117-pdf-cctv-fix-56';
+    const version = '20261118-maps-cloud-viewer-57';
     let started = false;
     let pdfLoading = null;
     let pdfAttempt = 0;
@@ -49,11 +49,13 @@
             // Import/export libraries must not delay the welcome screen or run on phones.
             const libraries = [
                 window.ensurePlanPdfLibrary(),
-                loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'),
-                loadScript('https://cdn.jsdelivr.net/npm/dxf-parser@1.1.2/dist/dxf-parser.min.js')
+                ...(!window.isGoomReadOnly?.() ? [
+                    loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'),
+                    loadScript('https://cdn.jsdelivr.net/npm/dxf-parser@1.1.2/dist/dxf-parser.min.js')
+                ] : [])
             ].map(promise => promise.catch(error => console.warn('Библиотека импорта/экспорта недоступна:', error)));
             window.planLibrariesReady = Promise.all(libraries);
-            for (const name of ['modal-ui', 'config', 'state', 'project-legend', 'engine', 'storage', 'dialogs', 'render', 'plan-renderer', 'render-performance', 'editor-interactions', 'editor-session', 'building-overview', 'svg-context', 'plan-export', 'app', 'onboarding', 'firebase-auth', 'account-profile', 'pro-billing', 'firebase-sync', 'icon-editor', 'toolbar-menus', 'select-controls', 'tablet-tools', 'feedback', 'welcome-intro']) {
+            for (const name of ['modal-ui', 'config', 'state', 'project-legend', 'engine', 'storage', 'dialogs', 'render', 'plan-renderer', 'render-performance', 'mobile-viewer', 'editor-interactions', 'editor-session', 'building-overview', 'svg-context', 'plan-export', 'app', 'satellite-map', 'onboarding', 'firebase-auth', 'account-profile', 'pro-billing', 'firebase-sync', 'icon-editor', 'toolbar-menus', 'select-controls', 'tablet-tools', 'feedback', 'welcome-intro']) {
                 if (name === 'state' && window.goomProduct === 'CCTV') await loadScript(`cctv.js?v=${version}`);
                 await loadScript(`${name}.js?v=${version}`);
             }

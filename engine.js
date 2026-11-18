@@ -92,13 +92,13 @@ function refreshAutomaticCableEnds(cable, from, to) {
 const independentDeviceNumberTypes = new Set(['expander', 'keypad', 'abax', 'siren', 'acs_module', 'acs_reader', 'cctv_nvr', 'cctv_poe']);
 
 function getDeviceAddressParts(device) {
-    if (!device.number || ['panel', 'abax', 'textNode', 'ramen', 'deactivated', 'cableTool'].includes(device.type)) return { prefix: '', number: '' };
+    if (!device.number || ['panel', 'abax', 'textNode', 'deactivated', 'cableTool'].includes(device.type)) return { prefix: '', number: '' };
     const prefix = independentDeviceNumberTypes.has(device.type) ? '' : `${device.loopId || 1}/`;
     return { prefix, number: String(device.number) };
 }
 
 function getDeviceNumberGroup(device) {
-    if (['panel', 'deactivated', 'textNode', 'ramen', 'cableTool'].includes(device.type)) return null;
+    if (['panel', 'deactivated', 'textNode', 'cableTool'].includes(device.type)) return null;
     if (independentDeviceNumberTypes.has(device.type)) return device.type;
     return `bus:${device.loopId || 1}`;
 }

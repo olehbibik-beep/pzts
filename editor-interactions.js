@@ -1,6 +1,6 @@
 function deviceBriefName(device){
     if (device.type === 'textNode' && device.plainText === true) return tr('Text na výkresu');
-    const names={pir:'PIR detektor',pir_wl:'Bezdrátový PIR',magnet:'Magnetický kontakt',magnet_wl:'Bezdrátový magnet',glassbreak:'Detektor rozbití skla',panic:'Tísňové tlačítko',siren:'Siréna',panel:'Ústředna',keypad:'Klávesnice',expander:'Expandér',abax:'ABAX',textNode:'Poznámka',deactivated:'Neaktivní detektor',ramen:'Ramen',...ADDITIONAL_DEVICE_LABELS};
+    const names={pir:'PIR detektor',pir_wl:'Bezdrátový PIR',magnet:'Magnetický kontakt',magnet_wl:'Bezdrátový magnet',glassbreak:'Detektor rozbití skla',panic:'Tísňové tlačítko',siren:'Siréna',panel:'Ústředna',keypad:'Klávesnice',expander:'Expandér',abax:'ABAX',textNode:'Poznámka',deactivated:'Neaktivní detektor',...ADDITIONAL_DEVICE_LABELS};
     return tr(names[device.type]||'Detektor');
 }
 function updateConnectionButton(){

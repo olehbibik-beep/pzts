@@ -6,9 +6,10 @@ const planVectorPathCache = new WeakMap();
 const planAnalysisCache = new WeakMap();
 const planOriginalCache = new WeakMap();
 const planTileCache = new WeakMap();
+const planLightCache = new WeakMap();
 const PLAN_DARK = '#181a1d';
 const PLAN_MAX_PIXELS = 24000000;
-function getPlanTheme(floor) { return floor.planTheme === 'original' ? 'original' : 'dark'; }
+function getPlanTheme(floor) { return ['original', 'light'].includes(floor.planTheme) ? floor.planTheme : 'dark'; }
 function planBackground(theme) { return theme === 'dark' ? PLAN_DARK : '#ffffff'; }
 function resizePlanCanvas() {
     const width = Math.max(1, container.clientWidth), height = Math.max(1, container.clientHeight);
@@ -97,6 +98,49 @@ function getDarkPlanImage(image,paperLevel) {
     planRasterCache.set(image, result);
     return result;
 }
+function getLightPlanImage(image, satellite = false) {
+    let cached = planLightCache.get(image);
+    if (!cached) { cached = new Map(); planLightCache.set(image, cached); }
+    if (cached.has(satellite)) return cached.get(satellite);
+    const result = document.createElement('canvas');
+    result.width = image.naturalWidth || image.width; result.height = image.naturalHeight || image.height;
+    const context = result.getContext('2d', {willReadFrequently:true});
+    context.fillStyle = '#fff'; context.fillRect(0, 0, result.width, result.height); context.drawImage(image, 0, 0);
+    const pixels = context.getImageData(0, 0, result.width, result.height), gray = new Uint8Array(result.width * result.height);
+    let border = 0, count = 0, dark = 0, light = 0;
+    for (let i=0; i<gray.length; i++) {
+        const p=i*4; gray[i]=Math.round(pixels.data[p]*.2126+pixels.data[p+1]*.7152+pixels.data[p+2]*.0722);
+        if(gray[i]<65)dark++;if(gray[i]>225)light++;
+        if (i<result.width || i>=gray.length-result.width || i%result.width===0 || i%result.width===result.width-1) {border+=gray[i];count++;}
+    }
+    const inverted = border / Math.max(1,count) < 80 || dark>light&&dark>gray.length*.45;
+    const paper=estimatePlanPaper(image);
+    for (let i=0; i<gray.length; i++) {
+        let value;
+        if (satellite) {
+            const w=result.width,x=i%w,y=Math.floor(i/w);
+            if (!x || !y || x===w-1 || y===result.height-1) value=255;
+            else {
+                const dx=-gray[i-w-1]+gray[i-w+1]-2*gray[i-1]+2*gray[i+1]-gray[i+w-1]+gray[i+w+1];
+                const dy=-gray[i-w-1]-2*gray[i-w]-gray[i-w+1]+gray[i+w-1]+2*gray[i+w]+gray[i+w+1];
+                value=Math.hypot(dx,dy)>105?0:255;
+            }
+        } else value=(inverted?255-gray[i]:gray[i]*255/paper)<225?0:255;
+        const p=i*4; pixels.data[p]=pixels.data[p+1]=pixels.data[p+2]=value;pixels.data[p+3]=255;
+    }
+    context.putImageData(pixels,0,0);
+    if(satellite){
+        const height=Math.max(14,Math.round(result.height*28/796));
+        context.fillStyle='#fff';context.fillRect(0,result.height-height,result.width,height);
+        context.fillStyle='#111';context.font=`${Math.max(7,result.width/1280*13)}px sans-serif`;
+        context.fillText('Source: Esri, Vantor, Earthstar Geographics, and the GIS User Community',Math.max(3,result.width/128),result.height-height*.3);
+    }
+    cached.set(satellite,result);return result;
+}
+function presentedPlanImage(image, floor, theme) {
+    return theme==='dark'?getDarkPlanImage(image,floor.wallMask?.paperLevel||255)
+        :theme==='light'?getLightPlanImage(image,Boolean(floor.satellite)):image;
+}
 function drawVectorPlan(target, vector, theme) {
     target.save(); target.strokeStyle = theme === 'dark' ? '#f2f4f7' : '#121214';
     target.lineWidth = vector.lineWidth || 1.5; target.lineCap = 'round'; target.lineJoin = 'round';
@@ -120,11 +164,11 @@ function drawPlanSource(target, floor, theme = getPlanTheme(floor), imageOverrid
         const image=tile?tile.image:(imageOverride||floor.image);
         target.imageSmoothingEnabled = true; target.imageSmoothingQuality = 'high';
         if(tile?.fallbackImage){
-            const fallback=theme==='dark'?getDarkPlanImage(tile.fallbackImage,floor.wallMask?.paperLevel||255):tile.fallbackImage;
+            const fallback=presentedPlanImage(tile.fallbackImage,floor,theme);
             const sx=fallback.width/width,sy=fallback.height/height;
             target.drawImage(fallback,bounds.minX*sx,bounds.minY*sy,bounds.width*sx,bounds.height*sy,bounds.minX,bounds.minY,bounds.width,bounds.height);
         }
-        const source=theme==='dark'?getDarkPlanImage(image,floor.wallMask?.paperLevel||255):image;
+        const source=presentedPlanImage(image,floor,theme);
         if(tile)target.drawImage(source,tile.x,tile.y,tile.width,tile.height);
         else {
             const sx=(image.naturalWidth||image.width)/width,sy=(image.naturalHeight||image.height)/height;
@@ -340,7 +384,7 @@ async function importPlanSource(file, floor) {
             imgData=prepared.toDataURL('image/png');image=await loadPlanImage(imgData);
         }
     }
-    const candidate={...floor,image,imgData,vectorPlan,pdfSource,rasterSource,pdfPage,planTheme:'dark',sourceName:file.name};
+    const candidate={...floor,image,imgData,vectorPlan,pdfSource,rasterSource,pdfPage,satellite:null,planTheme:'dark',sourceName:file.name};
     candidate.wallMask=createWallMask(candidate,candidate.wallThreshold);
     planOriginalCache.delete(floor);planTileCache.delete(floor);
     if(originalImage)planOriginalCache.set(floor,{image:originalImage,promise:Promise.resolve(originalImage)});

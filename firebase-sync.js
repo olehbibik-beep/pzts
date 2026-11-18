@@ -68,6 +68,7 @@ async function getCloudDatabase(userId) {
 }
 
 async function saveCloudProject(userId) {
+    if (window.isGoomReadOnly?.()) return false;
     if (!isSystemReady || !floors.length) {
         showAppAlert(tr('Дождитесь загрузки проекта и повторите попытку.'), tr('Облачные проекты'));
         return false;
@@ -126,7 +127,8 @@ function renderCloudProjects() {
         remove.className = 'btn-cad cloud-project-delete';
         remove.textContent = tr('Удалить');
         remove.addEventListener('click', () => runCloudAction('delete', userId => deleteCloudProject(userId, project), remove));
-        actions.append(open, remove);
+        actions.append(open);
+        if (!window.isGoomReadOnly?.()) actions.append(remove);
         row.append(details, actions);
         cloudProjectsList.appendChild(row);
     }
@@ -163,7 +165,7 @@ async function openCloudProject(userId, project) {
     } while (offset < size);
     if (!canApply()) return false;
     const imported = await importFileContent(new File(chunks, `${project.name || 'project'}.TECH`, { type: 'application/json' }), {
-        canApply
+        canApply, source: 'cloud'
     });
     if (!imported || userId !== cloudUser?.uid) return false;
     cloudProjectId = project.id;
@@ -173,6 +175,7 @@ async function openCloudProject(userId, project) {
 }
 
 async function deleteCloudProject(userId, project) {
+    if (window.isGoomReadOnly?.()) return false;
     if (!await showAppConfirm(tr`Удалить «${project.name || tr('Без названия')}» из облака?`, tr('Удалить проект'))) return false;
     await callAccountFunction('goomCloudProjects', { action: 'delete', application: APP_PRODUCT, id: project.id }, userId);
     if (cloudProjectId === project.id && userId === cloudUser?.uid) window.resetActiveCloudProject();
@@ -181,6 +184,7 @@ async function deleteCloudProject(userId, project) {
 }
 
 async function runCloudAction(action, operation, button) {
+    if (window.isGoomReadOnly?.() && !['open','list'].includes(action)) return;
     const userId = cloudUser?.uid;
     if (!userId || !window.hasCloudAccess?.() || cloudActionInProgress) return;
     const titles = {
@@ -225,7 +229,7 @@ async function openCloudProjects() {
     if (!cloudUser) return;
     cloudProjectsModal.style.display = 'flex';
     const save = document.getElementById('btnCloudSaveCurrent');
-    save.hidden = !isSystemReady;
+    save.hidden = !isSystemReady || Boolean(window.isGoomReadOnly?.());
     renderCloudProjects();
     await runCloudAction('list', refreshCloudProjects, save);
 }

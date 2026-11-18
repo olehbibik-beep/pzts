@@ -7,6 +7,7 @@ function applySavedPlanViewport(view){
     requestRedraw();
 }
 async function restoreEditorAfterReload(user) {
+    if (window.isGoomReadOnly?.()) return;
     if (!user) return;
     try{
         await window.localProjectStartup;

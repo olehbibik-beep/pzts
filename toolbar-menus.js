@@ -65,6 +65,7 @@ let displayedToolbarMenu = null;
 let toolbarSyncGeneration = 0;
 let toolbarSubscriptions = [];
 let toolbarSavePending = false;
+let toolbarShareRequested = false;
 let preferredSharedToolbarMenuId = null;
 
 function sanitizeToolbarMenu(menu, id, fallbackName) {
@@ -378,8 +379,13 @@ function updateToolbarMenuRowHighlights() {
 }
 
 function updateToolbarMenuEditorStatus() {
+    if (!window.hasAdminAccess?.()) toolbarShareRequested = false;
     const saveButton = document.getElementById('btnToolbarMenuSave');
     const publishButton = document.getElementById('btnToolbarMenuPublish');
+    const share = document.getElementById('toolbarMenuShare');
+    share.closest('label').hidden = !window.hasAdminAccess?.() || !editingToolbarMenu || !isPersonalToolbarMenu(editingToolbarMenu);
+    share.checked = toolbarShareRequested;
+    share.disabled = Boolean(toolbarSavePending);
     publishButton.hidden = !editingToolbarMenu || !window.hasAdminAccess?.() || !isPersonalToolbarMenu(editingToolbarMenu);
     publishButton.disabled = Boolean(toolbarSavePending) || editorHasUnsavedChanges();
     publishButton.title = publishButton.disabled ? tr('Сначала сохраните меню') : '';
@@ -392,14 +398,14 @@ function updateToolbarMenuEditorStatus() {
         document.getElementById('toolbarMenuEditorStatus').textContent = tr('Vytvořte kopii sady pro úpravy.');
         return;
     }
-    const changed = editingToolbarMenuIsNew
+    const changed = toolbarShareRequested || editingToolbarMenuIsNew
         || JSON.stringify(editingToolbarMenu) !== toolbarMenuEditorOriginal;
     document.getElementById('toolbarMenuEditorStatus').textContent = changed
         ? tr('Есть несохранённые изменения')
         : (activeToolbarMenuId === editingToolbarMenu.id ? tr('Этот набор используется на панели') : tr('Выберите набор, измените его и сохраните'));
     saveButton.disabled = !changed || Boolean(toolbarSavePending);
     saveButton.textContent = toolbarSavePending ? tr('Publikujeme…') : changed
-        ? tr(isPersonalToolbarMenu(editingToolbarMenu) ? 'Сохранить меню' : 'Publikovat sdílenou sadu') : tr('Сохранено');
+        ? tr(isPersonalToolbarMenu(editingToolbarMenu) && !toolbarShareRequested ? 'Сохранить меню' : 'Publikovat sdílenou sadu') : tr('Сохранено');
     saveButton.style.opacity = changed ? '1' : '.48';
 }
 
@@ -432,7 +438,7 @@ function renderToolbarMenuEditor() {
 }
 
 function editorHasUnsavedChanges() {
-    return editingToolbarMenuIsNew || JSON.stringify(editingToolbarMenu) !== toolbarMenuEditorOriginal;
+    return toolbarShareRequested || editingToolbarMenuIsNew || JSON.stringify(editingToolbarMenu) !== toolbarMenuEditorOriginal;
 }
 
 function discardUnsavedNewMenu() {
@@ -453,6 +459,7 @@ async function selectToolbarMenuForEditing(id, focusName = false) {
     if (!menu) return false;
     document.querySelector('.icon-editor-text-input')?.blur();
     editingToolbarMenu = JSON.parse(JSON.stringify(menu));
+    toolbarShareRequested = false;
     editingToolbarMenuIsNew = false;
     toolbarMenuEditorOriginal = JSON.stringify(editingToolbarMenu);
     applyToolbarMenu(menu);
@@ -467,6 +474,7 @@ async function selectToolbarMenuForEditing(id, focusName = false) {
 function openToolbarMenuEditor() {
     if (!canEditToolbarMenus()) { window.requestProUpgrade?.(); return; }
     editingToolbarMenu = JSON.parse(JSON.stringify(getActiveToolbarMenu()));
+    toolbarShareRequested = false;
     editingToolbarMenuIsNew = false;
     toolbarMenuEditorOriginal = JSON.stringify(editingToolbarMenu);
     const firstEditableType = editingToolbarMenu.deviceTypes.find(type =>
@@ -511,6 +519,7 @@ document.getElementById('btnToolbarMenuNew').addEventListener('click', async () 
         icons: JSON.parse(JSON.stringify(source.icons || {}))
     };
     editingToolbarMenuIsNew = true;
+    toolbarShareRequested = Boolean(window.hasAdminAccess?.());
     toolbarMenuEditorOriginal = '';
     toolbarMenus.push(JSON.parse(JSON.stringify(editingToolbarMenu)));
     applyToolbarMenu(editingToolbarMenu, false);
@@ -611,7 +620,9 @@ document.getElementById('btnToolbarMenuSave').addEventListener('click', async ()
     editingToolbarMenu.deviceTypes = toolbarMenuTypes
         .map(item => item.type)
         .filter(type => editingToolbarMenu.deviceTypes.includes(type));
-    const saved = sanitizeToolbarMenu(editingToolbarMenu, editingToolbarMenu.id, name);
+    const draftId = editingToolbarMenu.id;
+    const publishing = toolbarShareRequested && isPersonalToolbarMenu(editingToolbarMenu) && window.hasAdminAccess?.();
+    const saved = sanitizeToolbarMenu(editingToolbarMenu, publishing ? `shared-${crypto.randomUUID()}` : draftId, name);
     if (isPremiumToolbarId(saved.id) && !await writePremiumToolbarMenu(saved, ref => ref.set(sharedToolbarData(saved)))) return;
     if (isBuiltInToolbarMenu(saved)) {
         const attempt = { uid: toolbarAccountUid };
@@ -633,6 +644,8 @@ document.getElementById('btnToolbarMenuSave').addEventListener('click', async ()
             }
         }
     }
+    if (publishing) toolbarMenus = toolbarMenus.filter(menu => menu.id !== draftId);
+    toolbarShareRequested = false;
     const index = toolbarMenus.findIndex(menu => menu.id === saved.id);
     if (index < 0) toolbarMenus.push(saved);
     else toolbarMenus[index] = saved;
@@ -650,6 +663,10 @@ document.getElementById('btnToolbarMenuSave').addEventListener('click', async ()
     }
 });
 let isToolbarMenuCycling = false;
+document.getElementById('toolbarMenuShare').addEventListener('change', event => {
+    toolbarShareRequested = Boolean(event.target.checked && window.hasAdminAccess?.());
+    updateToolbarMenuEditorStatus();
+});
 document.getElementById('btnCycleToolbarMenu').addEventListener('click', async () => {
     if (isToolbarMenuCycling || !canEditToolbarMenus()) return;
     const tools = document.getElementById('deviceSetTools');

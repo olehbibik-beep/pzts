@@ -39,6 +39,7 @@ function drawWirelessWaves(ctx, startX, startY, sMult, color) {
 }
 
 function createWallMask(floor, threshold = floor.wallThreshold) {
+    if (floor.satellite) return null;
     if(!floor.image)return null;
     const source=analyzePlanPixels(floor.image,!floor.vectorPlan),data=new Uint8Array(source.width*source.height);
     const limit=Math.max(0,Math.min(255,Number(threshold)||0));
@@ -175,7 +176,7 @@ function animationLoop(timestamp) {
         const floor=floors[currentFloorIndex];
         const modal=document.querySelector('.modal[data-modal-open="true"],.app-dialog-backdrop:not([hidden])');
         if(floor&&!document.hidden&&!planReducedMotion.matches&&!modal&&!isOverviewMode&&isSystemReady&&!isExporting&&!isPanning&&!isDragging&&
-            (activeDeviceIds.size>0||floor.devices.some(d=>d.type==='ramen')))requestRedraw();
+            activeDeviceIds.size>0)requestRedraw();
     }
     requestAnimationFrame(animationLoop);
 }
@@ -365,18 +366,7 @@ function drawDevice(ctx, dev, skipSelection = false, theme = 'dark', options = {
         ctx.strokeStyle = COLORS.deactivated; ctx.lineWidth = 2.5 * sMult;
         ctx.beginPath(); ctx.arc(0, 0, 10 * sMult, 0, Math.PI*2); ctx.stroke(); 
         ctx.beginPath(); ctx.moveTo(-6 * sMult, -6 * sMult); ctx.lineTo(6 * sMult, 6 * sMult); ctx.stroke(); 
-    } else if (dev.type === 'ramen') {
-        ctx.fillStyle = "rgba(255, 255, 255, 0.9)"; ctx.fillRect(-18*sMult, -25*sMult, 36*sMult, 47*sMult); 
-        if (!isExporting) {
-            ctx.strokeStyle = "rgba(156, 163, 175, 0.9)"; ctx.lineWidth = 1.8*sMult; ctx.beginPath();
-            let wave1 = Math.sin(globalTime * 2.5) * 6 * sMult; let wave2 = Math.cos(globalTime * 2.5 + 1) * 6 * sMult; let wave3 = Math.sin(globalTime * 2.5 + 2) * 5 * sMult;
-            ctx.moveTo(-7*sMult, -4*sMult); ctx.bezierCurveTo(-7*sMult + wave1, -15*sMult, -7*sMult - wave1, -22*sMult, -7*sMult, -30*sMult);
-            ctx.moveTo(0, -4*sMult);  ctx.bezierCurveTo(0 + wave3, -15*sMult, 0 - wave3, -22*sMult, 0, -30*sMult);
-            ctx.moveTo(7*sMult, -4*sMult);  ctx.bezierCurveTo(7*sMult + wave2, -15*sMult, 7*sMult - wave2, -22*sMult, 7*sMult, -30*sMult); ctx.stroke();
-        }
-        ctx.strokeStyle = "#facc15"; ctx.lineWidth = 2*sMult; ctx.beginPath(); ctx.moveTo(-9*sMult, 4*sMult); ctx.lineTo(-6*sMult, -1*sMult); ctx.lineTo(-3*sMult, 4*sMult); ctx.lineTo(0, -1*sMult); ctx.lineTo(3*sMult, 4*sMult); ctx.lineTo(6*sMult, -1*sMult); ctx.lineTo(9*sMult, 4*sMult); ctx.stroke();
-        ctx.strokeStyle = "#ea580c"; ctx.lineWidth = 2.5*sMult; ctx.beginPath(); ctx.arc(0, 5*sMult, 12*sMult, 0, Math.PI, false); ctx.closePath(); ctx.fillStyle = "#ea580c"; ctx.fill(); ctx.stroke();
-        ctx.strokeStyle = "#78350f"; ctx.lineWidth = 2.5*sMult; ctx.beginPath(); ctx.moveTo(5*sMult, 5*sMult); ctx.lineTo(15*sMult, -12*sMult); ctx.moveTo(2*sMult, 5*sMult); ctx.lineTo(12*sMult, -12*sMult); ctx.stroke();
+
     }
     ctx.restore(); 
 
@@ -428,7 +418,6 @@ function drawFloorData(ctx, floor, skipSelection = false, theme = getPlanTheme(f
                 let color = "#22c55e"; let lineWidth = 3.5;
                 if (['panel', 'keypad', 'expander', 'abax'].includes(d1.type) && ['panel', 'keypad', 'expander', 'abax'].includes(d2.type)) { color = "#0ea5e9"; }
                 else if (d1.type === 'siren' || d2.type === 'siren' || d1.type === 'panic' || d2.type === 'panic') { color = "#ef4444"; }
-                else if (d1.type === 'ramen' || d2.type === 'ramen') { color = "#ea580c"; }
                 drawCableRoute(ctx, c, d1, d2, color, lineWidth);
                 if (!isExporting && !skipSelection && (selectedTool === 'cableTool' || activeDeviceIds.has(d1.id) || activeDeviceIds.has(d2.id) || (draggedHandle && draggedHandle.cable === c))) {
                     drawHandles(ctx, c, color);

@@ -2,6 +2,11 @@
 // 4. STORAGE: DATABÁZE A HISTORIE
 // ==========================================
 
+function sanitizeProjectIcons(value) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+    return Object.fromEntries(Object.entries(value).filter(([type]) => type !== 'ramen'));
+}
+
 function sanitizeFloors(floorDataArray) {
     if (!Array.isArray(floorDataArray)) return []; 
     
@@ -9,17 +14,21 @@ function sanitizeFloors(floorDataArray) {
     const names=new Set(existing.map(f=>String(f.name||'').replace(/\s/g,'').toUpperCase()));
     for(const name of STANDARD_FLOOR_NAMES)if(!names.has(name))existing.push(createEmptyProjectFloor(name));
     return existing.map(f => {
+        const devices = Array.isArray(f.devices) ? f.devices.filter(device => device && device.type !== 'ramen') : [];
+        const ids = new Set(devices.map(device => device.id));
         const newFloor = { 
             name: f.name || "NP", 
             image: null, 
             imgData: f.imgData || null, 
-            devices: Array.isArray(f.devices) ? f.devices : [], 
-            cables: Array.isArray(f.cables) ? f.cables : [],    
+            devices,
+            cables: Array.isArray(f.cables) ? f.cables.filter(cable => cable && ids.has(cable.fromId) && ids.has(cable.toId)) : [],
             addressReservations: mergeAddressReservations(Array.isArray(f.addressReservations) ? f.addressReservations : []),
             showConnections: f.showConnections !== false,
             wallThreshold: Number.isFinite(f.wallThreshold) ? Math.min(255, Math.max(0, f.wallThreshold)) : 100,
             pirRangePixels: 300,
-            planTheme: f.planTheme === 'original' ? 'original' : 'dark',
+            planTheme: ['original','light'].includes(f.planTheme) ? f.planTheme : 'dark',
+            satellite: f.satellite?.provider === 'Esri World Imagery' && Array.isArray(f.satellite.center) && f.satellite.center.length === 2 && f.satellite.center.every(Number.isFinite)
+                ? {provider:'Esri World Imagery',center:f.satellite.center,zoom:Math.max(2,Math.min(20,Number(f.satellite.zoom)||17)),attribution:String(f.satellite.attribution||'').slice(0,300)} : null,
             vectorPlan: sanitizeVectorPlan(f.vectorPlan),
             pdfSource: typeof f.pdfSource === 'string' && /^data:application\/pdf(?:;[^,]*)?;base64,/.test(f.pdfSource) ? f.pdfSource : null,
             pdfPage: Number.isInteger(f.pdfPage) && f.pdfPage > 0 ? f.pdfPage : 1,
@@ -63,7 +72,7 @@ async function loadFloorsImages(floorDataArray) {
                 img.onload = () => {
                     f.image = img;
                     try {
-                        f.wallMask = createWallMask(f, f.wallThreshold);
+                        f.wallMask = f.satellite ? null : createWallMask(f, f.wallThreshold);
                         resolve(f);
                     } catch (error) {
                         reject(error);
@@ -78,19 +87,20 @@ async function loadFloorsImages(floorDataArray) {
 }
 
 function saveStateToHistory() {
+    if (window.isGoomReadOnly?.()) return;
     if (!isSystemReady) return;
     calculateDynamicNumbersGlobal(floors);
     if (historyIndex < historyStack.length - 1) {
         historyStack = historyStack.slice(0, historyIndex + 1);
     }
     const state = {
-        customDeviceIcons: JSON.parse(JSON.stringify(customDeviceIcons)),
+        customDeviceIcons: JSON.parse(JSON.stringify(sanitizeProjectIcons(customDeviceIcons))),
         fData: floors.map(f => ({
             name: f.name, imgData: f.imgData, legend: f.legend ? JSON.parse(JSON.stringify(f.legend)) : null,
             addressReservations: f.addressReservations,
             devices: JSON.parse(JSON.stringify(f.devices)), cables: JSON.parse(JSON.stringify(f.cables)), showConnections: f.showConnections,
             wallThreshold: f.wallThreshold, pirRangePixels: f.pirRangePixels,
-            planTheme: f.planTheme, vectorPlan: f.vectorPlan, pdfSource: f.pdfSource, rasterSource: f.rasterSource, pdfPage: f.pdfPage, sourceName: f.sourceName
+            planTheme: f.planTheme, satellite: f.satellite, vectorPlan: f.vectorPlan, pdfSource: f.pdfSource, rasterSource: f.rasterSource, pdfPage: f.pdfPage, sourceName: f.sourceName
         })),
         currentFloorIndex: currentFloorIndex, currentMaxLines: currentMaxLines
     };
@@ -109,7 +119,7 @@ async function undo() {
 
 async function restoreState(state) {
     currentMaxLines = state.currentMaxLines;
-    customDeviceIcons = state.customDeviceIcons && typeof state.customDeviceIcons === 'object' ? state.customDeviceIcons : {};
+    customDeviceIcons = sanitizeProjectIcons(state.customDeviceIcons);
     updateLoopSelect();
     floors = await loadFloorsImages(state.fData);
     currentFloorIndex = state.currentFloorIndex;
@@ -130,6 +140,7 @@ function initDB() {
 }
 
 function triggerAutoSave() {
+    if (window.isGoomReadOnly?.()) return;
     if (autoSaveTimer) clearTimeout(autoSaveTimer);
     autoSaveTimer = setTimeout(() => {
         saveToDB();
@@ -149,18 +160,19 @@ function getProjectDataPayload() {
         currentFloorIndex: currentFloorIndex, 
         currentMaxLines: currentMaxLines,
         deviceSize: dSize,
-        customDeviceIcons,
+        customDeviceIcons: sanitizeProjectIcons(customDeviceIcons),
         pirCoverageVisible: isPirCoverageVisible(),
         floors: floors.map(f => ({
             name: f.name, imgData: f.imgData, devices: f.devices, cables: f.cables, legend: f.legend,
             addressReservations: f.addressReservations,
             showConnections: f.showConnections, wallThreshold: f.wallThreshold, pirRangePixels: f.pirRangePixels,
-            planTheme: f.planTheme, vectorPlan: f.vectorPlan, pdfSource: f.pdfSource, rasterSource: f.rasterSource, pdfPage: f.pdfPage, sourceName: f.sourceName
+            planTheme: f.planTheme, satellite: f.satellite, vectorPlan: f.vectorPlan, pdfSource: f.pdfSource, rasterSource: f.rasterSource, pdfPage: f.pdfPage, sourceName: f.sourceName
         }))
     };
 }
 
 function saveToDB() {
+    if (window.isGoomReadOnly?.()) return;
     if(!isSystemReady || isExporting || !db) return;
     try {
         const projectData = getProjectDataPayload();
@@ -178,6 +190,7 @@ function saveToDB() {
 }
 
 function getSavedProjectData() {
+    if (window.isGoomReadOnly?.()) return Promise.resolve(null);
     if (!db) return Promise.resolve(null);
     return new Promise((resolve, reject) => {
         let tx = db.transaction(STORE_NAME, 'readonly');
@@ -198,7 +211,7 @@ async function loadFromDB(options={}) {
     window.projectOwnerUid=data.ownerUid||window.getFirebaseUser?.()?.uid||null;
     window.restoredPlanViewport=data.viewport;
     if (data.currentMaxLines) currentMaxLines = data.currentMaxLines;
-    customDeviceIcons = data.customDeviceIcons && typeof data.customDeviceIcons === 'object' ? data.customDeviceIcons : {};
+    customDeviceIcons = sanitizeProjectIcons(data.customDeviceIcons);
     const slider = document.getElementById('deviceSizeSlider');
     if (data.deviceSize && slider) slider.value = data.deviceSize;
     updateLoopSelect();

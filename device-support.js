@@ -1,4 +1,4 @@
-// Keep this check before application loading so phones never initialize the editor or Firebase.
+// Phones use the cloud viewer; desktop and tablet retain the editor.
 (() => {
     function getDeviceSupport() {
         const ua = navigator.userAgent;
@@ -7,7 +7,7 @@
         const touch = navigator.maxTouchPoints > 0 || matchMedia('(pointer: coarse)').matches;
         const screenShortSide = Math.min(screen.width, screen.height);
         const phone = phoneUA || (!explicitTablet && touch && screenShortSide > 0 && screenShortSide < 600);
-        return { phone, supported: !phone && window.innerWidth >= 600 };
+        return { phone, supported: phone || window.innerWidth >= 600 };
     }
 
     let previousSupport;
@@ -15,6 +15,7 @@
         const support = getDeviceSupport();
         document.documentElement.classList.toggle('device-blocked', !support.supported);
         document.documentElement.dataset.device = support.phone ? 'phone' : 'computer-or-tablet';
+        document.documentElement.classList.toggle('mobile-viewer', support.phone);
         const title = document.getElementById('deviceSupportTitle');
         const message = document.getElementById('deviceSupportMessage');
         if (title) title.textContent = support.phone ? tr('Otevřete na počítači nebo tabletu') : tr('Увеличьте ширину окна');
@@ -29,6 +30,7 @@
     }
 
     window.isGoomDeviceSupported = () => getDeviceSupport().supported;
+    window.isGoomReadOnly = () => getDeviceSupport().phone;
     window.addEventListener('resize', updateDeviceSupport);
     document.addEventListener('DOMContentLoaded', updateDeviceSupport);
     window.addEventListener('keydown', event => {

@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GOOM</title>
     <link rel="icon" type="image/png" href="Logo2.png?v=20261115-35">
-    <script src="i18n.js?v=20261117-pdf-cctv-fix-56"></script>
-    <script src="device-support.js?v=20261114-loading-27"></script>
+    <script src="i18n.js?v=20261118-maps-cloud-viewer-57"></script>
+    <script src="device-support.js?v=20261118-maps-cloud-viewer-57"></script>
+    <link rel="stylesheet" href="viewer-map.css?v=20261118-maps-cloud-viewer-57">
     <style>
         :root {
             --bg-main: #121214; --bg-toolbar: #1c1c1f; --bg-input: #252529;
@@ -887,6 +888,7 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
                     Nahrát výkres (PDF/IMG)
                 </button>
+                <button id="btnMenuSatellite" class="btn-cad" type="button">Satelitní mapa</button>
                 <button id="btnMenuSave" class="btn-cad" style="width: 100%; justify-content: flex-start;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
                     Uložit / Export
@@ -925,7 +927,7 @@
         <div class="modal-content" style="max-width: 430px;">
             <div class="modal-title">Rozpoznání stěn a PIR</div>
             <label class="setting-label" for="planThemeInput">Zobrazení výkresu</label>
-            <select id="planThemeInput" style="width:100%;margin:8px 0 16px"><option value="dark">Bílé čáry na tmavém pozadí</option><option value="original">Původní výkres</option></select>
+            <select id="planThemeInput" style="width:100%;margin:8px 0 16px"><option value="dark">Bílé čáry na tmavém pozadí</option><option value="original">Původní výkres</option><option value="light">Černé čáry na bílém pozadí</option></select>
             <div class="wall-sensitivity-heading"><label class="setting-label" for="wallThresholdInput">Citlivost rozpoznání stěn</label><output id="wallSensitivityValue" for="wallThresholdInput">39 %</output></div>
             <input id="wallThresholdInput" class="wall-sensitivity-slider" type="range" min="0" max="1000" step="1" value="392">
             <div class="wall-sensitivity-ends"><span>Bez překážek</span><span>I jemné čáry</span></div>
@@ -951,6 +953,7 @@
             <select id="iconEditorTarget" aria-label="Typ zařízení pro ikonu" style="display:none;"></select>
             <div class="toolbar-menu-editor-actions">
                 <button id="btnToolbarMenuNew" class="btn-cad toolbar-menu-add" type="button" title="Přidat nabídku" aria-label="Přidat nabídku">+</button>
+                <label class="toolbar-menu-share" hidden><input type="checkbox" id="toolbarMenuShare">Dostupné všem uživatelům PROJECT</label>
                 <span id="toolbarMenuEditorStatus" style="color:var(--text-muted);font-size:12px;"></span>
                 <div class="toolbar-menu-editor-actions-group">
                     <button id="btnToolbarImportMenus" class="btn-cad" type="button" hidden>Importovat osobní nabídky</button>
@@ -1120,15 +1123,6 @@
     </div>
 
 
-    <div id="ramenModal" class="modal">
-        <div class="modal-content" style="max-width: 320px; text-align: center;">
-            <div style="font-size: 60px; margin-bottom: 10px; line-height: 1;">🍜</div>
-            <div class="modal-title" style="color: #ea580c; margin-bottom: 10px; justify-content: center;">Tajný režim RAMEN!</div>
-            <div class="modal-text" style="font-size: 14px; margin-bottom: 20px;">Nástroj pro přidání čerstvého ramenu byl aktivován. Můžete zapojovat nudlové kabely!</div>
-            <button class="btn-cad" style="background: #ea580c; width: 100%; justify-content: center; font-weight: bold; font-size: 14px;" onclick="document.getElementById('ramenModal').style.display='none'">Chutné!</button>
-        </div>
-    </div>
-
     <div id="overviewScreen" style="display: none;" role="dialog" aria-modal="true" aria-label="Přehled celé budovy">
         <div id="overviewCanvasContainer">
             <div id="overviewStage">
@@ -1160,6 +1154,6 @@
         <button type="button" data-tablet-action="delete" class="tool-danger"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13m-8 3v7m4-7v7"/></svg></button>
         <button type="button" data-tablet-action="undo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 4-5 5 5 5M4 9h9a6 6 0 0 1 6 6v2"/></svg></button>
     </div>
-    <script src="bootstrap.js?v=20261117-pdf-cctv-fix-56"></script>
+    <script src="bootstrap.js?v=20261118-maps-cloud-viewer-57"></script>
 </body>
 </html>
