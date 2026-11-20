@@ -175,6 +175,7 @@ async function openApp(options = {}) {
             apps: [{}], initializeApp() {}, app: () => window.firebase, auth: authFactory,
             firestore: firestoreFactory,
             functions: () => ({ httpsCallable: name => async data => {
+                if(name==='goomProjectCreated'){window.testProjectStarts=[...(window.testProjectStarts||[]),data];return{data:{counted:true}};}
                 if (name === 'goomCloudProjects') {
                     window.testCloudOperations = [...(window.testCloudOperations || []), data.action];
                     if (data.action === 'download') {
@@ -1061,12 +1062,12 @@ test('personal email registration exposes user information and never queries clo
         await page.locator('#btnWelcomeNew').click();
         await page.locator('#btnWelcomeConfirmNaming').click();
         await page.locator('#onboardingBackdrop').waitFor({ state: 'visible' });
-        assert.equal(await page.locator('#onboardingStep').textContent(), 'Krok 1 z 18');
-        assert.ok(await page.locator('#mainMenuModal').isVisible());
+        assert.equal(await page.locator('#onboardingStep').textContent(), 'Krok 1 z 16');
+        assert.equal(await page.locator('#mainMenuModal').isVisible(),false);
         await page.mouse.click(12, 12);
         assert.ok(await page.locator('#onboardingBackdrop').isVisible());
         await page.locator('#onboardingDots button').nth(7).click();
-        assert.match(await page.locator('#onboardingTitle').textContent(), /Umístěte (detektor|kameru)/);
+        assert.match(await page.locator('#onboardingTitle').textContent(), /Stěny a detekce/);
         await page.locator('#mainMenuModal').waitFor({ state: 'hidden' });
         await dismissOnboarding(page);
         await page.evaluate(() => window.startGoomOnboarding());
@@ -1585,10 +1586,10 @@ test('spotlight tour can jump to every step and preserves the project and open d
     try{
         await startRenderProject(page);await page.evaluate(()=>setGoomLanguage('ru'));
         const original=await page.evaluate(()=>JSON.stringify(getProjectDataPayload()));
-        await page.locator('#helpBtn').click();assert.match(await page.locator('#btnOpenManual').getAttribute('href'),/guide\/\?app=(PZTS|CCTV)&lang=ru/);
+        await page.locator('#helpBtn').click();assert.equal(await page.locator('#btnOpenManual').count(),0);assert.equal(await page.locator('#helpPanel .help-shortcuts .help-item').count(),4);
         await page.locator('#btnStartGuide').click();await page.locator('#onboardingBackdrop').waitFor({state:'visible'});
-        const dots=page.locator('#onboardingDots button');assert.equal(await dots.count(),18);
-        for(let i=0;i<18;i++){await dots.nth(i).click();await page.waitForFunction(()=>Number(document.getElementById('tourHole').getAttribute('r'))>0);assert.match(await page.locator('#onboardingStep').textContent(),new RegExp(`Шаг ${i+1} из 18`));assert.equal(await dots.nth(i).getAttribute('aria-current'),'step');}
+        const dots=page.locator('#onboardingDots button');assert.equal(await dots.count(),16);
+        for(let i=0;i<16;i++){await dots.nth(i).click();await page.waitForFunction(()=>document.getElementById('onboardingBackdrop').dataset.targetVisible==='true');const alignment=await page.evaluate(()=>{const panel=document.getElementById('onboardingBackdrop'),target=document.querySelector(panel.dataset.target),r=target.getBoundingClientRect(),hole=document.getElementById('tourHole');const m=hole.getScreenCTM(),p=new DOMPoint(Number(hole.getAttribute('cx')),Number(hole.getAttribute('cy'))).matrixTransform(m);return{dx:Math.abs(p.x-(r.x+r.width/2)),dy:Math.abs(p.y-(r.y+r.height/2)),radius:Number(hole.getAttribute('r'))*Math.hypot(m.a,m.b),needed:Math.hypot(r.width,r.height)/2};});assert.ok(alignment.dx<2&&alignment.dy<2&&alignment.radius>=alignment.needed,JSON.stringify(alignment));assert.match(await page.locator('#onboardingStep').textContent(),new RegExp(`Шаг ${i+1} из 16`));assert.equal(await dots.nth(i).getAttribute('aria-current'),'step');}
         if(process.env.TEST_SCREENSHOT_DIR)await smoothScreenshot(page,{path:resolve(process.env.TEST_SCREENSHOT_DIR,'spotlight-save.png')});
         await page.keyboard.press('Escape');await page.locator('#onboardingBackdrop').waitFor({state:'hidden'});assert.equal(await page.evaluate(()=>JSON.stringify(getProjectDataPayload())),original);
         await page.locator('#btnLogo').click();await page.locator('#btnMenuSave').click();await page.locator('#saveModal').waitFor({state:'visible'});
@@ -1610,7 +1611,7 @@ test('spotlight guidance fits tablet orientations and new welcome artwork keeps 
     try{assert.equal(await page.locator('#welcomeModal .welcome-card').evaluate(el=>getComputedStyle(el,'::before').display),'none');assert.match(await page.locator('link[rel=icon]').getAttribute('href'),/Logosite/);
         if(process.env.TEST_SCREENSHOT_DIR)await smoothScreenshot(page,{path:resolve(process.env.TEST_SCREENSHOT_DIR,`welcome-tint-${process.env.TEST_PRODUCT||'PZTS'}.png`)});
         await page.locator('#btnWelcomeGuide').click();assert.ok(await page.locator('#onboardingBackdrop').isVisible());
-        for(const viewport of [{width:768,height:1024},{width:1024,height:600},{width:600,height:960}]){await page.setViewportSize(viewport);for(const index of [0,5,15,17]){await page.locator('#onboardingDots button').nth(index).click();await page.waitForTimeout(280);const dock=await page.locator('.tour-dock').boundingBox();assert.ok(dock.x>=0&&dock.y>=0&&dock.x+dock.width<=viewport.width+1&&dock.y+dock.height<=viewport.height+1,JSON.stringify({viewport,dock}));assert.equal(await page.locator('.tour-dock').evaluate(el=>el.scrollWidth<=el.clientWidth+1),true);}}
+        for(const viewport of [{width:768,height:1024},{width:1024,height:600},{width:600,height:960}]){await page.setViewportSize(viewport);for(const index of [0,3,9,11,15]){await page.locator('#onboardingDots button').nth(index).click();await page.waitForTimeout(280);const dock=await page.locator('.tour-dock').boundingBox();assert.ok(dock.x>=0&&dock.y>=0&&dock.x+dock.width<=viewport.width+1&&dock.y+dock.height<=viewport.height+1,JSON.stringify({viewport,dock}));assert.equal(await page.locator('.tour-dock').evaluate(el=>el.scrollWidth<=el.clientWidth+1),true);}}
         if(process.env.TEST_SCREENSHOT_DIR)await smoothScreenshot(page,{path:resolve(process.env.TEST_SCREENSHOT_DIR,'tour-tablet-portrait.png')});await page.locator('#onboardingSkip').click();await page.locator('#welcomeModal').waitFor({state:'visible'});assert.deepEqual(errors,[]);
     }finally{await context.close();}
 });
@@ -1631,6 +1632,28 @@ test('project completion requires real routes labels and legend coverage',async(
         const complete=evaluateProjectReadiness({name:'Office',floors:[f]});const missing=evaluateProjectReadiness({name:'Office',floors:[{...f,cables:[{fromId:'m',toId:'deleted'}],legend:{...f.legend,visible:false}}]});const empty=evaluateProjectReadiness({name:'',floors:[]});return{complete,missing,empty};
     });assert.equal(result.complete.score,100);assert.equal(result.complete.grade,2);assert.equal(result.missing.checks.find(c=>c.id==='cables').complete,false);assert.equal(result.missing.checks.find(c=>c.id==='legend').complete,false);assert.notEqual(result.missing.grade,2);assert.equal(result.empty.score,0);
         await page.locator('#btnLogo').click();await page.locator('#btnMenuSave').click();await page.locator('#projectReadiness .readiness-steps li').first().waitFor({state:'visible'});assert.equal(await page.locator('#projectReadiness .readiness-steps li').count(),7);assert.deepEqual(errors,[]);
+    }finally{await context.close();}
+});
+
+test('new project metrics count confirmation but never import reopening or tutorial',async()=>{
+    const{context,page,errors}=await openApp({initialSession:true,company:true});
+    try{
+        await page.locator('#btnWelcomeContinue').click();await page.locator('#btnWelcomeNew').click();await page.locator('#btnWelcomeConfirmNaming').click();await dismissOnboarding(page);
+        await page.waitForFunction(()=>window.testProjectStarts?.length===1);const first=await page.evaluate(()=>testProjectStarts[0]);assert.match(first.operationId,/^[a-z0-9-]{36}$/);assert.equal(first.application,process.env.TEST_PRODUCT||'PZTS');
+        await page.evaluate(()=>startGoomOnboarding({force:true}));await dismissOnboarding(page);assert.equal(await page.evaluate(()=>testProjectStarts.length),1);
+        const payload=await page.evaluate(()=>JSON.stringify(getProjectDataPayload()));await page.locator('#bipsLoader').setInputFiles({name:'Reopen.TECH',mimeType:'application/json',buffer:Buffer.from(payload)});await page.waitForFunction(()=>isSystemReady);await dismissOnboarding(page);assert.equal(await page.evaluate(()=>testProjectStarts.length),1);
+        await page.reload();await page.waitForFunction(()=>typeof recordGoomProjectCreated==='function'&&!!db);assert.equal(await page.evaluate(()=>window.testProjectStarts?.length||0),0);assert.deepEqual(errors,[]);
+    }finally{await context.close();}
+});
+
+test('free guide highlights real toolbar controls and compact help and readiness keep their layout',async()=>{
+    const{context,page,errors}=await openApp({initialSession:true});
+    try{await startRenderProject(page);await page.locator('#helpBtn').click();const play=await page.locator('#btnStartGuide').boundingBox(),shortcuts=await page.locator('.help-shortcuts').boundingBox();assert.ok(play.y+play.height<=shortcuts.y+1);assert.equal(await page.locator('#btnOpenManual').count(),0);
+        await page.locator('#btnStartGuide').click();const steps=await page.evaluate(()=>goomGuideSteps.map(s=>s[0]));assert.ok(steps.includes('#btnDetectorSearch'));assert.ok(!steps.some(s=>['#deviceSelector','#deviceSetTools','#textTools','#canvasContainer'].includes(s)));
+        await page.locator('#onboardingDots button').nth(9).click();await page.waitForFunction(()=>document.getElementById('onboardingBackdrop').dataset.target==='#btnDetectorSearch'&&document.getElementById('onboardingBackdrop').dataset.targetVisible==='true');assert.equal(await page.locator('#btnDetectorSearch').isVisible(),true);
+        if(process.env.TEST_SCREENSHOT_DIR)await smoothScreenshot(page,{path:resolve(process.env.TEST_SCREENSHOT_DIR,'tour-search.png')});await dismissOnboarding(page);
+        await page.locator('#btnLogo').click();await page.locator('#btnMenuSave').click();await page.locator('#projectReadiness').waitFor();const copy=await page.locator('#saveModal').innerText();assert.doesNotMatch(copy,/SVG zachová|DXF: editovatelné|Kontrola vyplnění/);assert.equal(await page.locator('.readiness-dot').first().textContent(),'');assert.ok((await page.locator('.readiness-dot').first().boundingBox()).width<=10);assert.ok((await page.locator('#projectReadiness').boundingBox()).height<90);
+        if(process.env.TEST_SCREENSHOT_DIR)await smoothScreenshot(page,{path:resolve(process.env.TEST_SCREENSHOT_DIR,'compact-readiness.png')});assert.deepEqual(errors,[]);
     }finally{await context.close();}
 });
 

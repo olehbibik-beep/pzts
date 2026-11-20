@@ -1,4 +1,15 @@
 /* Shared guidance, practice and project completion. */
+html.goom-tour-active .motion-surface{transition:none!important}
+html.goom-tour-active .modal{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+#helpPanel{display:flex;flex-direction:column;align-items:stretch;height:auto;padding:10px 18px;gap:7px;border-radius:20px;overflow:visible}
+#helpPanel .help-guide-row{width:auto;padding:3px 0;font-size:13px;gap:8px}
+#helpPanel .help-shortcuts{display:flex;gap:20px;align-items:center;overflow-x:auto;max-width:calc(100vw - 155px);padding:3px 0}
+#projectReadiness{margin-top:8px;padding:8px 0 0}
+#projectReadiness .readiness-top{margin-bottom:8px}
+#projectReadiness .readiness-steps li{font-size:10px;padding-bottom:0}
+#projectReadiness .readiness-steps li::before{top:4px}
+#projectReadiness .readiness-dot{width:9px;height:9px;margin-bottom:6px;font-size:0;background:#5b616c}
+#projectReadiness .complete .readiness-dot{background:#b7ec72}
 :root{--welcome-tint:93,134,36;--experience-accent:#b7ec72}:root[data-goom-product="CCTV"]{--welcome-tint:102,63,154;--experience-accent:#c4a4ef}
 #welcomeModal .welcome-card::before{display:none!important}#welcomeModal .welcome-panel{background:transparent!important}#welcomeModal .welcome-art-space::after{background:linear-gradient(90deg,rgba(var(--welcome-tint),.94),rgba(var(--welcome-tint),.88) 25%,rgba(var(--welcome-tint),.55) 44%,rgba(var(--welcome-tint),.12) 66%,transparent 84%)!important}
 .help-guide-row{display:flex;align-items:center;gap:10px;width:100%;box-sizing:border-box;padding:9px 6px;color:inherit;text-decoration:none;background:none;border:0;font:inherit;text-align:left;cursor:pointer}.help-guide-row:hover{color:var(--experience-accent)}.help-guide-row svg{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.7}.help-panel .help-guide-row:nth-child(2){margin-bottom:8px;padding-bottom:13px;border-bottom:1px solid #ffffff18}.welcome-guide-link{background:none;border:0;color:inherit;text-decoration:underline;text-underline-offset:4px;font:inherit;font-size:12px;margin-top:12px;cursor:pointer}

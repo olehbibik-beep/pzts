@@ -288,6 +288,7 @@ if (btnConfirmNewProject) {
         if (finalName === "") finalName = tr("Nový projekt");
         document.getElementById('newProjectModal').style.display = 'none';
         if (typeof loadDefaultFloors === 'function') loadDefaultFloors(false, finalName);
+                window.recordGoomProjectCreated?.();
     });
 }
 
@@ -1134,6 +1135,7 @@ async function initProject() {
                 document.getElementById('welcomeModal').style.display = 'none';
                 
                 loadDefaultFloors(false, finalName);
+                window.recordGoomProjectCreated?.();
                 window.startGoomOnboarding?.();
             };
         }
