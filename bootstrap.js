@@ -1,6 +1,6 @@
 (() => {
     // Change this version whenever publishing application files together.
-    const version = '20261120-toolbar-2';
+    const version = '20261120-toolbar-3';
     let started = false;
     let pdfLoading = null;
     let pdfAttempt = 0;
