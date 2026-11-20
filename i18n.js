@@ -1,6 +1,7 @@
 // Czech is the default. Source aliases also cover labels in older saved menu sets.
 (() => {
     const rows = [
+        ["DXF: editovatelné čáry, zařízení a text v mm podle formátu listu. Křivky mohou být převedeny na polylinie. Rastrové fotografie a mapy se do DXF nevkládají.","DXF: editovatelné čáry, zařízení a text v mm podle formátu listu. Křivky mohou být převedeny na polylinie. Rastrové fotografie a mapy se do DXF nevkládají.","DXF: editable lines, devices and text in millimetres at the sheet size. Curves may become polylines. Raster photos and maps are not included in DXF.","DXF: bearbeitbare Linien, Geräte und Texte in mm im Blattformat. Kurven können als Polylinien ausgegeben werden. Rasterfotos und Karten werden nicht in DXF eingebettet.","DXF: редактируемые линии, устройства и текст в мм по размеру листа. Кривые могут быть представлены полилиниями. Растровые фотографии и карты в DXF не включаются."],
         ['Fotografie plánu z tabletu','Plan photography on a tablet','Planfotos auf dem Tablet','Фото плана с планшета'],
         ["Hybridní mapa","Hybrid map","Hybridkarte","Гибридная карта"],
         ["Zpracování…","Processing…","Verarbeitung…","Обработка…"],

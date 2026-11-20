@@ -326,7 +326,7 @@ document.getElementById('btnMenuPrint').addEventListener('click', () => {
  document.getElementById('mainMenuModal').style.display = 'none'; void printPlanDirect();
 });
 document.getElementById('btnExportBIPS').addEventListener('click', () => { exportToTECH(); saveModal.style.display='none'; });
-for (const [id,format] of [['btnExportPNG','png'],['btnExportPDF','pdf'],['btnExportSVG','svg'],['btnExportJPEG','jpeg']]) {
+for (const [id,format] of [['btnExportPNG','png'],['btnExportPDF','pdf'],['btnExportSVG','svg'],['btnExportDXF','dxf'],['btnExportJPEG','jpeg']]) {
  document.getElementById(id).addEventListener('click', () => exportPlanFile(format));
 }
 

@@ -161,8 +161,9 @@ async function exportPlanFile(format){
     try{
         await window.goomBusyPaint?.();
         await new Promise(requestAnimationFrame);
-        const result=await makePlanOutput(floor,options,format==='svg');
-        if(format==='svg')downloadPlanBlob(new Blob([result.svg],{type:'image/svg+xml;charset=utf-8'}),'svg',floor);
+        const result=format==='dxf'?makePlanDXF(floor,options):await makePlanOutput(floor,options,format==='svg');
+        if(format==='dxf')downloadPlanBlob(new Blob([result.dxf],{type:'application/dxf;charset=utf-8'}),'dxf',floor);
+        else if(format==='svg')downloadPlanBlob(new Blob([result.svg],{type:'image/svg+xml;charset=utf-8'}),'svg',floor);
         else if(format==='pdf'){
             await window.planLibrariesReady;
             if(!window.jspdf?.jsPDF)throw new Error(tr('Knihovna PDF není dostupná.'));
