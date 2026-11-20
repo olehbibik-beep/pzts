@@ -5,7 +5,7 @@
     const products = ['PZTS', 'EPS', 'CCTV', 'SK'];
     function tick() {
         const now = performance.now(), elapsed = Math.max(0, Math.min(10, (Math.min(now, lastInput + 120000) - lastTick) / 1000));
-        if (initialized && document.visibilityState === 'visible')
+        if (initialized && document.visibilityState === 'visible' && !window.goomIdleLocked)
             pending = Math.min(300, pending + elapsed);
         lastTick = now;
     }
@@ -39,6 +39,7 @@
     function interact() { tick(); lastInput = performance.now(); }
     for (const event of ['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart'])
         document.addEventListener(event, interact, { passive: true });
+    document.addEventListener('goom-editor-resumed', interact);
     document.addEventListener('visibilitychange', () => { tick(); if (document.hidden) void flush(); else lastInput = performance.now(); });
     document.addEventListener('goom-account-changed', event => {
         const user = event.detail?.user, nextUid = user?.emailVerified && event.detail?.profile ? user.uid : null;

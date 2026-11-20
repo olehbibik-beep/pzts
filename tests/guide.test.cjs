@@ -1,0 +1,9 @@
+const{test,before,after}=require('node:test'),assert=require('node:assert/strict'),{chromium}=require('playwright');let browser;const base=process.env.GOOM_TEST_URL||'http://127.0.0.1:4173';
+before(async()=>browser=await chromium.launch({channel:'msedge',headless:true}));after(async()=>browser?.close());
+test('manual exposes the real guide in both programs and all languages on narrow screens',async()=>{
+    const page=await browser.newPage({viewport:{width:390,height:844}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
+    try{for(const app of ['PZTS','CCTV'])for(const lang of ['cs','en','de','ru']){await page.goto(`${base}/guide/?app=${app}&lang=${lang}`);await page.locator('#guideChapters section').first().waitFor();assert.equal(await page.locator('#guideChapters section').count(),18);assert.equal(await page.locator('#guideContents a').count(),18);assert.equal(await page.locator('html').getAttribute('lang'),lang);assert.equal(await page.locator('#guideOpenApp').getAttribute('href'),`/${app.toLowerCase()}/`);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);assert.match(await page.locator('link[rel=icon]').getAttribute('href'),/Logosite/);assert.match(await page.locator('#guideChapters section').nth(7).textContent(),app==='CCTV'?/kamer|camera|Kamera|камер/:/detektor|detector|Melder|датчик/);}
+        await page.locator('#guideContents a').last().click();assert.equal(new URL(page.url()).hash,'#step-18');await page.selectOption('#guideApp','PZTS');await page.waitForURL(/app=PZTS/);await page.locator('#guideChapters section').first().waitFor();assert.deepEqual(errors,[]);
+        if(!process.env.GOOM_TEST_URL)await page.screenshot({path:'.qa-experience-shots/manual-mobile.png'});
+    }finally{await page.close();}
+});

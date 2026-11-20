@@ -1,64 +1,18 @@
-const onboardingSteps = [
-    ['Nahrajte výkres', 'V horní liště otevřete nabídku GooM a zvolte Nahrát výkres. Můžete použít PDF, obrázek nebo DXF.'],
-    APP_PRODUCT === 'CCTV' ? ['Umístěte první kameru', 'Vyberte skupinu a typ kamery a klikněte na výkres.'] :
-        ['Umístěte první detektor', 'Rozbalte panel nástrojů, vyberte sběrnici a detektor a klepněte nebo klikněte na výkres.'],
-    ['Upravte polohu a směr', APP_PRODUCT === 'CCTV' ? 'Kameru otočte klávesami S a D nebo šipkami na tabletu. Dvojím kliknutím nastavíte úhel a dosah.' :
-        'Detektor přetáhněte na nové místo. Otočíte ho klávesami S a D nebo šipkami u vybraného detektoru na tabletu.'],
-    ['Pracujte s podlažími', APP_PRODUCT === 'CCTV' ? 'Každé podlaží má vlastní výkres a kamery.' :
-        'Dole otevřete Řez budovou a vyberte podlaží. Každé podlaží má vlastní výkres a detektory.'],
-    ['Uložte nebo vytiskněte projekt', 'V nabídce GooM vyberte Uložit / Export pro soubor .TECH nebo Tisk pro otevření dialogu tiskárny.']
-];
-
-const onboardingPanel = document.getElementById('onboardingBackdrop');
-const onboardingNext = document.getElementById('onboardingNext');
-const completedOnboarding = new Set();
-let onboardingIndex = 0;
-let onboardingUid = null;
-
-function renderOnboardingStep() {
-    const [title, message] = onboardingSteps[onboardingIndex];
-    document.getElementById('onboardingStep').textContent = tr`Шаг ${onboardingIndex + 1} из ${onboardingSteps.length}`;
-    document.getElementById('onboardingTitle').textContent = tr(title);
-    document.getElementById('onboardingMessage').textContent = tr(message);
-    onboardingNext.textContent = tr(onboardingIndex === onboardingSteps.length - 1 ? 'Готово' : 'Далее');
-}
-
-function onboardingStorageKey(uid) {
-    return `${productStorageKey('goom-first-project-v1')}:${uid}`;
-}
-
-function hideOnboarding() {
-    onboardingPanel.hidden = true;
-    onboardingUid = null;
-}
-
-function finishOnboarding() {
-    if (onboardingUid) {
-        completedOnboarding.add(onboardingUid);
-        try { localStorage.setItem(onboardingStorageKey(onboardingUid), '1'); } catch {}
-    }
-    hideOnboarding();
-}
-
-window.startGoomOnboarding = () => {
-    if (window.isGoomReadOnly?.()) return;
-    const uid = window.getFirebaseUser?.()?.uid;
-    if (!uid || onboardingUid === uid || completedOnboarding.has(uid)) return;
-    try { if (localStorage.getItem(onboardingStorageKey(uid))) return; } catch {}
-    onboardingUid = uid;
-    onboardingIndex = 0;
-    renderOnboardingStep();
-    onboardingPanel.hidden = false;
-};
-
-onboardingNext.addEventListener('click', () => {
-    if (onboardingIndex + 1 === onboardingSteps.length) finishOnboarding();
-    else { onboardingIndex++; renderOnboardingStep(); }
-});
-document.getElementById('onboardingSkip').addEventListener('click', finishOnboarding);
-window.addEventListener('goom-language-changed', () => {
-    if (!onboardingPanel.hidden) renderOnboardingStep();
-});
-document.addEventListener('goom-auth-state-changed', event => {
-    if (onboardingUid && event.detail.user?.uid !== onboardingUid) hideOnboarding();
-});
+(() => {
+    const ui=window.goomUI, panel=document.getElementById('onboardingBackdrop'),q=s=>document.querySelector(s),t=(...words)=>()=>ui(...words),camera=APP_PRODUCT==='CCTV';
+    const steps=window.goomGuideSteps;
+    panel.innerHTML='<svg class="tour-shade" aria-hidden="true"><defs><mask id="tourMask"><rect width="100%" height="100%" fill="white"/><circle id="tourHole" fill="black"/></mask></defs><rect width="100%" height="100%" fill="#11131c" opacity=".84" mask="url(#tourMask)"/><circle id="tourRing" class="tour-focus-ring"/></svg><section class="tour-dock" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle" aria-describedby="onboardingMessage"><div aria-live="polite"><p id="onboardingStep" class="onboarding-step"></p><h2 id="onboardingTitle" class="onboarding-title"></h2><p id="onboardingMessage" class="onboarding-message"></p></div><nav class="tour-dots" id="onboardingDots"></nav><div class="onboarding-actions"><button type="button" class="btn-cad" id="onboardingSkip"></button><button type="button" class="btn-cad" id="onboardingPrevious"></button><button type="button" class="btn-cad onboarding-next" id="onboardingNext"></button></div></section>';
+    let index=0,uid=null,active=false,saved=[],baseModals=[],focus=null,frame=0,settleTimer=0;const completed=new Set(),storageKey=id=>`${productStorageKey('goom-first-project-v1')}:${id}`,nav=q('#onboardingDots');
+    steps.forEach((step,i)=>{const b=document.createElement('button');b.type='button';b.innerHTML=`<span>${i+1}</span>`;b.onclick=()=>{index=i;render();};nav.append(b);});
+    function restore(){for(const[el,style,open]of saved){el.style.cssText=style;el.classList.toggle('open',open);}saved=[];}
+    function remember(el){if(el)saved.push([el,el.style.cssText,el.classList.contains('open')]);return el;}
+    function layout(){if(!active)return;let target=q(steps[index][0]);if(target?.tagName==='SELECT')target=target.closest('.ui-select')||target;let r=target?.getBoundingClientRect();if(!r||r.width<1||r.height<1)r=q('#btnLogo').getBoundingClientRect();const radius=Math.min(150,Math.max(32,Math.hypot(Math.min(r.width,240),Math.min(r.height,160))/2+12)),x=Math.max(radius,Math.min(innerWidth-radius,r.x+r.width/2));let y=Math.max(32,Math.min(innerHeight-32,r.y+Math.min(r.height,180)/2));const dock=q('.tour-dock');dock.style.top=r.y>innerHeight*.65?'16px':'';dock.style.bottom=r.y>innerHeight*.65?'auto':'18px';if(r.height>innerHeight*.5)y=Math.max(radius+10,innerHeight*.35);for(const id of ['tourHole','tourRing']){const c=q('#'+id);c.setAttribute('cx',x);c.setAttribute('cy',y);c.setAttribute('r',radius);}panel.dataset.target=steps[index][0];}
+    function render(){restore();const mode=steps[index][1];if(mode==='menu')remember(q('#mainMenuModal')).style.display='flex';if(mode==='save')remember(q('#saveModal')).style.display='flex';if(mode==='tools')remember(q('.sliding-row-container'))?.classList.add('open');q('#onboardingStep').textContent=ui(`Krok ${index+1} z ${steps.length}`,`Step ${index+1} of ${steps.length}`,`Schritt ${index+1} von ${steps.length}`,`Шаг ${index+1} из ${steps.length}`);q('#onboardingTitle').textContent=steps[index][2]();q('#onboardingMessage').textContent=steps[index][3]();q('#onboardingSkip').textContent=ui('Zavřít průvodce','Close guide','Rundgang schließen','Закрыть обучение');q('#onboardingPrevious').textContent=ui('Zpět','Back','Zurück','Назад');q('#onboardingPrevious').disabled=index===0;q('#onboardingNext').textContent=index===steps.length-1?ui('Hotovo','Done','Fertig','Готово'):ui('Dále','Next','Weiter','Далее');nav.setAttribute('aria-label',ui('Kroky průvodce','Guide steps','Rundgangsschritte','Шаги обучения'));[...nav.children].forEach((b,i)=>{b.title=steps[i][2]();b.setAttribute('aria-label',`${i+1}. ${steps[i][2]()}`);if(i===index)b.setAttribute('aria-current','step');else b.removeAttribute('aria-current');});cancelAnimationFrame(frame);frame=requestAnimationFrame(layout);clearTimeout(settleTimer);settleTimer=setTimeout(layout,250);}
+    function close(mark=true){if(!active)return;if(mark&&uid){completed.add(uid);try{localStorage.setItem(storageKey(uid),'1');}catch{}}active=false;panel.hidden=true;restore();for(const[el,style]of baseModals)el.style.cssText=style;baseModals=[];uid=null;focus?.focus?.({preventScroll:true});document.dispatchEvent(new Event('goom-editor-resumed'));}
+    window.startGoomOnboarding=(options={})=>{if(window.isGoomReadOnly?.()||active)return;const user=window.getFirebaseUser?.();if(!user&&!options.force)return;if(!options.force){if(completed.has(user.uid))return;try{if(localStorage.getItem(storageKey(user.uid)))return;}catch{}}uid=user?.uid||null;index=0;focus=document.activeElement;active=true;panel.hidden=false;baseModals=[...document.querySelectorAll('.modal')].filter(el=>getComputedStyle(el).display!=='none').map(el=>[el,el.style.cssText]);for(const[el]of baseModals)el.style.display='none';render();q('#onboardingNext').focus({preventScroll:true});};
+    q('#onboardingNext').onclick=()=>{if(index===steps.length-1)close();else{index++;render();}};q('#onboardingPrevious').onclick=()=>{if(index>0){index--;render();}};q('#onboardingSkip').onclick=()=>close();
+    window.addEventListener('keydown',e=>{if(!active)return;if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();close();return;}if(e.key==='ArrowRight'||e.key==='ArrowLeft'){e.preventDefault();e.stopImmediatePropagation();index=Math.max(0,Math.min(steps.length-1,index+(e.key==='ArrowRight'?1:-1)));render();return;}if(e.key==='Tab'){const buttons=[...panel.querySelectorAll('button:not(:disabled)')],first=buttons[0],last=buttons.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}}if(!panel.contains(e.target)){e.preventDefault();e.stopImmediatePropagation();}},true);
+    for(const type of ['pointerdown','pointerup','click','dblclick','wheel','touchstart'])window.addEventListener(type,e=>{if(active&&!panel.contains(e.target)){e.preventDefault();e.stopImmediatePropagation();}},{capture:true,passive:false});
+    panel.addEventListener('keydown',event=>event.stopPropagation());
+    window.addEventListener('resize',()=>{cancelAnimationFrame(frame);frame=requestAnimationFrame(layout);});window.addEventListener('goom-language-changed',()=>{if(active)render();});document.addEventListener('goom-auth-state-changed',e=>{if(active&&uid&&e.detail.user?.uid!==uid)close(false);});
+})();
