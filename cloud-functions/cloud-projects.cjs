@@ -12,11 +12,10 @@ const millis = timestamp => timestamp?.toMillis?.() ?? 0;
 function hasCloudEntitlement(uid, email, application, license, grant, now) {
     const seat = license?.companySeat;
     const companySeat = typeof email === 'string' && seat?.email === email.toLowerCase()
-        && millis(seat?.applicationExpiresAt?.[application]) > now;
+        && [...applications].some(app=>millis(seat?.applicationExpiresAt?.[app])>now);
     const paid = license?.uid === uid && license.plan === 'pro' && license.source === 'stripe'
         && license.status === 'active' && license.paymentStatus === 'paid'
-        && ['monthly', 'annual'].includes(license.billingMode) && license.applications?.includes(application)
-        && millis(license.applicationExpiresAt?.[application]) > now;
+        && ['monthly', 'annual'].includes(license.billingMode) && (license.applications||[]).some(app=>applications.has(app)&&millis(license.applicationExpiresAt?.[app])>now);
     return companySeat || paid || millis(grant?.expiresAt?.[application]) > now;
 }
 

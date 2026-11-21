@@ -42,19 +42,23 @@ service cloud.firestore {
         + int(ico[4]) * 4 + int(ico[5]) * 3 + int(ico[6]) * 2;
       return ico.matches('[0-9]{8}') && int(ico[7]) == (11 - sum % 11) % 10;
     }
+    function suitePeriod(periods, apps) {
+      let epoch=timestamp.date(1970,1,1);
+      return ('PZTS' in apps && periods.get('PZTS',epoch)>request.time)
+        || ('EPS' in apps && periods.get('EPS',epoch)>request.time)
+        || ('CCTV' in apps && periods.get('CCTV',epoch)>request.time)
+        || ('SK' in apps && periods.get('SK',epoch)>request.time);
+    }
     function paidOrCompany(uid, application) {
       let snapshot = get(/databases/$(database)/documents/cloudLicenses/$(uid));
       let license = snapshot == null ? null : snapshot.data;
       let seat = license == null ? null : license.get('companySeat', null);
       return (seat != null && request.auth.token.email is string
-        && seat.email == request.auth.token.email.lower() && application in seat.applicationExpiresAt
-        && seat.applicationExpiresAt[application] > request.time)
+        && seat.email == request.auth.token.email.lower() && suitePeriod(seat.applicationExpiresAt,['PZTS','EPS','CCTV','SK']))
         || (license != null && license.get('status', '') == 'active' && license.uid == uid && license.plan == 'pro'
         && license.paymentStatus == 'paid' && license.source == 'stripe'
         && license.billingMode in ['monthly', 'annual']
-        && application in license.applications
-        && application in license.applicationExpiresAt
-        && license.applicationExpiresAt[application] > request.time);
+        && suitePeriod(license.applicationExpiresAt,license.applications));
     }
     function granted(uid, application) {
       let snapshot = get(/databases/$(database)/documents/goomProgramGrants/$(uid));

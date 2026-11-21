@@ -145,8 +145,8 @@
             const snapshot=document.createElement('canvas');snapshot.width=1684;snapshot.height=1191;
             const target=snapshot.getContext('2d');target.drawImage(preview,(preview.width-1684)/2,(preview.height-1191)/2,1684,1191,0,0,1684,1191);
             await window.goomBusyPaint?.();const outlineController=buildingController=new AbortController(),abortOutlines=setTimeout(()=>outlineController.abort(),12000);
-            const outlines=fetchMapBuildings(view,outlineController.signal).catch(()=>null).finally(()=>clearTimeout(abortOutlines));
-            const detailed=await renderA4(view,sequence),rasterSource=detailed.toDataURL('image/jpeg',.98);selected.buildingOutlines=await outlines;
+            const outlines=fetchMapScene(view,outlineController.signal).catch(()=>null).finally(()=>clearTimeout(abortOutlines));
+            const detailed=await renderA4(view,sequence),rasterSource=detailed.toDataURL('image/jpeg',.98);const scene=await outlines;selected.buildingOutlines=scene?.buildingOutlines||null;selected.mapScene=scene?.mapScene||null;
             if(selected.buildingOutlines)selected.attribution+='; © OpenFreeMap / OpenMapTiles / OpenStreetMap contributors (ODbL): https://www.openstreetmap.org/copyright';
             const imgData=snapshot.toDataURL('image/png'),image=await loadPlanImage(imgData);
             if(sequence!==openSequence||modal.style.display!=='flex'||!window.hasProAccess?.()||floors[currentFloorIndex]!==floor||window.getFirebaseUser?.()?.uid!==targetUid)return;

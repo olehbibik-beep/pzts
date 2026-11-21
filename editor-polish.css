@@ -16,3 +16,9 @@
 #projectUpgradeHint[hidden]{display:none!important}
 .app-brand-name{white-space:nowrap}
 @supports(-moz-appearance:none){*{scrollbar-width:thin;scrollbar-color:#08090a transparent}}
+
+.goom-site-link{color:#b8bbc3;font-size:14px;font-weight:650;text-decoration:none;margin-left:10px;white-space:nowrap}.goom-site-link:hover{color:#c5ed86}
+#deviceSelector .device-set-tools{flex-wrap:nowrap!important;justify-content:flex-start!important;overflow-x:auto!important;overflow-y:hidden!important;scrollbar-width:none!important;touch-action:pan-x;-webkit-overflow-scrolling:touch}#deviceSelector .device-set-tools::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}
+.device-strip-progress{height:2px;width:100%;position:relative;background:transparent;overflow:hidden;margin-top:2px;pointer-events:none}.device-strip-progress[hidden]{display:none!important}.device-strip-progress span{display:block;height:2px;background:#34383d;border-radius:999px;will-change:transform}
+:root{--program-menu-start:#354525;--program-menu-end:#1d211d}:root[data-goom-product="CCTV"]{--program-menu-start:#42314f;--program-menu-end:#211d26}:root[data-goom-product="EPS"]{--program-menu-start:#522621;--program-menu-end:#211c1e}:root[data-goom-product="SK"]{--program-menu-start:#16465c;--program-menu-end:#1b252d}
+#mainMenuModal .main-menu-content{background:linear-gradient(110deg,var(--program-menu-start),var(--program-menu-end) 68%)}

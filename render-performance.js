@@ -21,7 +21,7 @@ function drawPlanScreenBase(target,floor){
     trackPlanView();
     const source=getScreenPlanImage(floor);
     const key=[floor.image,floor.vectorPlan,source,scale,offsetX,offsetY,canvas.width,canvas.height,canvasPixelRatio,
-        getPlanTheme(floor),floor.wallMask?.contentBounds,!!floor.previewWalls,floor.previewWalls?floor.wallMask:null,
+        getPlanTheme(floor),floor.satellite?.mapScene,floor.satellite?.buildingOutlines,floor.wallMask?.contentBounds,!!floor.previewWalls,floor.previewWalls?floor.wallMask:null,
         document.getElementById('togglePlanGrid')?.getAttribute('aria-pressed')];
     if(!planScreenCache||key.some((value,index)=>value!==planScreenCache.key[index])){
         const surface=planScreenCache?.surface||document.createElement('canvas');

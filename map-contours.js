@@ -79,7 +79,25 @@ function getMapLinework(image,footerHeight=0) {
     }
     result={width,height,paths};modes.set(footerHeight,result);return result;
 }
-function drawMapLinework(target,image,metadata) {
+function drawMapScene(target,buildings,scene,image,cartoon=false){
+ const width=image.naturalWidth||image.width,height=image.naturalHeight||image.height,reference=scene||buildings;target.save();target.fillStyle=cartoon?'#faf9f4':'#fff';target.fillRect(0,0,width,height);target.scale(width/reference.width,height/reference.height);target.lineJoin='round';target.lineCap='round';
+ function path(parts,closed){target.beginPath();for(const part of parts){target.moveTo(...part[0]);for(const p of part.slice(1))target.lineTo(...p);if(closed)target.closePath();}}
+ const scale=Math.max(.4,Math.min(4,2**((scene?.zoom||18)-18)));
+ for(const feature of scene?.water||[]){path(feature.rings,true);target.fillStyle=cartoon?'#c5e4ec':'#f5f7f8';target.fill('evenodd');target.strokeStyle=cartoon?'#90bcc9':'#c3c8cb';target.lineWidth=.7;target.stroke();}
+ let symbols=0;for(const feature of scene?.green||[]){path(feature.rings,true);target.fillStyle=cartoon?'#dce8c9':'#fafbf8';target.fill('evenodd');target.strokeStyle=cartoon?'#b4c992':'#c3c8bd';target.lineWidth=.6;target.stroke();
+  const wooded=/wood|forest|park|garden|orchard|scrub/.test(feature.class);const step=(wooded?34:58)*scale,ring=feature.rings[0];let minX=Math.min(...ring.map(p=>p[0])),maxX=Math.max(...ring.map(p=>p[0])),minY=Math.min(...ring.map(p=>p[1])),maxY=Math.max(...ring.map(p=>p[1]));
+  const inside=(x,y)=>{let yes=false;for(const ring of feature.rings)for(let i=0,j=ring.length-1;i<ring.length;j=i++){const a=ring[i],b=ring[j];if((a[1]>y)!==(b[1]>y)&&x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0])yes=!yes;}return yes;};
+  for(let y=minY+step/2;y<maxY&&symbols<1200;y+=step)for(let x=minX+step/2;x<maxX&&symbols<1200;x+=step){if(!inside(x,y)||!inside(x+6*scale,y)||!inside(x-6*scale,y)||!inside(x,y+6*scale)||!inside(x,y-6*scale))continue;symbols++;
+   target.beginPath();if(wooded)target.arc(x,y,5*scale,0,Math.PI*2);else{target.moveTo(x-3*scale,y);target.lineTo(x,y-3*scale);target.lineTo(x+3*scale,y);}target.strokeStyle=cartoon?'#96b47b':'#b9bfb3';target.lineWidth=.65;target.stroke();if(cartoon&&wooded){target.fillStyle='#c4dba8';target.fill();}
+  }
+ }
+ for(const road of scene?.roads||[]){path([road.points],false);const roadWidth=(/motorway|trunk/.test(road.class)?14:/primary|secondary/.test(road.class)?10:/tertiary|minor|service|residential/.test(road.class)?6:2.5)*scale;target.strokeStyle=cartoon?'#b7b5aa':'#9da3a6';target.lineWidth=roadWidth+1;target.stroke();target.strokeStyle=cartoon?(/motorway|trunk|primary/.test(road.class)?'#f1dfb4':'#fffdf8'):'#fff';target.lineWidth=roadWidth;target.stroke();}
+ if(buildings){target.strokeStyle=cartoon?'#777e85':'#737b82';target.lineWidth=cartoon?1:.7;target.lineJoin='miter';for(const ring of buildings.rings){path([ring],true);target.fillStyle=cartoon?'#e4e0d6':'#fff';target.fill();target.stroke();}}
+ target.restore();
+}
+function drawMapLinework(target,image,metadata,cartoon=false) {
+    const scene=sanitizeMapScene(metadata?.mapScene);
+    if(scene&&(scene.roads.length||scene.green.length||scene.water.length)||cartoon&&metadata?.buildingOutlines){drawMapScene(target,sanitizeMapBuildings(metadata?.buildingOutlines),scene,image,cartoon);return;}
     const buildings=sanitizeMapBuildings(metadata?.buildingOutlines);
     if(buildings){
         const width=image.naturalWidth||image.width,height=image.naturalHeight||image.height;

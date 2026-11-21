@@ -7,9 +7,10 @@ const planAnalysisCache = new WeakMap();
 const planOriginalCache = new WeakMap();
 const planTileCache = new WeakMap();
 const planLightCache = new WeakMap();
+const planCartoonKeys = new WeakMap();
 const PLAN_DARK = '#181a1d';
 const PLAN_MAX_PIXELS = 24000000;
-function getPlanTheme(floor) { return ['original', 'light'].includes(floor.planTheme) ? floor.planTheme : 'dark'; }
+function getPlanTheme(floor) { return ['original', 'light','cartoon'].includes(floor.planTheme) ? floor.planTheme : 'dark'; }
 function planBackground(theme) { return theme === 'dark' ? PLAN_DARK : '#ffffff'; }
 function resizePlanCanvas() {
     const width = Math.max(1, container.clientWidth), height = Math.max(1, container.clientHeight);
@@ -98,14 +99,17 @@ function getDarkPlanImage(image,paperLevel) {
     planRasterCache.set(image, result);
     return result;
 }
-function getLightPlanImage(image, satellite = false) {
+function getLightPlanImage(image, satellite = false,cartoon=false) {
     let cached = planLightCache.get(image);
     if (!cached) { cached = new Map(); planLightCache.set(image, cached); }
-    const key=satellite?.buildingOutlines || (satellite ? (satellite.layer || 'satellite') : false);
+    const identity=satellite?.mapScene||satellite?.buildingOutlines||satellite?.layer||false;
+    let key=identity;
+    if(cartoon&&identity&&typeof identity==='object'){if(!planCartoonKeys.has(identity))planCartoonKeys.set(identity,{});key=planCartoonKeys.get(identity);}
+    else if(typeof identity!=='object')key=String(identity)+cartoon;
     if (cached.has(key)) return cached.get(key);
     if(satellite && satellite.layer!=='topo'){
         const result=document.createElement('canvas');result.width=image.naturalWidth||image.width;result.height=image.naturalHeight||image.height;
-        drawMapLinework(result.getContext('2d'),image,satellite);cached.set(key,result);return result;
+        drawMapLinework(result.getContext('2d'),image,satellite,cartoon);cached.set(key,result);return result;
     }
     const result = document.createElement('canvas');
     result.width = image.naturalWidth || image.width; result.height = image.naturalHeight || image.height;
@@ -131,7 +135,7 @@ function getLightPlanImage(image, satellite = false) {
 }
 function presentedPlanImage(image, floor, theme) {
     return theme==='dark'?getDarkPlanImage(image,floor.wallMask?.paperLevel||255)
-        :theme==='light'?getLightPlanImage(image,floor.satellite||false):image;
+        :['light','cartoon'].includes(theme)?getLightPlanImage(image,floor.satellite||false,theme==='cartoon'):image;
 }
 function drawVectorPlan(target, vector, theme) {
     target.save(); target.strokeStyle = theme === 'dark' ? '#f2f4f7' : '#121214';
@@ -150,7 +154,7 @@ function drawPlanSource(target, floor, theme = getPlanTheme(floor), imageOverrid
     const width = floor.image.naturalWidth || floor.image.width, height = floor.image.naturalHeight || floor.image.height;
     const bounds=getPlanSourceBounds(floor);
     target.save();
-    if(theme==='light'&&floor.satellite&&floor.satellite.layer!=='topo')drawMapLinework(target,floor.image,floor.satellite);
+    if(['light','cartoon'].includes(theme)&&floor.satellite&&floor.satellite.layer!=='topo')drawMapLinework(target,floor.image,floor.satellite,theme==='cartoon');
     else if (floor.vectorPlan) drawVectorPlan(target, floor.vectorPlan, theme);
     else {
         const tile=imageOverride?.planTile?imageOverride:null;

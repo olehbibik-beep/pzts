@@ -2,12 +2,17 @@
 (() => {
     const names={PZTS:{cs:'PZTS',en:'I&HAS',de:'GMA',ru:'СОТС'},EPS:{cs:'EPS',en:'FDAS',de:'BMA',ru:'АПС'},CCTV:{cs:'CCTV',en:'CCTV',de:'VÜA',ru:'СВН'},SK:{cs:'SK',en:'SCS',de:'IT-Netz',ru:'СКС'}};
     function brand(){
+        const map=document.querySelector('#planThemeInput option[value=cartoon]');if(map)map.textContent=({cs:'Ilustrovaná mapa',en:'Illustrated map',de:'Illustrierte Karte',ru:'Рисованная карта'})[document.documentElement.lang]||'Illustrated map';
         const node=document.querySelector('.app-brand-name');if(!node)return;
         node.setAttribute('data-user-content','');node.setAttribute('translate','no');
         node.textContent=(names[APP_PRODUCT]||names.PZTS)[document.documentElement.lang]||APP_PRODUCT;
     }
+    document.documentElement.dataset.goomProduct=APP_PRODUCT;
+    const title=document.querySelector('.app-title');if(title&&!title.querySelector('.goom-site-link')){const link=document.createElement('a');link.className='goom-site-link';link.href='https://goom.cz/';link.target='_blank';link.rel='noopener';link.textContent='GooM';link.setAttribute('data-user-content','');title.append(link);}
     brand();window.addEventListener('goom-language-changed',brand);
     new MutationObserver(brand).observe(document.documentElement,{attributes:true,attributeFilter:['lang']});
+    const strip=document.getElementById('deviceSetTools');
+    if(strip){const track=document.createElement('div'),thumb=document.createElement('span');track.className='device-strip-progress';track.setAttribute('aria-hidden','true');track.append(thumb);strip.parentElement.append(track);let frame=0;const refresh=()=>{cancelAnimationFrame(frame);frame=requestAnimationFrame(()=>{const max=strip.scrollWidth-strip.clientWidth;track.hidden=max<2;const width=track.clientWidth,handle=Math.max(18,width*strip.clientWidth/Math.max(strip.clientWidth,strip.scrollWidth));thumb.style.width=handle+'px';thumb.style.transform='translateX('+(max>0?strip.scrollLeft/max*(width-handle):0)+'px)';});};strip.addEventListener('scroll',refresh,{passive:true});new ResizeObserver(refresh).observe(strip);new MutationObserver(refresh).observe(strip,{subtree:true,childList:true,attributes:true,attributeFilter:['hidden','style','class']});window.goomRefreshDeviceStrip=refresh;refresh();}
     document.addEventListener('wheel',event=>{
         if(event.ctrlKey||event.metaKey||!(event.target instanceof Element))return;
         const horizontal=event.target.closest('.toolbar-menu-preset-icons,.device-set-tools');

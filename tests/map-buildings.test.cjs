@@ -11,3 +11,5 @@ test('saved outlines reject malformed and excessive coordinates',()=>{
     assert.equal(vm.runInContext('sanitizeMapBuildings({width:100,height:100,rings:[[[1,1],[102,2],[1,3]]]})',scope),null);
     assert.equal(vm.runInContext('sanitizeMapBuildings({width:100,height:100,rings:[[[1,1],[2,2],[1,3]]]})',scope).rings.length,1);
 });
+
+test('scene input rejects invalid coordinates and clips roads to the saved view',()=>{scope.scene={width:100,height:100,roads:[{points:[[0,0],[100,50]],class:'secondary'},{points:[[0,0],[101,0]],class:'invalid'}],green:[{rings:[[[0,0],[80,0],[0,90]]],class:'wood'}]};const result=vm.runInContext('sanitizeMapScene(scene)',scope);assert.equal(result.roads.length,1);assert.equal(result.green.length,1);assert.equal(result.water.length,0);const road=vm.runInContext('clipMapRoad([[-20,20],[120,20]],100,100)',scope);assert.equal(JSON.stringify(road),'[[[0,20],[100,20]]]');});

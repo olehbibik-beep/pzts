@@ -1,5 +1,8 @@
 {
-  "functions": [{ "source": "functions", "codebase": "pro-billing" }],
+  "functions": [
+    { "source": "functions", "codebase": "pro-billing" },
+    { "source": "cloud-functions", "codebase": "project-cloud" }
+  ],
   "firestore": {
     "rules": "firestore.rules"
   },

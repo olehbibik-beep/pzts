@@ -26,18 +26,19 @@
     }
     window.isValidCompanyIco = validIco;
     const millis = value => value?.toMillis?.() ?? value?.seconds * 1000;
-    const paidUntil = () => millis(license?.applicationExpiresAt?.[APP_PRODUCT]);
+    const suiteExpiry = (periods, apps=['PZTS','EPS','CCTV','SK']) => Math.max(0,...apps.filter(app=>['PZTS','EPS','CCTV','SK'].includes(app)).map(app=>millis(periods?.[app])||0));
+    const paidUntil = () => suiteExpiry(license?.applicationExpiresAt, license?.applications || []);
     const grantedUntil = () => millis(grant?.expiresAt?.[APP_PRODUCT]);
     const companyUntil = () => {
         const seat = license?.companySeat;
         const email = window.getFirebaseUser()?.email?.trim().toLowerCase();
-        return seat && seat.email === email ? millis(seat.applicationExpiresAt?.[APP_PRODUCT]) : 0;
+        return seat && seat.email === email ? suiteExpiry(seat.applicationExpiresAt) : 0;
     };
     const hasPaidAccess = () => license?.status === 'active' && license.uid === uid && license.plan === 'pro'
         && license.paymentStatus === 'paid' && license.source === 'stripe' && ['monthly', 'annual'].includes(license.billingMode)
-        && license.applications?.includes(APP_PRODUCT) && paidUntil() > Date.now();
+        && paidUntil() > Date.now();
     window.hasOwnPaidPro = hasPaidAccess;
-    window.getOwnProTier = () => hasPaidAccess() ? license.applicationPlans?.[APP_PRODUCT] || 'pro' : null;
+    window.getOwnProTier = () => hasPaidAccess() ? (Object.values(license.applicationPlans||{}).includes('company') ? 'company' : 'pro') : null;
     window.isGoomCompanyAccount = () => profile?.accountType === 'company';
     window.hasProjectEntitlement = () => Boolean(window.getFirebaseUser()?.emailVerified && uid === window.getFirebaseUser()?.uid
         && (hasPaidAccess() || grantedUntil() > Date.now() || companyUntil() > Date.now()));
@@ -71,7 +72,7 @@
         byId('btnAccountRefresh').textContent = tr(user?.emailVerified ? 'Obnovit údaje' : 'E-mail jsem ověřil(a)');
         byId('accountCloudInfo').textContent = tr(entitled ? 'Ukládejte projekty a otevírejte je i z jiného zařízení.' : 'Cloudové úložiště je součástí PROJECT.');
         const seatPeriods = license?.companyApplicationExpiresAt ?? license?.applicationExpiresAt;
-        companySeatForm.hidden = !company || !entitled || !hasPaidAccess() || !(millis(seatPeriods?.[APP_PRODUCT]) > Date.now());
+        companySeatForm.hidden = !company || !entitled || !hasPaidAccess() || !(suiteExpiry(seatPeriods) > Date.now());
         const cloudButton = byId('btnAccountCloudProjects');
         cloudButton.classList.toggle('cloud-upgrade', !entitled);
         cloudButton.querySelector('span').textContent = tr(entitled ? 'Otevřít cloudové projekty' : 'Cloudové projekty');
@@ -79,7 +80,7 @@
         byId('btnManageSubscription').hidden = !license?.billingCustomerId;
         const formatDate = value => new Date(value).toLocaleDateString(getGoomLocale());
         const periods = [];
-        if (Number.isFinite(paidUntil())) {
+        if (paidUntil() > 0) {
             const mode = license.applicationBillingModes?.[APP_PRODUCT] || license.billingMode;
             periods.push(tr`Přístup do: ${formatDate(paidUntil())}` + ' · ' + tr(license.cancelAtPeriodEnd
                 ? 'Automatické obnovení je vypnuto.' : mode === 'annual' ? 'Roční předplatné.' : 'Měsíční předplatné.'));

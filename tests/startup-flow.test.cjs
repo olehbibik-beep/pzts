@@ -17,7 +17,7 @@ before(async () => {
         if (!file.startsWith(root + sep)) { response.writeHead(403).end(); return; }
         try {
             const body = await readFile(file);
-            response.setHeader('Content-Type', ({ '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript', '.wasm': 'application/wasm', '.css': 'text/css', '.png': 'image/png', '.mp4': 'video/mp4' })[extname(file)] || 'application/octet-stream');
+            response.setHeader('Content-Type', ({ '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript', '.wasm': 'application/wasm', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.mp4': 'video/mp4' })[extname(file)] || 'application/octet-stream');
             response.end(body);
         } catch { response.writeHead(404).end(); }
     });
@@ -41,6 +41,7 @@ async function openApp(options = {}) {
     });
     await context.route('**/*', route => {
         const url = route.request().url();
+        if(options.epsSymbolOverride&&url.endsWith('/assets/devices/eps_smoke.svg'))return route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect x="4" y="4" width="40" height="40" rx="5" fill="white"/><text x="24" y="25" font-size="11" fill="#dc2626">FIRE</text></svg>'});
         if(options.missingNativeTiles && (url.includes('services.arcgisonline.com/')||url.includes('clarity.maptiles.arcgis.com/')||url.includes('ags.cuzk.gov.cz/')) && /\/tile\/(?:18|19)\//.test(url))return route.fulfill({status:404,headers:{'Access-Control-Allow-Origin':'*'},body:''});
         if (options.satelliteFixtures && (url.includes('services.arcgisonline.com/')||url.includes('clarity.maptiles.arcgis.com/')||url.includes('ags.cuzk.gov.cz/')) && url.includes('/tile/'))
             return route.fulfill({ contentType:'image/svg+xml', headers:{'Access-Control-Allow-Origin':'*'}, body:url.includes('/Reference/')?'<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256"><path d="M10 20h200" stroke="white" stroke-width="2"/><text x="20" y="18" font-size="11" fill="white">Field street</text></svg>':'<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256"><rect width="256" height="256" fill="#54754a"/><path d="M40 40h160v160H40Z" fill="#b3b6ba" stroke="#262c31" stroke-width="5"/></svg>' });
@@ -182,7 +183,7 @@ async function openApp(options = {}) {
                 if (name === 'goomCloudProjects') {
                     window.testCloudOperations = [...(window.testCloudOperations || []), data.action];
                     if (data.action === 'download') {
-                        const payload = JSON.stringify(window.testCloudDownloadPayload || { projectName: 'Cloud example', floors: [{ name: '1NP', devices: [], cables: [] }] });
+                        const payload = JSON.stringify(window.testCloudDownloadPayload || { application:product, projectName: 'Cloud example', floors: [{ name: '1NP', devices: [], cables: [] }] });
                         return { data: { data: btoa(payload), size: payload.length, generation: '1' } };
                     }
                     if (data.action === 'delete') {
@@ -401,6 +402,25 @@ test('free features offer the bottom upgrade prompt and F opens the project menu
         await page.keyboard.type('f');assert.equal(await page.locator('#shortcutTypingTest').inputValue(),'f');assert.equal(await page.locator('#mainMenuModal').isVisible(),false);
         await page.locator('#shortcutTypingTest').evaluate(el=>el.remove());await chooseDetector(page);const box=await page.locator('#canvasContainer').boundingBox();await page.mouse.click(box.x+180,box.y+180);
         await page.locator('#emptyProjectShortcut').waitFor({state:'hidden'});assert.deepEqual(errors,[]);
+    }finally{await context.close();}
+});
+
+test('upgrade prompt dismisses automatically even after hover or keyboard focus',async()=>{
+    const{context,page,errors}=await openApp({initialSession:true,clock:true});try{await startRenderProject(page);await dismissOnboarding(page);
+        await page.evaluate(()=>window.requestProUpgrade());await page.locator('#projectUpgradeHint').waitFor({state:'visible'});await page.locator('#projectUpgradeAction').focus();await page.locator('#projectUpgradeHint').hover();await page.clock.runFor(5200);assert.equal(await page.locator('#projectUpgradeHint').isVisible(),false);
+        await page.evaluate(()=>window.requestProUpgrade());await page.locator('#projectUpgradeHint').waitFor({state:'visible'});await page.keyboard.press('Escape');assert.equal(await page.locator('#projectUpgradeHint').isVisible(),false);
+        await page.evaluate(()=>window.requestProUpgrade());await page.locator('#projectUpgradeDismiss').click();assert.equal(await page.locator('#projectUpgradeHint').isVisible(),false);assert.deepEqual(errors,[]);
+    }finally{await context.close();}
+});
+
+test('product heading is localized, bubble artwork is retained and administrators get full feature access',async()=>{
+    const{context,page,errors}=await openApp({initialSession:true});try{const product=await page.evaluate(()=>APP_PRODUCT),names={PZTS:{cs:'PZTS',en:'I&HAS',de:'GMA',ru:'СОТС'},EPS:{cs:'EPS',en:'FDAS',de:'BMA',ru:'АПС'},CCTV:{cs:'CCTV',en:'CCTV',de:'VÜA',ru:'СВН'},SK:{cs:'SK',en:'SCS',de:'IT-Netz',ru:'СКС'}};
+        for(const locale of ['cs','en','de','ru']){await page.selectOption('[data-language-select]',locale);assert.equal(await page.locator('.app-brand-name').innerText(),names[product][locale]);}await page.selectOption('[data-language-select]','cs');assert.match(await page.locator('#btnLogo .menu-logo-default').getAttribute('src'),/^Link\.png/);assert.match(await page.locator('#btnLogo .menu-logo-hover').getAttribute('src'),/^Link2\.png/);
+        await startRenderProject(page);await dismissOnboarding(page);assert.equal(await page.evaluate(()=>hasProAccess()),false);
+        await page.evaluate(()=>firebase.firestore().collection('goomAdmins').doc('test-user').set({role:'admin'}));await page.waitForFunction(()=>hasAdminAccess()&&hasProAccess()&&hasCloudAccess());assert.equal(await page.evaluate(()=>hasProjectEntitlement()),false);assert.equal(await page.evaluate(()=>hasOwnPaidPro()),false);assert.equal(await page.locator('#accountProBadge').textContent(),'ADMIN');assert.equal(await page.locator('#btnMenuSatellite').getAttribute('data-project-locked'),'false');
+        await page.locator('#btnOpenToolbarMenuEditor').click();await page.locator('#iconEditorModal').waitFor({state:'visible'});
+        const strip=page.locator('.toolbar-menu-preset-icons').first();await strip.evaluate(el=>{el.style.maxWidth='140px';el.style.width='140px';el.scrollLeft=0;});await strip.hover();await page.mouse.wheel(0,230);await page.waitForFunction(()=>document.querySelector('.toolbar-menu-preset-icons').scrollLeft>0);const style=await strip.evaluate(el=>({track:getComputedStyle(el,'::-webkit-scrollbar-track').backgroundColor,thumb:getComputedStyle(el,'::-webkit-scrollbar-thumb').backgroundColor,radius:getComputedStyle(el,'::-webkit-scrollbar-thumb').borderRadius}));assert.equal(style.track,'rgba(0, 0, 0, 0)');assert.ok(['rgb(8, 9, 10)','rgb(27, 28, 30)'].includes(style.thumb));assert.equal(style.radius,'999px');
+        if(process.env.TEST_SCREENSHOT_DIR)await smoothScreenshot(page,{path:resolve(process.env.TEST_SCREENSHOT_DIR,'editor-polished-scroll.png')});await page.locator('#btnIconEditorClose').click();await page.evaluate(()=>firebase.firestore().collection('goomAdmins').doc('test-user').set({role:'reviewer'}));await page.waitForFunction(()=>!hasAdminAccess()&&!hasProAccess());assert.deepEqual(errors,[]);
     }finally{await context.close();}
 });
 
@@ -686,11 +706,14 @@ test('welcome plays the intro behind its controls and restores the illustration 
             const video = document.getElementById('welcomeIntroVideo');
             return !video.paused && video.currentTime > 0 && video.videoWidth > 0 && getComputedStyle(video).opacity === '1';
         });
+        assert.deepEqual(await video.evaluate(element=>({muted:element.muted,defaultMuted:element.defaultMuted,volume:element.volume})),{muted:true,defaultMuted:true,volume:0});
+        await video.evaluate(element=>{element.muted=false;element.volume=1;});
+        await page.waitForFunction(()=>{const v=document.getElementById('welcomeIntroVideo');return v.muted&&v.defaultMuted&&v.volume===0;});
         assert.equal(await video.evaluate(element => element.controls), false);
         assert.equal(await page.locator('#btnIntroClose').count(), 0);
         assert.equal(await play.isHidden(), true);
         assert.deepEqual(await video.boundingBox(), await page.locator('.welcome-art-space img').boundingBox());
-        assert.equal(await video.evaluate(element => getComputedStyle(element).objectFit), 'cover');
+        assert.equal(await video.evaluate(element => getComputedStyle(element).objectFit), process.env.TEST_PRODUCT==='CCTV'?'contain':'cover');
         await page.setViewportSize({ width: 820, height: 1180 });
         assert.deepEqual(await video.boundingBox(), await page.locator('.welcome-art-space img').boundingBox());
         await video.evaluate(element => { element.playbackRate = 8; });
@@ -701,6 +724,7 @@ test('welcome plays the intro behind its controls and restores the illustration 
         assert.equal(await play.isVisible(), true);
         await play.click();
         await page.waitForFunction(() => document.getElementById('welcomeModal').classList.contains('is-intro-playing'));
+        assert.deepEqual(await video.evaluate(element=>({muted:element.muted,volume:element.volume})),{muted:true,volume:0});
         await page.locator('#btnEmailSignIn').click();
         await video.waitFor({ state: 'hidden' });
         assert.equal(await video.getAttribute('src'), null);
@@ -784,7 +808,7 @@ test('cancelled or invalid files keep project selection; a valid file opens the 
         const chooserPromise = page.waitForEvent('filechooser');
         await page.locator('#btnWelcomeOpenBIPS').click();
         await (await chooserPromise).setFiles({ name: 'example.bips', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({
-            projectName: 'File example', floors: [{ name: '1NP', devices: [], cables: [] }]
+            application:process.env.TEST_PRODUCT||'PZTS',projectName: 'File example', floors: [{ name: '1NP', devices: [], cables: [] }]
         })) });
         await page.waitForFunction(() => isSystemReady && projectName === 'File example');
         await page.locator('#welcomeModal').waitFor({ state: 'hidden' });
@@ -1036,7 +1060,7 @@ test('Czech is the default and English persists across the entire startup flow',
         assert.equal(await page.locator('html').getAttribute('lang'), 'en');
         await page.locator('#btnWelcomeContinue').waitFor({ state: 'visible' });
         assert.equal(await page.locator('#welcomeAuthBlock h1').textContent(), 'Welcome!');
-        assert.equal(await page.locator('.welcome-brand').textContent(), 'I&HAS');
+        assert.equal(await page.locator('.welcome-brand').textContent(), ['CCTV','EPS'].includes(process.env.TEST_PRODUCT)?process.env.TEST_PRODUCT:'I&HAS');
         if (process.env.TEST_SCREENSHOT_DIR) await smoothScreenshot(page, { path: resolve(process.env.TEST_SCREENSHOT_DIR, 'welcome-english.png') });
         assert.deepEqual(errors, []);
     } finally { await context.close(); }
@@ -1323,7 +1347,7 @@ test('tablet action bar rotates, duplicates, deletes and restores a selected det
 
 async function chooseDetector(page, type = 'pir') {
     await dismissOnboarding(page);
-    if(type==='pir'&&await page.evaluate(()=>APP_PRODUCT==='CCTV'))type='cctv_bullet';
+    if(type==='pir'){const product=await page.evaluate(()=>APP_PRODUCT);if(product==='CCTV')type='cctv_bullet';else if(product==='EPS')type='eps_smoke';else if(product==='SK')type='sk_outlet';}
     const button = page.locator('#deviceSelector [data-type="' + type + '"]');
     if (!await page.locator('.sliding-row-container').evaluate(el => el.classList.contains('open'))) await page.locator('#arrowTabBtn').click();
     await page.locator('.sliding-row-container').evaluate(async element=>{
@@ -1464,7 +1488,7 @@ test('account and subscription dialogs use compact columns and abbreviated langu
     } finally { await context.close(); }
 });
 
-test('an open account loses PRO at its application expiry even if another app has a later date', async () => {
+test('an open account retains suite access until the final paid program period expires', async () => {
     const { context, page, errors } = await openApp({ initialSession: true, company: true });
     try {
         await page.locator('#btnWelcomeProfile').click();
@@ -1473,9 +1497,10 @@ test('an open account loses PRO at its application expiry even if another app ha
             const db = firebase.firestore(), reference = db.collection('cloudLicenses').doc('test-user');
             const value = (await reference.get()).data();
             value.applications = ['PZTS','EPS'];
-            value.applicationExpiresAt = { PZTS: { seconds: (Date.now() + 350) / 1000 }, EPS: { seconds: Date.now()/1000 + 86400 } };
+            value.applicationExpiresAt = { PZTS: { seconds: (Date.now() + 200) / 1000 }, EPS: { seconds: (Date.now()+900)/1000 } };
             await db.runTransaction(transaction => transaction.set(reference, value));
         });
+        await page.waitForTimeout(400);assert.equal(await page.evaluate(()=>window.hasProAccess()),true);
         await page.waitForFunction(() => !window.hasProAccess() && document.getElementById('accountProBadge').hidden);
         assert.equal(await page.locator('#btnAccountCloudProjects.cloud-upgrade').isVisible(), true);
         await page.locator('#btnManageSubscription').click();
@@ -1653,7 +1678,7 @@ test('overhead imagery saves straight building vectors and preserves them throug
     try{await startRenderProject(page);await page.locator('#btnLogo').click();await page.locator('#btnMenuSatellite').click();await page.waitForFunction(()=>!document.getElementById('satelliteMapAdd').disabled);
         const map=await page.locator('#satelliteCanvas').boundingBox(),send=await page.locator('#satelliteMapAdd').boundingBox(),locate=await page.locator('#satelliteLocate').boundingBox(),search=await page.locator('#satelliteSearchInput').boundingBox();assert.ok(send.x>map.x+map.width*.75&&send.y>map.y+map.height*.7);assert.ok(locate.x>search.x+search.width);assert.equal(await page.locator('[data-map-layer],.satellite-map-attribution summary').count(),0);
         if(process.env.TEST_SCREENSHOT_DIR)await smoothScreenshot(page,{path:resolve(process.env.TEST_SCREENSHOT_DIR,'wide-overhead-map.png')});
-        await page.locator('#satelliteMapAdd').click();await page.waitForFunction(()=>!!floors[currentFloorIndex].satellite?.buildingOutlines,null,{timeout:20000});const result=await page.evaluate(async()=>{const floor=floors[currentFloorIndex],restored=(await loadFloorsImages(getProjectDataPayload().floors))[currentFloorIndex];const vector=new SVGPlanContext(1684,1191);drawMapLinework(vector,restored.image,restored.satellite);return{rings:restored.satellite.buildingOutlines.rings,original:floor.satellite.buildingOutlines.rings,svg:vector.toSVG(),provider:restored.satellite.provider};});assert.deepEqual(result.rings,result.original);assert.equal(result.rings.length,1);assert.match(result.svg,/#777d82/);assert.match(result.svg,/Z/);assert.doesNotMatch(result.svg,/<image/);assert.match(result.provider,/ČÚZK/);
+        await page.locator('#satelliteMapAdd').click();await page.waitForFunction(()=>!!floors[currentFloorIndex].satellite?.buildingOutlines,null,{timeout:20000});const result=await page.evaluate(async()=>{const floor=floors[currentFloorIndex],restored=(await loadFloorsImages(getProjectDataPayload().floors))[currentFloorIndex];const vector=new SVGPlanContext(1684,1191);drawMapLinework(vector,restored.image,restored.satellite);return{rings:restored.satellite.buildingOutlines.rings,original:floor.satellite.buildingOutlines.rings,svg:vector.toSVG(),provider:restored.satellite.provider};});assert.deepEqual(result.rings,result.original);assert.equal(result.rings.length,1);assert.match(result.svg,/#737b82/);assert.match(result.svg,/Z/);assert.doesNotMatch(result.svg,/<image/);assert.match(result.provider,/ČÚZK/);
         await page.evaluate(()=>{floors[currentFloorIndex].planTheme='light';requestRedraw();});if(process.env.TEST_SCREENSHOT_DIR)await smoothScreenshot(page,{path:resolve(process.env.TEST_SCREENSHOT_DIR,'straight-building-plan.png')});assert.equal(await page.locator('#planSourceInfo').evaluate(el=>el.tagName),'A');assert.notEqual(await page.locator('#planSourceInfo').textContent(),'i');assert.deepEqual(errors,[]);
     }finally{await context.close();}
 });
@@ -1681,6 +1706,57 @@ async function startRenderProject(page) {
     });
     await page.locator('#welcomeModal').waitFor({state:'hidden'});
 }
+
+test('EPS has an independent fire catalog, vector exports, native round trip and rejects other applications',{skip:process.env.TEST_PRODUCT!=='EPS'},async()=>{
+    const{context,page,errors}=await openApp({initialSession:true,company:true});
+    try{
+        await page.evaluate(()=>window.epsAssetsReady);
+        assert.equal(await page.locator('.welcome-brand').innerText(),'EPS');
+        assert.equal(await page.locator('#deviceSetTools [data-type^="eps_"]').count(),30);
+        assert.equal(await page.locator('#deviceSetTools [data-type="pir"]').count(),0);
+        assert.equal(await page.locator('#togglePirCoverage').isVisible(),false);
+        await startRenderProject(page);
+        const result=await page.evaluate(async()=>{
+            const floor=floors[currentFloorIndex];floor.devices=EPS_CATALOG.map((d,i)=>({id:`fire-${i}`,type:d.type,x:120+(i%8)*100,y:120+Math.floor(i/8)*100,number:i+1,loopId:1,rotation:0,manualName:d.code,isMainPanel:i===0}));
+            floor.cables=floor.devices.slice(1).map((d,i)=>{const cable={id:`wire-${i}`,fromId:'fire-0',toId:d.id};recalcCableHandles(cable,floor.devices[0],d);return cable;});
+            floor.legend={visible:true,x:1050,y:120,scale:1,entries:EPS_CATALOG.map(d=>({type:d.type,label:d.labels[0],shapes:[]}))};
+            const svg=new SVGPlanContext(1500,900),dxf=new DXFPlanContext(1500,900);for(const d of floor.devices){drawDevice(svg,d,true,'light');drawDevice(dxf,d,true,'light');}
+            const payload=getProjectDataPayload(),restored=await loadFloorsImages(payload.floors);await saveToDB({skipCloudSync:true});
+            const state={product:APP_PRODUCT,database:db.name,key:productStorageKey('test'),types:restored[currentFloorIndex].devices.map(d=>d.type),assets:epsSymbolAssets.size,svg:svg.toSVG(),dxf:dxf.toDXF(),checks:evaluateProjectReadiness({name:'Fire test',floors}).checks,tag:payload.application};
+            state.fullSvg=(await makePlanOutput(floor,{paper:'a4',orientation:'auto',dpi:96,theme:'light',coverage:false},true)).svg;state.fullDxf=makePlanDXF(floor,{paper:'a4',orientation:'auto',dpi:96,theme:'light',coverage:false}).dxf;
+            state.roundtrip=await importFileContent(new File([JSON.stringify(payload)],'fire.TECH',{type:'application/json'}));
+            setTimeout(()=>document.querySelector('#appDialog .goom-dialog-close')?.click(),200);
+            state.wrong=await importFileContent(new File([JSON.stringify({...payload,application:'PZTS'})],'intrusion.TECH',{type:'application/json'}));return state;
+        });
+        assert.equal(result.product,'EPS');assert.equal(result.database,'GooM_EPS_V1');assert.equal(result.key,'test:EPS');assert.equal(result.tag,'EPS');assert.equal(result.assets,31);assert.equal(new Set(result.types).size,31);assert.equal(result.roundtrip,true);assert.equal(result.wrong,false);assert.ok(result.checks.find(c=>c.id==='devices').complete);assert.ok(result.checks.find(c=>c.id==='cables').complete);assert.match(result.svg,/EPS/);assert.match(result.svg,/ASD/);assert.match(result.svg,/ST/);assert.doesNotMatch(result.svg,/NaN|Infinity|<image/);assert.doesNotMatch(result.fullSvg,/NaN|Infinity/);assert.doesNotMatch(result.fullDxf,/NaN|Infinity/);assert.match(result.fullSvg,/EPS/);assert.match(result.dxf,/ENTITIES/);assert.match(result.dxf,/EPS/);assert.doesNotMatch(result.dxf,/NaN|Infinity/);
+        await dismissOnboarding(page);if(await page.locator('#appDialog').isVisible())await page.locator('#appDialogConfirm').click();await page.locator('#btnLogo').click();await page.locator('#btnMenuSave').click();await page.locator('#saveModal').waitFor({state:'visible'});assert.equal(await page.locator('#projectReadiness [data-check="devices"]').getAttribute('class'),'complete');
+        if(process.env.TEST_SCREENSHOT_DIR)await smoothScreenshot(page,{path:resolve(process.env.TEST_SCREENSHOT_DIR,'.qa-eps-editor.png')});assert.deepEqual(errors,[]);
+    }finally{await context.close();}
+});
+
+test('SK uses networking labels in four languages and requires its own PROJECT grant',{skip:process.env.TEST_PRODUCT!=='SK'},async()=>{
+    const{context,page,errors}=await openApp({initialSession:true});try{
+        for(const[locale,name,search]of [['cs','Strukturovaná kabeláž a internet','Najít síťový bod'],['en','Structured cabling and internet','Find network point'],['de','Strukturierte Verkabelung und Internet','Netzwerkpunkt suchen'],['ru','Структурированные кабельные сети и интернет','Найти сетевую точку']]){await page.selectOption('[data-language-select]',locale);assert.equal(await page.locator('.welcome-brand').innerText(),'SK');assert.equal(await page.locator('.welcome-system-name').innerText(),name);assert.equal(await page.locator('#btnDetectorSearch').getAttribute('aria-label'),search);assert.ok(await page.locator('#deviceSetTools [data-type=sk_router]').getAttribute('aria-label'));}
+        await page.evaluate(()=>firebase.firestore().collection('goomProgramGrants').doc('test-user').set({uid:'test-user',expiresAt:{EPS:{seconds:Date.now()/1000+600}}}));assert.equal(await page.evaluate(()=>hasProAccess()),false);
+        await page.evaluate(()=>firebase.firestore().collection('goomProgramGrants').doc('test-user').set({uid:'test-user',expiresAt:{SK:{seconds:Date.now()/1000+600}}}));await page.waitForFunction(()=>hasProAccess());
+        assert.equal(await page.evaluate(()=>goomGuideSteps.length),14);await page.selectOption('[data-language-select]','cs');
+        if(process.env.TEST_SCREENSHOT_DIR)await smoothScreenshot(page,{path:resolve(process.env.TEST_SCREENSHOT_DIR,'.qa-sk-welcome.png')});assert.deepEqual(errors,[]);
+    }finally{await context.close();}
+});
+test('EPS replacement assets remain visible in the drawing and vector exports',{skip:process.env.TEST_PRODUCT!=='EPS'},async()=>{
+    const{context,page,errors}=await openApp({initialSession:true,epsSymbolOverride:true});try{
+        const result=await page.evaluate(async()=>{await epsAssetsReady;const svg=new SVGPlanContext(80,80),dxf=new DXFPlanContext(80,80);drawDevice(svg,{type:'eps_smoke',x:40,y:40},true,'light');drawDevice(dxf,{type:'eps_smoke',x:40,y:40},true,'light');return{svg:svg.toSVG(),dxf:dxf.toDXF()};});assert.match(result.svg,/FIRE/);assert.match(result.dxf,/FIRE/);assert.doesNotMatch(result.svg,/<image|NaN/);assert.deepEqual(errors,[]);
+    }finally{await context.close();}
+});
+test('EPS labels, billing scope and guide stay specific to fire alarms in four languages',{skip:process.env.TEST_PRODUCT!=='EPS'},async()=>{
+    const{context,page,errors}=await openApp({initialSession:true});try{
+        for(const[locale,expected]of [['cs','Elektrická požární signalizace'],['en','Fire detection and alarm system'],['de','Brandmeldeanlage'],['ru','Пожарная сигнализация']]){await page.selectOption('[data-language-select]',locale);assert.equal(await page.locator('.welcome-system-name').innerText(),expected);assert.equal(await page.locator('.welcome-brand').innerText(),'EPS');assert.ok(await page.locator('#deviceSetTools [data-type="eps_smoke"]').getAttribute('aria-label'));}
+        const guide=await page.evaluate(()=>goomGuideSteps.map(s=>s[0]));assert.equal(guide.length,14);assert.ok(guide.includes('#btnDetectorSearch'));assert.ok(!guide.includes('#togglePirCoverage'));
+        await page.evaluate(()=>firebase.firestore().collection('goomProgramGrants').doc('test-user').set({uid:'test-user',expiresAt:{PZTS:{seconds:Date.now()/1000+600}}}));assert.equal(await page.evaluate(()=>hasProAccess()),false);
+        await page.evaluate(()=>firebase.firestore().collection('goomProgramGrants').doc('test-user').set({uid:'test-user',expiresAt:{EPS:{seconds:Date.now()/1000+600}}}));await page.waitForFunction(()=>hasProAccess());
+        if(process.env.TEST_SCREENSHOT_DIR){await page.selectOption('[data-language-select]','cs');await smoothScreenshot(page,{path:resolve(process.env.TEST_SCREENSHOT_DIR,'.qa-eps-welcome.png')});}assert.deepEqual(errors,[]);
+    }finally{await context.close();}
+});
 
 test('PZTS and CCTV on one domain keep local drafts in separate databases', { skip: !process.env.TEST_MIGRATION_BASE }, async () => {
     const base = process.env.TEST_MIGRATION_BASE.replace(/\/$/, '');
@@ -3201,3 +3277,50 @@ test('floor sections overlay the illustration with aligned ground and compact in
         assert.deepEqual(errors,[]);
     }finally{await context.close();}
 });
+
+test('SK has an independent networking catalog, vector exports, native round trip and rejects other applications',{skip:process.env.TEST_PRODUCT!=='SK'},async()=>{
+    const{context,page,errors}=await openApp({initialSession:true,company:true});
+    try{
+        await page.evaluate(()=>window.skAssetsReady);
+        assert.equal(await page.locator('.welcome-brand').innerText(),'SK');
+        assert.equal(await page.locator('#deviceSetTools [data-type^="sk_"]').count(),30);
+        assert.equal(await page.locator('#deviceSetTools [data-type="pir"]').count(),0);
+        assert.equal(await page.locator('#togglePirCoverage').isVisible(),false);
+        await startRenderProject(page);
+        const result=await page.evaluate(async()=>{
+            const floor=floors[currentFloorIndex];floor.devices=SK_CATALOG.map((d,i)=>({id:`fire-${i}`,type:d.type,x:120+(i%8)*100,y:120+Math.floor(i/8)*100,number:i+1,loopId:1,rotation:0,manualName:d.code,isMainPanel:i===0}));
+            floor.cables=floor.devices.slice(1).map((d,i)=>{const cable={id:`wire-${i}`,fromId:'fire-0',toId:d.id};recalcCableHandles(cable,floor.devices[0],d);return cable;});
+            floor.legend={visible:true,x:1050,y:120,scale:1,entries:SK_CATALOG.map(d=>({type:d.type,label:d.labels[0],shapes:[]}))};
+            const svg=new SVGPlanContext(1500,900),dxf=new DXFPlanContext(1500,900);for(const d of floor.devices){drawDevice(svg,d,true,'light');drawDevice(dxf,d,true,'light');}
+            const payload=getProjectDataPayload(),restored=await loadFloorsImages(payload.floors);await saveToDB({skipCloudSync:true});
+            const state={product:APP_PRODUCT,database:db.name,key:productStorageKey('test'),types:restored[currentFloorIndex].devices.map(d=>d.type),assets:skSymbolAssets.size,svg:svg.toSVG(),dxf:dxf.toDXF(),checks:evaluateProjectReadiness({name:'Fire test',floors}).checks,tag:payload.application};
+            state.fullSvg=(await makePlanOutput(floor,{paper:'a4',orientation:'auto',dpi:96,theme:'light',coverage:false},true)).svg;state.fullDxf=makePlanDXF(floor,{paper:'a4',orientation:'auto',dpi:96,theme:'light',coverage:false}).dxf;
+            state.roundtrip=await importFileContent(new File([JSON.stringify(payload)],'fire.TECH',{type:'application/json'}));
+            setTimeout(()=>document.querySelector('#appDialog .goom-dialog-close')?.click(),200);
+            state.wrong=await importFileContent(new File([JSON.stringify({...payload,application:'PZTS'})],'intrusion.TECH',{type:'application/json'}));return state;
+        });
+        assert.equal(result.product,'SK');assert.equal(result.database,'GooM_SK_V1');assert.equal(result.key,'test:SK');assert.equal(result.tag,'SK');assert.equal(result.assets,31);assert.equal(new Set(result.types).size,31);assert.equal(result.roundtrip,true);assert.equal(result.wrong,false);assert.ok(result.checks.find(c=>c.id==='devices').complete);assert.ok(result.checks.find(c=>c.id==='cables').complete);assert.match(result.svg,/RACK/);assert.match(result.svg,/RJ45/);assert.match(result.svg,/PoE/);assert.doesNotMatch(result.svg,/NaN|Infinity|<image/);assert.doesNotMatch(result.fullSvg,/NaN|Infinity/);assert.doesNotMatch(result.fullDxf,/NaN|Infinity/);assert.match(result.fullSvg,/RACK/);assert.match(result.dxf,/ENTITIES/);assert.match(result.dxf,/RACK/);assert.doesNotMatch(result.dxf,/NaN|Infinity/);
+        await dismissOnboarding(page);if(await page.locator('#appDialog').isVisible())await page.locator('#appDialogConfirm').click();await page.locator('#btnLogo').click();await page.locator('#btnMenuSave').click();await page.locator('#saveModal').waitFor({state:'visible'});assert.equal(await page.locator('#projectReadiness [data-check="devices"]').getAttribute('class'),'complete');
+        if(process.env.TEST_SCREENSHOT_DIR)await smoothScreenshot(page,{path:resolve(process.env.TEST_SCREENSHOT_DIR,'.qa-sk-editor.png')});assert.deepEqual(errors,[]);
+    }finally{await context.close();}
+});
+
+
+test('palette selection preserves placed devices and breaks the placement chain',async()=>{
+ const{context,page,errors}=await openApp({initialSession:true});try{await startRenderProject(page);await dismissOnboarding(page);await chooseDetector(page);
+ const before=await page.evaluate(()=>{const floor=floors[currentFloorIndex];const buttons=[...document.querySelectorAll('#deviceSetTools .device-btn[data-type]')].filter(b=>b.dataset.type!=='plainText'&&b.dataset.type!=='textNode'&&!/^cctv_(bullet|dome|ptz)$/.test(b.dataset.type));const a=buttons[0].dataset.type,b=buttons[1].dataset.type;floor.devices=[{id:'placed',type:a,x:170,y:180,loopId:1,customIcon:[{type:'circle',x:0,y:0,radius:4}]}];floor.cables=[];activeDeviceIds=new Set(['placed']);return {a,b,data:JSON.stringify(floor.devices)};});
+ await page.locator('#deviceSetTools [data-type="'+before.b+'"]').click();assert.equal(await page.evaluate(()=>JSON.stringify(floors[currentFloorIndex].devices)),before.data);assert.equal(await page.evaluate(()=>activeDeviceIds.size),0);assert.equal(await page.evaluate(()=>selectedTool),before.b);
+ const box=await page.locator('#canvasContainer').boundingBox();await page.mouse.click(box.x+400,box.y+300);const after=await page.evaluate(()=>({devices:floors[currentFloorIndex].devices,cables:floors[currentFloorIndex].cables}));assert.equal(after.devices[0].type,before.a);assert.equal(after.devices[1].type,before.b);assert.equal(after.cables.length,0);assert.equal(await page.locator('.goom-site-link').getAttribute('href'),'https://goom.cz/');
+ const strip=page.locator('#deviceSetTools');await strip.evaluate(el=>{el.style.maxWidth='180px';el.style.width='180px';el.scrollLeft=0;});await strip.hover();await page.mouse.wheel(0,200);await page.waitForFunction(()=>document.getElementById('deviceSetTools').scrollLeft>0);assert.equal(await page.locator('.device-strip-progress').isVisible(),true);const bar=await page.locator('.device-strip-progress span').evaluate(el=>({height:el.offsetHeight,color:getComputedStyle(el).backgroundColor,transform:getComputedStyle(el).transform}));assert.equal(bar.height,2);assert.equal(bar.color,'rgb(52, 56, 61)');assert.notEqual(bar.transform,'none');assert.deepEqual(errors,[]);
+ }finally{await context.close();}
+});
+test('detailed mapped scene renders roads, green areas and water in line and illustrated modes and survives save',async()=>{
+ const{context,page,errors}=await openApp({initialSession:true,company:true,satelliteFixtures:true,buildingFixtures:true});try{await startRenderProject(page);await dismissOnboarding(page);await page.locator('#btnLogo').click();await page.locator('#btnMenuSatellite').click();await page.locator('#satelliteSearchInput').fill('50.087, 14.421');await page.locator('#satelliteSearchSubmit').click();await page.waitForFunction(()=>!document.getElementById('satelliteMapAdd').disabled);await page.locator('#satelliteMapAdd').click();await page.waitForFunction(()=>!!floors[currentFloorIndex].satellite?.mapScene);
+ const result=await page.evaluate(()=>{const f=floors[currentFloorIndex],before=f.imgData,scene=f.satellite.mapScene,mono=new SVGPlanContext(f.image.width,f.image.height),cartoon=new SVGPlanContext(f.image.width,f.image.height);drawPlanSource(mono,f,'light');f.planTheme='cartoon';drawPlanSource(cartoon,f);const loaded=sanitizeFloors(getProjectDataPayload().floors)[currentFloorIndex];return {roads:scene.roads.length,green:scene.green.length,water:scene.water.length,buildings:f.satellite.buildingOutlines.rings.length,mono:mono.toSVG(),cartoon:cartoon.toSVG(),loaded:loaded.satellite.mapScene,theme:loaded.planTheme,same:f.imgData===before,cacheDifferent:getLightPlanImage(f.image,f.satellite)!==getLightPlanImage(f.image,f.satellite,true)};});assert.ok(result.roads&&result.green&&result.water&&result.buildings);assert.match(result.mono,/#9da3a6/);assert.match(result.cartoon,/#dce8c9/);assert.match(result.cartoon,/#e4e0d6/);assert.doesNotMatch(result.cartoon,/<image/);assert.equal(result.theme,'cartoon');assert.equal(result.loaded.roads.length,result.roads);assert.equal(result.same,true);assert.equal(result.cacheDifferent,true);
+ if(process.env.TEST_SCREENSHOT_DIR){const realPath=resolve(__dirname,'../.qa-real-map-scene.json');if(require('node:fs').existsSync(realPath)){const real=JSON.parse(await readFile(realPath,'utf8'));await page.evaluate(real=>{const f=floors[currentFloorIndex];Object.assign(f.satellite,real);f.planTheme='cartoon';changeFloor();requestRedraw();},real);}await smoothScreenshot(page,{path:resolve(process.env.TEST_SCREENSHOT_DIR,'map-illustrated.png')});await page.locator('#btnLogo').click();assert.notEqual(await page.locator('#mainMenuModal .main-menu-content').evaluate(el=>getComputedStyle(el).backgroundImage),'none');await smoothScreenshot(page,{path:resolve(process.env.TEST_SCREENSHOT_DIR,'shared-gradient-menu.png')});}assert.deepEqual(errors,[]);
+ }finally{await context.close();}
+});
+
+test('a trusted paid license for another editor opens the whole suite without an administrator role',async()=>{const{context,page,errors}=await openApp({initialSession:true});try{await page.evaluate(()=>firebase.firestore().collection('cloudLicenses').doc('test-user').set({uid:'test-user',plan:'pro',source:'stripe',status:'active',paymentStatus:'paid',billingMode:'annual',applications:['EPS'],applicationExpiresAt:{EPS:{seconds:Date.now()/1000+900}},applicationPlans:{EPS:'pro'}}));await page.waitForFunction(()=>hasProAccess());assert.equal(await page.evaluate(()=>hasOwnPaidPro()),true);assert.equal(await page.evaluate(()=>hasAdminAccess()),false);assert.equal(await page.evaluate(()=>getOwnProTier()),'pro');assert.deepEqual(errors,[]);}finally{await context.close();}});
+
+test('tablet palette swipes horizontally while retaining a thin progress indicator',async()=>{const{context,page,errors}=await openApp({initialSession:true,contextOptions:{viewport:{width:1024,height:768},hasTouch:true,isMobile:false}});try{await startRenderProject(page);await dismissOnboarding(page);await chooseDetector(page);const strip=page.locator('#deviceSetTools');await strip.evaluate(el=>{el.style.width='180px';el.style.maxWidth='180px';el.scrollLeft=0;});const box=await strip.boundingBox(),cdp=await context.newCDPSession(page),y=box.y+box.height/2;await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:box.x+160,y}]});for(let i=1;i<=8;i++)await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:box.x+160-i*16,y}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await page.waitForFunction(()=>document.getElementById('deviceSetTools').scrollLeft>20);assert.equal(await page.locator('.device-strip-progress').isVisible(),true);assert.equal(await page.locator('.device-strip-progress').evaluate(el=>el.offsetHeight),2);await cdp.detach();assert.deepEqual(errors,[]);}finally{await context.close();}});

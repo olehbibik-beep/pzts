@@ -188,7 +188,7 @@ document.getElementById('planThemeInput').addEventListener('change',async event=
     const session=wallSettingsSession,theme=event.target.value;if(!session)return;
     const endTheme=window.startGoomBusy?.();
     try{await window.goomBusyPaint?.();if(wallSettingsSession!==session||document.getElementById('planThemeInput').value!==theme)return;
-        const floor=session.floor;if(theme==='light'&&floor.image)getLightPlanImage(floor.image,floor.satellite||false);
+        const floor=session.floor;if(['light','cartoon'].includes(theme)&&floor.image){await ensureMapSceneForFloor(floor);if(wallSettingsSession!==session||document.getElementById('planThemeInput').value!==theme)return;getLightPlanImage(floor.image,floor.satellite||false,theme==='cartoon');}
         floor.planTheme=theme;requestRedraw();
     }finally{endTheme?.();}
 });
@@ -223,20 +223,9 @@ document.getElementById('deviceSelector').addEventListener('click', (e) => {
         return;
     }
 
-    if (currentFloorIndex !== -1 && activeDeviceIds.size > 0 && !isOverviewMode) {
-        let changed = false;
-        const floor = floors[currentFloorIndex];
-        activeDeviceIds.forEach(id => {
-            let dev = floor.devices.find(d => d.id === id);
-            if (dev?.type === 'textNode' && dev.plainText === true) {
-                activeDeviceIds.delete(id);
-                return;
-            }
-            if (dev) { dev.type = selectedTool; if (dev.type !== 'deactivated') dev.oldType = null; changed = true; }
-        });
-        if (changed) { includeNewDeviceInLegend(floor, selectedTool); saveStateToHistory(); triggerAutoSave(); }
-        requestRedraw();
-    } else { activeDeviceIds.clear(); requestRedraw(); }
+    stopDeviceRotation();
+    activeDeviceIds.clear();
+    requestRedraw();
 });
 
 let bToggleConnections = document.getElementById('btnToggleConnections');
