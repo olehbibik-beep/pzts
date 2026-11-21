@@ -8,7 +8,9 @@
     const czkPerEuro = 24.425; // Czech National Bank published rate for 2026-11-13.
     function render() {
         const active = Boolean(window.hasProAccess?.());
-        byId('accountProStatus').textContent = tr(active ? 'PROJECT je aktivní.' : 'Váš účet používá bezplatnou verzi.');
+        const administrative=Boolean(window.hasAdminAccess?.());
+        const adminStatus=window.goomUI('Administrátor: plný přístup ke všem funkcím.','Administrator: full access to all features.','Administrator: voller Zugriff auf alle Funktionen.','Администратор: полный доступ ко всем функциям.');
+        byId('accountProStatus').textContent = administrative?adminStatus:tr(active ? 'PROJECT je aktivní.' : 'Váš účet používá bezplatnou verzi.');
         byId('accountProStatus').classList.toggle('active', active);
         const tier = window.getOwnProTier?.();
         for (const button of buyButtons) {
@@ -16,8 +18,8 @@
             button.disabled = purchasePending || active;
         }
         const basicAction=document.querySelector('.pro-plan-basic .pro-plan-action');if(basicAction)basicAction.textContent=tr(active?'Základní':'Aktivní');
-        for(const card of document.querySelectorAll('.pro-plan-standard,.pro-plan-company')){let badge=card.querySelector('.pro-entitlement-active');if(!badge){badge=document.createElement('div');badge.className='pro-entitlement-active';card.querySelector('.pro-plan-actions').append(badge);}badge.textContent=tr('PROJECT je aktivní.');badge.hidden=!active||(tier==='company'?card.classList.contains('pro-plan-standard'):card.classList.contains('pro-plan-company'));}
-        byId('btnUpdatePro').textContent=tr(active?'PROJECT je aktivní.':'Ceník PROJECT');
+        for(const card of document.querySelectorAll('.pro-plan-standard,.pro-plan-company')){let badge=card.querySelector('.pro-entitlement-active');if(!badge){badge=document.createElement('div');badge.className='pro-entitlement-active';card.querySelector('.pro-plan-actions').append(badge);}badge.textContent=administrative?'ADMIN':tr('PROJECT je aktivní.');badge.hidden=!active||(tier==='company'?card.classList.contains('pro-plan-standard'):card.classList.contains('pro-plan-company'));}
+        byId('btnUpdatePro').textContent=administrative?'ADMIN':tr(active?'PROJECT je aktivní.':'Ceník PROJECT');
         for (const button of manageButtons) button.hidden = button.dataset.manageTier !== tier;
         for (const price of document.querySelectorAll('[data-pro-price]')) {
             const currency = price.dataset.currency;
@@ -40,13 +42,14 @@
     const hint=document.createElement('div');hint.id='projectUpgradeHint';hint.hidden=true;hint.setAttribute('role','status');
     hint.innerHTML='<button type="button" id="projectUpgradeAction"><span>UPGRADE</span><strong>PROJECT</strong></button><button type="button" id="projectUpgradeDismiss" aria-label="'+tr('Zavřít')+'">×</button>';
     document.body.append(hint);let hintTimer;
-    function hideUpgradeHint(){clearTimeout(hintTimer);hint.hidden=true;}
-    function scheduleHide(){clearTimeout(hintTimer);hintTimer=setTimeout(hideUpgradeHint,8000);}
-    window.requestProUpgrade=()=>{window.clearGoomTooltips?.();hint.hidden=false;hint.getAnimations().forEach(a=>a.cancel());
+    function hideUpgradeHint(){clearTimeout(hintTimer);hintTimer=null;hint.hidden=true;hint.getAnimations().forEach(a=>a.cancel());}
+    function scheduleHide(){clearTimeout(hintTimer);hintTimer=setTimeout(hideUpgradeHint,5000);}
+    window.requestProUpgrade=()=>{if(window.hasProAccess?.())return;window.clearGoomTooltips?.();hint.hidden=false;hint.getAnimations().forEach(a=>a.cancel());
         if(!matchMedia('(prefers-reduced-motion: reduce)').matches)hint.animate([{transform:'translate(-50%,30px)',opacity:0},{transform:'translate(-50%,0)',opacity:1}],{duration:220,easing:'ease-out'});
         scheduleHide();};
-    hint.addEventListener('mouseenter',()=>clearTimeout(hintTimer));hint.addEventListener('mouseleave',scheduleHide);
-    hint.addEventListener('focusin',()=>clearTimeout(hintTimer));hint.addEventListener('focusout',scheduleHide);
+    document.addEventListener('pointerdown',event=>{if(!hint.contains(event.target))hideUpgradeHint();},true);
+    document.addEventListener('keydown',event=>{if(event.key==='Escape')hideUpgradeHint();});
+    document.addEventListener('visibilitychange',()=>{if(document.hidden)hideUpgradeHint();});
     byId('projectUpgradeAction').onclick=window.openProjectUpgrade;byId('projectUpgradeDismiss').onclick=hideUpgradeHint;
     document.addEventListener('goom-account-changed',hideUpgradeHint);
     byId('btnUpdatePro').addEventListener('click', window.openProjectUpgrade);

@@ -39,8 +39,9 @@
     window.hasOwnPaidPro = hasPaidAccess;
     window.getOwnProTier = () => hasPaidAccess() ? license.applicationPlans?.[APP_PRODUCT] || 'pro' : null;
     window.isGoomCompanyAccount = () => profile?.accountType === 'company';
-    window.hasProAccess = () => Boolean(window.getFirebaseUser()?.emailVerified && uid === window.getFirebaseUser()?.uid
+    window.hasProjectEntitlement = () => Boolean(window.getFirebaseUser()?.emailVerified && uid === window.getFirebaseUser()?.uid
         && (hasPaidAccess() || grantedUntil() > Date.now() || companyUntil() > Date.now()));
+    window.hasProAccess = () => Boolean(window.hasProjectEntitlement() || window.hasAdminAccess?.());
     window.hasCloudAccess = window.hasProAccess;
     window.hasAdminAccess = () => {
         const user = window.getFirebaseUser();
@@ -59,6 +60,7 @@
         byId('accountName').textContent = profile?.displayName || user?.displayName || '';
         byId('accountProBadge').hidden = !entitled;
         byId('welcomeProBadge').hidden = !entitled;
+        for(const id of ['accountProBadge','welcomeProBadge'])byId(id).textContent=window.hasAdminAccess()?'ADMIN':'PROJECT';
         byId('accountEmail').textContent = user?.email || '';
         byId('accountTypeLabel').textContent = tr(company ? 'Firma' : 'Osobní účet');
         byId('accountIcoLabel').hidden = !company;

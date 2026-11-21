@@ -62,7 +62,7 @@ service cloud.firestore {
       return grant != null && application in grant.expiresAt && grant.expiresAt[application] > request.time;
     }
     function licensed(uid, application) {
-      return owner(uid) && request.auth.token.email_verified == true && (paidOrCompany(uid, application) || granted(uid, application));
+      return owner(uid) && request.auth.token.email_verified == true && (administrator() || paidOrCompany(uid, application) || granted(uid, application));
     }
     function validProfile() {
       let p = request.resource.data;
@@ -93,8 +93,12 @@ service cloud.firestore {
       let data = request.resource.data;
       return data.keys().hasOnly(['name', 'deviceTypes', 'iconsJson'])
         && data.name is string && data.name.size() > 0 && data.name.size() <= 32
-        && data.deviceTypes is list && data.deviceTypes.size() >= 1 && data.deviceTypes.size() <= 15
-        && (application == 'CCTV'
+        && data.deviceTypes is list && data.deviceTypes.size() >= 1 && data.deviceTypes.size() <= (application in ['EPS', 'SK'] ? 32 : 15)
+        && (application == 'SK'
+          ? data.deviceTypes.hasOnly(["panel","sk_router","sk_firewall","sk_switch","sk_poe_switch","sk_core_switch","sk_patch_panel","sk_fiber_panel","sk_media_converter","sk_ont","sk_modem","sk_access_point","sk_mesh","sk_bridge","sk_antenna","sk_outlet","sk_outlet_dual","sk_fiber_outlet","sk_floor_box","sk_cp","sk_server","sk_nas","sk_ups","sk_pdu","sk_pc","sk_printer","sk_ip_phone","sk_isp","sk_wifi_controller","sk_fiber_splitter","sk_splice_box","textNode"])
+          : application == 'EPS'
+          ? data.deviceTypes.hasOnly(["panel","eps_smoke","eps_heat","eps_heat_rise","eps_multi","eps_co","eps_flame_ir","eps_flame_uv","eps_flame_dual","eps_beam_tx","eps_beam_rx","eps_beam_reflector","eps_aspirating","eps_duct","eps_linear_heat","eps_manual","eps_sounder","eps_beacon","eps_sounder_beacon","eps_voice","eps_remote_indicator","eps_input","eps_output","eps_io","eps_relay","eps_isolator","eps_psu","eps_repeater","eps_door_holder","eps_damper","eps_extinguishing","textNode"])
+          : application == 'CCTV'
           ? data.deviceTypes.hasOnly(['cctv_bullet', 'cctv_dome', 'cctv_ptz', 'cctv_nvr', 'cctv_poe', 'cctv_doorbell', 'acs_reader', 'cctv_antenna', 'cctv_receiver', 'textNode'])
           : data.deviceTypes.hasOnly(['panel', 'expander', 'abax', 'keypad', 'pir', 'pir_wl', 'magnet',
             'magnet_wl', 'glassbreak', 'panic', 'siren', 'acs_module', 'acs_reader', 'smoke', 'textNode']))

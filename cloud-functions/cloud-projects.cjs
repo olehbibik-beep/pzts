@@ -28,11 +28,12 @@ function storedProjectPath(collection, id, row) {
 
 function createCloudProjectService({ db, bucket, timestamp, serverTimestamp, now = Date.now, logError = () => {} }) {
     async function verifyAccess(transaction, auth, application) {
-        const [license, grant] = await Promise.all(['cloudLicenses', 'goomProgramGrants'].map(name => {
+        const [license, grant, administrator] = await Promise.all(['cloudLicenses', 'goomProgramGrants', 'goomAdmins'].map(name => {
             const ref = db.collection(name).doc(auth.uid);
             return transaction ? transaction.get(ref) : ref.get();
         }));
-        if (!hasCloudEntitlement(auth.uid, auth.token.email, application, license.data(), grant.data(), now())) {
+        const administrativeAccess = ['owner', 'admin'].includes(administrator.data()?.role);
+        if (!administrativeAccess && !hasCloudEntitlement(auth.uid, auth.token.email, application, license.data(), grant.data(), now())) {
             throw new HttpsError('permission-denied', 'An active PROJECT license is required.');
         }
     }
