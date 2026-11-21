@@ -80,6 +80,15 @@ function getMapLinework(image,footerHeight=0) {
     result={width,height,paths};modes.set(footerHeight,result);return result;
 }
 function drawMapLinework(target,image,metadata) {
+    const buildings=sanitizeMapBuildings(metadata?.buildingOutlines);
+    if(buildings){
+        const width=image.naturalWidth||image.width,height=image.naturalHeight||image.height;
+        target.save();target.fillStyle='#fff';target.fillRect(0,0,width,height);
+        target.strokeStyle='#777d82';target.lineWidth=.65;target.lineCap='butt';target.lineJoin='miter';
+        const sx=width/buildings.width,sy=height/buildings.height;
+        const d=buildings.rings.map(ring=>'M'+ring.map(p=>(Math.round(p[0]*sx*100)/100)+' '+(Math.round(p[1]*sy*100)/100)).join('L')+'Z').join(' ');
+        if(target.strokePath)target.strokePath(d);else target.stroke(new Path2D(d));target.restore();return;
+    }
     const legacyFooter=metadata?.provider&&metadata.footerHeight!==0?Math.round((image.naturalHeight||image.height)*28/796):0;
     const vector=getMapLinework(image,legacyFooter);target.save();target.fillStyle='#fff';target.fillRect(0,0,vector.width,vector.height);
     target.strokeStyle='#777d82';target.lineWidth=.65;target.lineCap='round';target.lineJoin='round';const d=vector.paths.join(' ');

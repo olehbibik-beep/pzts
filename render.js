@@ -466,11 +466,11 @@ function drawFreePlanWatermark(target, width, height, theme, footerHeight = 0) {
     target.restore();
 }
 
-const planSourceInfo=document.createElement('button');planSourceInfo.id='planSourceInfo';planSourceInfo.type='button';planSourceInfo.textContent='i';planSourceInfo.hidden=true;planSourceInfo.setAttribute('aria-label',tr('Informace o mapě'));document.getElementById('appFooter').append(planSourceInfo);
-planSourceInfo.onclick=()=>{const source=floors[currentFloorIndex]?.satellite;if(source)void showAppAlert(source.attribution,tr('Informace o mapě'));};
+const planSourceInfo=document.createElement('a');planSourceInfo.id='planSourceInfo';planSourceInfo.target='_blank';planSourceInfo.rel='noopener';planSourceInfo.hidden=true;document.getElementById('appFooter').append(planSourceInfo);
 function redraw() {
     const floorStatus=document.getElementById('footerCurrentFloor'),floorName=isSystemReady?floors[currentFloorIndex]?.name||'':'';if(floorStatus&&floorStatus.textContent!==floorName)floorStatus.textContent=floorName;
-    planSourceInfo.hidden=!isSystemReady||!floors[currentFloorIndex]?.satellite;
+    const source=floors[currentFloorIndex]?.satellite;planSourceInfo.hidden=!isSystemReady||!source;
+    if(source){const outlines=!!source.buildingOutlines;planSourceInfo.textContent=outlines?'© OpenStreetMap':source.provider.includes('ČÚZK')?'© ČÚZK · Esri':'© Esri';planSourceInfo.href=outlines?'https://www.openstreetmap.org/copyright':source.provider.includes('ČÚZK')?'https://ags.cuzk.gov.cz/opendata/':'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer';}
     const shortcut=document.getElementById('emptyProjectShortcut');
     if(shortcut)shortcut.hidden=Boolean(window.isGoomReadOnly?.()||!isSystemReady||isOverviewMode||currentFloorIndex<0||!floors[currentFloorIndex]||floors[currentFloorIndex].image||floors[currentFloorIndex].devices.length||isExporting);
     if(typeof syncPlanLoading==='function')syncPlanLoading();

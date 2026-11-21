@@ -101,7 +101,7 @@ function getDarkPlanImage(image,paperLevel) {
 function getLightPlanImage(image, satellite = false) {
     let cached = planLightCache.get(image);
     if (!cached) { cached = new Map(); planLightCache.set(image, cached); }
-    const key=satellite ? (satellite.layer || 'satellite') : false;
+    const key=satellite?.buildingOutlines || (satellite ? (satellite.layer || 'satellite') : false);
     if (cached.has(key)) return cached.get(key);
     if(satellite && satellite.layer!=='topo'){
         const result=document.createElement('canvas');result.width=image.naturalWidth||image.width;result.height=image.naturalHeight||image.height;

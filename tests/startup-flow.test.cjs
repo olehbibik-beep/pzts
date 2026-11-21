@@ -5,6 +5,7 @@ const { createServer } = require('node:http');
 const { readFile } = require('node:fs/promises');
 const { resolve, extname, basename, sep } = require('node:path');
 const { chromium, devices } = require('playwright');
+const {tile:buildingTileFixture}=require('./mvt-fixture.cjs');
 
 let server, browser, origin;
 const root = resolve(process.env.TEST_SITE_ROOT || resolve(__dirname, '..'));
@@ -40,12 +41,14 @@ async function openApp(options = {}) {
     });
     await context.route('**/*', route => {
         const url = route.request().url();
-        if(options.missingNativeTiles && (url.includes('services.arcgisonline.com/')||url.includes('clarity.maptiles.arcgis.com/')) && /\/tile\/(?:18|19)\//.test(url))return route.fulfill({status:404,headers:{'Access-Control-Allow-Origin':'*'},body:''});
-        if (options.satelliteFixtures && (url.includes('services.arcgisonline.com/')||url.includes('clarity.maptiles.arcgis.com/')) && url.includes('/tile/'))
+        if(options.missingNativeTiles && (url.includes('services.arcgisonline.com/')||url.includes('clarity.maptiles.arcgis.com/')||url.includes('ags.cuzk.gov.cz/')) && /\/tile\/(?:18|19)\//.test(url))return route.fulfill({status:404,headers:{'Access-Control-Allow-Origin':'*'},body:''});
+        if (options.satelliteFixtures && (url.includes('services.arcgisonline.com/')||url.includes('clarity.maptiles.arcgis.com/')||url.includes('ags.cuzk.gov.cz/')) && url.includes('/tile/'))
             return route.fulfill({ contentType:'image/svg+xml', headers:{'Access-Control-Allow-Origin':'*'}, body:url.includes('/Reference/')?'<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256"><path d="M10 20h200" stroke="white" stroke-width="2"/><text x="20" y="18" font-size="11" fill="white">Field street</text></svg>':'<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256"><rect width="256" height="256" fill="#54754a"/><path d="M40 40h160v160H40Z" fill="#b3b6ba" stroke="#262c31" stroke-width="5"/></svg>' });
+        if(options.satelliteFixtures&&url==='https://tiles.openfreemap.org/planet')return route.fulfill({contentType:'application/json',headers:{'Access-Control-Allow-Origin':'*'},body:JSON.stringify({maxzoom:14,tiles:['https://tiles.openfreemap.org/planet/test/{z}/{x}/{y}.pbf']})});
+        if(options.satelliteFixtures&&url.startsWith('https://tiles.openfreemap.org/planet/test/')){const[z,x,y]=new URL(url).pathname.split('/').slice(-3).map(parseFloat);return route.fulfill({contentType:'application/x-protobuf',headers:{'Access-Control-Allow-Origin':'*'},body:options.buildingFixtures?buildingTileFixture(x,y,z):Buffer.alloc(0)});}
         if (options.satelliteFixtures && url.startsWith('https://photon.komoot.io/'))
             return route.fulfill({ contentType:'application/json', headers:{'Access-Control-Allow-Origin':'*'}, body:JSON.stringify({features:[{geometry:{coordinates:[14.421,50.087]},properties:{name:'Praha',country:'Česko'}}]}) });
-        if (options.liveSatellite && ((url.includes('services.arcgisonline.com/')||url.includes('clarity.maptiles.arcgis.com/')) || url.startsWith('https://photon.komoot.io/'))) return route.continue();
+        if (options.liveSatellite && ((url.includes('services.arcgisonline.com/')||url.includes('clarity.maptiles.arcgis.com/')||url.includes('ags.cuzk.gov.cz/')) || url.startsWith('https://photon.komoot.io/'))) return route.continue();
         if ((url.startsWith(origin) || options.liveSite && url.startsWith(options.liveSite + '/')) && /\/legacy\/build\/pdf\.min\.(?:m?js)\?/.test(url) && pdfModuleFailures-- > 0)
             return route.fulfill({ status: 404, body: 'PDF assets not uploaded yet' });
         if (options.renderLibraries && /(?:cdnjs.cloudflare.com|cdn.jsdelivr.net)/.test(url)) {
@@ -317,7 +320,7 @@ test('satellite selection saves a self-contained map and black lines survive pro
     const {context,page,errors}=await openApp({initialSession:true,company:true,satelliteFixtures:true});
     try{
         await startRenderProject(page);await page.locator('#btnLogo').click();await page.locator('#btnMenuSatellite').click();
-        const mapBox=await page.locator('#satelliteCanvas').boundingBox();assert.ok(Math.abs(mapBox.width/mapBox.height-297/210)<.01);
+        const mapBox=await page.locator('#satelliteCanvas').boundingBox(),frameBox=await page.locator('.satellite-capture-frame').boundingBox();assert.ok(Math.abs(frameBox.width/frameBox.height-297/210)<.01);const raster=await page.locator('#satelliteCanvas').evaluate(c=>c.width/c.height);assert.ok(Math.abs(raster-mapBox.width/mapBox.height)<.01);
         const addBox=await page.locator('#satelliteMapAdd').boundingBox(),cardBox=await page.locator('.satellite-map-card').boundingBox();
         assert.ok(addBox.y+addBox.height<=cardBox.y+cardBox.height-10,JSON.stringify({addBox,cardBox,mapBox,style:await page.locator('#satelliteMapAdd').evaluate(el=>({position:getComputedStyle(el).position,top:getComputedStyle(el).top,parent:el.parentElement.className}))}));
         await page.locator('#satelliteSearchInput').fill('Praha');await page.locator('#satelliteSearchSubmit').click();
@@ -332,33 +335,32 @@ test('satellite selection saves a self-contained map and black lines survive pro
             return {black,white,provider:restored.satellite.provider,zoom:restored.satellite.zoom,theme:restored.planTheme,mask:restored.wallMask,
                 data:restored.imgData.startsWith('data:image/png;base64,'),attribution:restored.satellite.attribution};
         });
-        assert.ok(result.black>100);assert.ok(result.white>1000);assert.equal(result.provider,'Esri World Imagery Hybrid');
+        assert.ok(result.black>100);assert.ok(result.white>1000);assert.equal(result.provider,'ČÚZK Orthophoto / Esri World Imagery');
         assert.equal(result.zoom,19);assert.equal(result.theme,'light');assert.equal(result.mask,null);assert.equal(result.data,true);assert.match(result.attribution,/Esri/);
         if(process.env.TEST_SCREENSHOT_DIR)await smoothScreenshot(page,{path:resolve(process.env.TEST_SCREENSHOT_DIR,'satellite-light.png')});
         assert.deepEqual(errors,[]);
     }finally{await context.close();}
 });
 
-test('map zoom falls back from missing tiles and topographic labels survive saving and reopening',async()=>{
+test('map stays overhead with bounded zoom and reopens without mode switches',async()=>{
     const {context,page,errors}=await openApp({initialSession:true,company:true,satelliteFixtures:true,missingNativeTiles:true});
     const requests=[];page.on('request',request=>{if(request.url().includes('/MapServer/tile/'))requests.push(request.url());});
     try{
         await startRenderProject(page);await page.locator('#btnLogo').click();await page.locator('#btnMenuSatellite').click();
         await page.locator('#satelliteSearchInput').fill('50.087, 14.421');await page.locator('#satelliteSearchSubmit').click();
-        for(let i=0;i<4;i++)await page.locator('#satelliteZoomIn').click();
+        for(let i=0;i<2;i++)await page.locator('#satelliteZoomIn').click();
         await page.waitForFunction(()=>!document.getElementById('satelliteMapAdd').disabled);
-        assert.equal(await page.locator('#satelliteCanvas').getAttribute('data-zoom'),'23');
+        assert.equal(await page.locator('#satelliteCanvas').getAttribute('data-zoom'),'21');
         assert.ok(requests.some(url=>url.includes('/tile/17/')));assert.ok(requests.every(url=>url.includes('blankTile=false')));
-        await page.locator('[data-map-layer=topo]').click();await page.waitForFunction(()=>!document.getElementById('satelliteMapAdd').disabled);
-        assert.ok(requests.some(url=>url.includes('World_Topo_Map')));
+        assert.equal(await page.locator('[data-map-layer]').count(),0);assert.equal(await page.locator('.satellite-map-attribution summary').count(),0);
         const map=await page.locator('#satelliteCanvas').boundingBox(),send=await page.locator('#satelliteMapAdd').boundingBox();
-        assert.ok(Math.abs(send.x+send.width/2-map.x-map.width/2)<1);assert.ok(Math.abs(send.y+send.height/2-map.y-map.height/2)<1);
+        assert.ok(send.x>map.x+map.width*.75);assert.ok(send.y>map.y+map.height*.7);
         assert.equal(await page.locator('#satelliteMapStatus').isVisible(),false);
         await page.locator('#satelliteMapAdd').click();await page.waitForFunction(()=>!!floors[currentFloorIndex].satellite,null,{timeout:45000});
         const saved=await page.evaluate(async()=>{const payload=getProjectDataPayload(),loaded=await loadFloorsImages(payload.floors);return loaded[currentFloorIndex].satellite;});
-        assert.equal(saved.provider,'Esri World Topographic Map');assert.equal(saved.layer,'topo');assert.equal(saved.zoom,23);assert.match(saved.attribution,/OpenStreetMap/);
-        await page.locator('#btnLogo').click();await page.locator('#btnMenuSatellite').click();assert.equal(await page.locator('[data-map-layer=topo]').getAttribute('aria-pressed'),'true');
-        assert.equal(await page.locator('#satelliteCanvas').getAttribute('data-zoom'),'23');
+        assert.equal(saved.provider,'ČÚZK Orthophoto / Esri World Imagery');assert.equal(saved.layer,'satellite');assert.equal(saved.zoom,21);assert.match(saved.attribution,/ČÚZK/);
+        await page.locator('#btnLogo').click();await page.locator('#btnMenuSatellite').click();assert.equal(await page.locator('[data-map-layer]').count(),0);
+        assert.equal(await page.locator('#satelliteCanvas').getAttribute('data-zoom'),'21');
         assert.deepEqual(errors,[]);
     }finally{await context.close();}
 });
@@ -428,9 +430,9 @@ test('A4 hybrid import fetches detail tiles and preserves a 3508 by 2480 source 
     const {context,page,errors}=await openApp({initialSession:true,company:true,satelliteFixtures:true});const requests=[];page.on('request',r=>{if(r.url().includes('/tile/'))requests.push(r.url());});
     try{
         await startRenderProject(page);await page.locator('#btnLogo').click();await page.locator('#btnMenuSatellite').click();await page.waitForFunction(()=>!document.getElementById('satelliteMapAdd').disabled);
-        assert.equal(await page.locator('#satelliteCanvas').getAttribute('data-layer'),'hybrid');assert.ok(requests.some(url=>url.includes('World_Transportation')));assert.ok(requests.some(url=>url.includes('World_Boundaries_and_Places')));
+        assert.equal(await page.locator('#satelliteCanvas').getAttribute('data-layer'),'satellite');assert.ok(requests.some(url=>url.includes('ORTOFOTO_WM')));assert.ok(!requests.some(url=>url.includes('/Reference/')));
         await page.locator('#satelliteMapAdd').click();await page.waitForFunction(()=>!!floors[currentFloorIndex].satellite,null,{timeout:45000});assert.ok(requests.some(url=>url.includes('/tile/18/')));
-        const result=await page.evaluate(async()=>{const f=floors[currentFloorIndex],loaded=await loadFloorsImages(getProjectDataPayload().floors),r=loaded[currentFloorIndex],full=await getPlanFullImage(r);return {page:r.satellite.page,layer:r.satellite.layer,width:full.width,height:full.height,preview:[r.image.width,r.image.height],source:r.rasterSource?.slice(0,23)};});assert.equal(result.width,3508);assert.equal(result.height,2480);assert.deepEqual(result.preview,[1684,1191]);assert.equal(result.layer,'hybrid');assert.deepEqual(result.page,{widthMM:297,heightMM:210,dpi:300,width:3508,height:2480});assert.match(result.source,/data:image\/jpeg/);assert.deepEqual(errors,[]);
+        const result=await page.evaluate(async()=>{const f=floors[currentFloorIndex],loaded=await loadFloorsImages(getProjectDataPayload().floors),r=loaded[currentFloorIndex],full=await getPlanFullImage(r);return {page:r.satellite.page,layer:r.satellite.layer,width:full.width,height:full.height,preview:[r.image.width,r.image.height],source:r.rasterSource?.slice(0,23)};});assert.equal(result.width,3508);assert.equal(result.height,2480);assert.deepEqual(result.preview,[1684,1191]);assert.equal(result.layer,'satellite');assert.deepEqual(result.page,{widthMM:297,heightMM:210,dpi:300,width:3508,height:2480});assert.match(result.source,/data:image\/jpeg/);assert.deepEqual(errors,[]);
     }finally{await context.close();}
 });
 
@@ -1610,9 +1612,9 @@ test('spotlight guidance fits tablet orientations and new welcome artwork keeps 
     const{context,page,errors}=await openApp({initialSession:true,company:true,contextOptions:{viewport:{width:768,height:1024},hasTouch:true,isMobile:true}});
     try{assert.equal(await page.locator('#welcomeModal .welcome-card').evaluate(el=>getComputedStyle(el,'::before').display),'none');assert.match(await page.locator('link[rel=icon]').getAttribute('href'),/Logosite/);
         if(process.env.TEST_SCREENSHOT_DIR)await smoothScreenshot(page,{path:resolve(process.env.TEST_SCREENSHOT_DIR,`welcome-tint-${process.env.TEST_PRODUCT||'PZTS'}.png`)});
-        await page.locator('#btnWelcomeGuide').click();assert.ok(await page.locator('#onboardingBackdrop').isVisible());
+        assert.equal(await page.locator('#btnWelcomeGuide').count(),0);await startRenderProject(page);await page.locator('#helpBtn').click();await page.locator('#btnStartGuide').click();assert.ok(await page.locator('#onboardingBackdrop').isVisible());
         for(const viewport of [{width:768,height:1024},{width:1024,height:600},{width:600,height:960}]){await page.setViewportSize(viewport);for(const index of [0,3,9,11,15]){await page.locator('#onboardingDots button').nth(index).click();await page.waitForTimeout(280);const dock=await page.locator('.tour-dock').boundingBox();assert.ok(dock.x>=0&&dock.y>=0&&dock.x+dock.width<=viewport.width+1&&dock.y+dock.height<=viewport.height+1,JSON.stringify({viewport,dock}));assert.equal(await page.locator('.tour-dock').evaluate(el=>el.scrollWidth<=el.clientWidth+1),true);}}
-        if(process.env.TEST_SCREENSHOT_DIR)await smoothScreenshot(page,{path:resolve(process.env.TEST_SCREENSHOT_DIR,'tour-tablet-portrait.png')});await page.locator('#onboardingSkip').click();await page.locator('#welcomeModal').waitFor({state:'visible'});assert.deepEqual(errors,[]);
+        if(process.env.TEST_SCREENSHOT_DIR)await smoothScreenshot(page,{path:resolve(process.env.TEST_SCREENSHOT_DIR,'tour-tablet-portrait.png')});await page.locator('#onboardingSkip').click();assert.deepEqual(errors,[]);
     }finally{await context.close();}
 });
 
@@ -1631,7 +1633,7 @@ test('project completion requires real routes labels and legend coverage',async(
         const main=APP_PRODUCT==='CCTV'?'cctv_nvr':'panel',sensor=APP_PRODUCT==='CCTV'?'cctv_bullet':'pir';const f={name:'1NP',imgData:'test',devices:[{id:'m',type:main,manualName:'Main'},{id:'s',type:sensor,manualName:'Hall'}],cables:[{fromId:'m',toId:'s'}],legend:{visible:true,entries:[{type:main},{type:sensor}]}};
         const complete=evaluateProjectReadiness({name:'Office',floors:[f]});const missing=evaluateProjectReadiness({name:'Office',floors:[{...f,cables:[{fromId:'m',toId:'deleted'}],legend:{...f.legend,visible:false}}]});const empty=evaluateProjectReadiness({name:'',floors:[]});return{complete,missing,empty};
     });assert.equal(result.complete.score,100);assert.equal(result.complete.grade,2);assert.equal(result.missing.checks.find(c=>c.id==='cables').complete,false);assert.equal(result.missing.checks.find(c=>c.id==='legend').complete,false);assert.notEqual(result.missing.grade,2);assert.equal(result.empty.score,0);
-        await page.locator('#btnLogo').click();await page.locator('#btnMenuSave').click();await page.locator('#projectReadiness .readiness-steps li').first().waitFor({state:'visible'});assert.equal(await page.locator('#projectReadiness .readiness-steps li').count(),7);assert.deepEqual(errors,[]);
+        await page.locator('#btnLogo').click();await page.locator('#btnMenuSave').click();await page.locator('#projectReadiness .readiness-steps li').first().waitFor({state:'visible'});assert.equal(await page.locator('#projectReadiness .readiness-steps li').count(),7);assert.equal(await page.locator('#projectReadiness .readiness-title').count(),0);assert.equal(await page.locator('.readiness-steps li').first().textContent(),'');assert.deepEqual(errors,[]);
     }finally{await context.close();}
 });
 
@@ -1646,6 +1648,16 @@ test('new project metrics count confirmation but never import reopening or tutor
     }finally{await context.close();}
 });
 
+test('overhead imagery saves straight building vectors and preserves them through reopening and SVG',async()=>{
+    const{context,page,errors}=await openApp({initialSession:true,company:true,satelliteFixtures:true,buildingFixtures:true});
+    try{await startRenderProject(page);await page.locator('#btnLogo').click();await page.locator('#btnMenuSatellite').click();await page.waitForFunction(()=>!document.getElementById('satelliteMapAdd').disabled);
+        const map=await page.locator('#satelliteCanvas').boundingBox(),send=await page.locator('#satelliteMapAdd').boundingBox(),locate=await page.locator('#satelliteLocate').boundingBox(),search=await page.locator('#satelliteSearchInput').boundingBox();assert.ok(send.x>map.x+map.width*.75&&send.y>map.y+map.height*.7);assert.ok(locate.x>search.x+search.width);assert.equal(await page.locator('[data-map-layer],.satellite-map-attribution summary').count(),0);
+        if(process.env.TEST_SCREENSHOT_DIR)await smoothScreenshot(page,{path:resolve(process.env.TEST_SCREENSHOT_DIR,'wide-overhead-map.png')});
+        await page.locator('#satelliteMapAdd').click();await page.waitForFunction(()=>!!floors[currentFloorIndex].satellite?.buildingOutlines,null,{timeout:20000});const result=await page.evaluate(async()=>{const floor=floors[currentFloorIndex],restored=(await loadFloorsImages(getProjectDataPayload().floors))[currentFloorIndex];const vector=new SVGPlanContext(1684,1191);drawMapLinework(vector,restored.image,restored.satellite);return{rings:restored.satellite.buildingOutlines.rings,original:floor.satellite.buildingOutlines.rings,svg:vector.toSVG(),provider:restored.satellite.provider};});assert.deepEqual(result.rings,result.original);assert.equal(result.rings.length,1);assert.match(result.svg,/#777d82/);assert.match(result.svg,/Z/);assert.doesNotMatch(result.svg,/<image/);assert.match(result.provider,/ČÚZK/);
+        await page.evaluate(()=>{floors[currentFloorIndex].planTheme='light';requestRedraw();});if(process.env.TEST_SCREENSHOT_DIR)await smoothScreenshot(page,{path:resolve(process.env.TEST_SCREENSHOT_DIR,'straight-building-plan.png')});assert.equal(await page.locator('#planSourceInfo').evaluate(el=>el.tagName),'A');assert.notEqual(await page.locator('#planSourceInfo').textContent(),'i');assert.deepEqual(errors,[]);
+    }finally{await context.close();}
+});
+
 test('free guide highlights real toolbar controls and compact help and readiness keep their layout',async()=>{
     const{context,page,errors}=await openApp({initialSession:true});
     try{await startRenderProject(page);await page.locator('#helpBtn').click();const play=await page.locator('#btnStartGuide').boundingBox(),shortcuts=await page.locator('.help-shortcuts').boundingBox();assert.ok(play.y+play.height<=shortcuts.y+1);assert.equal(await page.locator('#btnOpenManual').count(),0);
@@ -1655,6 +1667,11 @@ test('free guide highlights real toolbar controls and compact help and readiness
         await page.locator('#btnLogo').click();await page.locator('#btnMenuSave').click();await page.locator('#projectReadiness').waitFor();const copy=await page.locator('#saveModal').innerText();assert.doesNotMatch(copy,/SVG zachová|DXF: editovatelné|Kontrola vyplnění/);assert.equal(await page.locator('.readiness-dot').first().textContent(),'');assert.ok((await page.locator('.readiness-dot').first().boundingBox()).width<=10);assert.ok((await page.locator('#projectReadiness').boundingBox()).height<90);
         if(process.env.TEST_SCREENSHOT_DIR)await smoothScreenshot(page,{path:resolve(process.env.TEST_SCREENSHOT_DIR,'compact-readiness.png')});assert.deepEqual(errors,[]);
     }finally{await context.close();}
+});
+
+test('confirmation close buttons show no white focus frame',async()=>{
+    const{context,page,errors}=await openApp({initialSession:true,company:true});
+    try{await startRenderProject(page);await page.evaluate(()=>{void showAppConfirm('Remove selected devices?');});await page.locator('#appDialog').waitFor({state:'visible'});const close=page.locator('#appDialog .goom-dialog-close');await close.focus();const style=await close.evaluate(el=>({outline:getComputedStyle(el).outlineStyle,shadow:getComputedStyle(el).boxShadow}));assert.equal(style.outline,'none');assert.equal(style.shadow,'none');if(process.env.TEST_SCREENSHOT_DIR)await smoothScreenshot(page,{path:resolve(process.env.TEST_SCREENSHOT_DIR,'dialog-no-focus-frame.png')});await page.keyboard.press('Escape');await page.locator('#appDialog').waitFor({state:'hidden'});assert.deepEqual(errors,[]);}finally{await context.close();}
 });
 
 async function startRenderProject(page) {
