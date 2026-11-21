@@ -1,16 +1,19 @@
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore, FieldValue, Timestamp, AggregateField } = require('firebase-admin/firestore');
+const { getAuth } = require('firebase-admin/auth');
+const { createReviewService } = require('./reviews.cjs');
 const { getStorage } = require('firebase-admin/storage');
 const { onCall, onRequest, HttpsError } = require('firebase-functions/v2/https');
 const { defineString } = require('firebase-functions/params');
 const logger = require('firebase-functions/logger');
 const { createCloudProjectService } = require('./cloud-projects.cjs');
 const { createProjectCounter, createPublicStats } = require('./public-stats.cjs');
+const historical=require('./community-history.cjs');
 
 initializeApp();
 const storageBucket = defineString('GOOM_STORAGE_BUCKET', { default: '' });
 const projectCounter=createProjectCounter({db:getFirestore(),serverTimestamp:()=>FieldValue.serverTimestamp()});
-const publicStats=createPublicStats({db:getFirestore(),sum:field=>AggregateField.sum(field)});
+const publicStats=createPublicStats({db:getFirestore(),sum:field=>AggregateField.sum(field),historical});
 exports.goomProjectCreated=onCall({region:'europe-west1',memory:'256MiB',timeoutSeconds:30,maxInstances:3},projectCounter);
 exports.goomPublicStats=onRequest({region:'europe-west1',memory:'256MiB',timeoutSeconds:30,maxInstances:2,cors:true,invoker:'public'},async(req,res)=>{
     if(req.method!=='GET'&&req.method!=='HEAD'){res.set('Allow','GET, HEAD').status(405).end();return;}
@@ -29,4 +32,12 @@ exports.goomCloudProjects = onCall({ region: 'europe-west1', timeoutSeconds: 120
         logger.error('Cloud project request failed', { code: error.code || 'unknown' });
         throw new HttpsError('internal', 'The cloud project operation could not finish.');
     }
+});
+
+const reviews=createReviewService({db:getFirestore(),getUser:uid=>getAuth().getUser(uid),serverTimestamp:()=>FieldValue.serverTimestamp(),timestamp:ms=>Timestamp.fromMillis(ms)});
+exports.goomReviews=onCall({region:'europe-west1',memory:'256MiB',timeoutSeconds:30,maxInstances:3},async request=>{try{return await reviews.handle(request);}catch(error){if(error instanceof HttpsError)throw error;logger.warn('Review operation failed',{code:error.code||'unknown'});throw new HttpsError('unavailable','Reviews temporarily unavailable.');}});
+exports.goomPublicReviews=onRequest({region:'europe-west1',memory:'256MiB',timeoutSeconds:30,maxInstances:2,cors:true,invoker:'public'},async(req,res)=>{
+ if(!['GET','HEAD'].includes(req.method)){res.set('Allow','GET, HEAD').status(405).end();return;}
+ try{let input={};if(req.query.cursor){if(typeof req.query.cursor!=='string'||req.query.cursor.length>300)throw Error();try{input.cursor=JSON.parse(req.query.cursor);}catch{res.status(400).json({error:'Invalid cursor'});return;}}const result=await reviews.listPublic(input);res.set('Cache-Control','public, max-age=30, s-maxage=30').json(result);}
+ catch(error){res.set('Cache-Control','no-store').status(error.code==='invalid-argument'?400:503).json({error:'Reviews temporarily unavailable'});}
 });

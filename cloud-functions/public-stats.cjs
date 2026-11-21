@@ -20,7 +20,7 @@ function createProjectCounter({db,serverTimestamp,now=Date.now}){
         });
     };
 }
-function createPublicStats({db,sum,now=Date.now}){
+function createPublicStats({db,sum,now=Date.now,historical={projects:0,activeSeconds:0}}){
     let cached=null,expires=0,pending=null;
     return async()=>{
         if(cached&&now()<expires)return cached;
@@ -28,7 +28,7 @@ function createPublicStats({db,sum,now=Date.now}){
             db.collection('goomProjectCounts').aggregate({total:sum('projectsCreated')}).get(),
             db.collection('goomEditorUsage').aggregate({total:sum('activeSeconds')}).get()
         ]).then(([projects,usage])=>{
-            cached={projectsCreated:Math.max(0,Number(projects.data().total)||0),activeSeconds:Math.max(0,Number(usage.data().total)||0),projectsSince:PROJECTS_SINCE,updatedAt:new Date(now()).toISOString()};expires=now()+60000;return cached;
+            cached={historicalTotals:true,projectsCreated:Math.max(0,Number(projects.data().total)||0)+historical.projects,activeSeconds:Math.max(0,Number(usage.data().total)||0)+historical.activeSeconds,projectsSince:PROJECTS_SINCE,updatedAt:new Date(now()).toISOString()};expires=now()+60000;return cached;
         }).finally(()=>{pending=null;});
         return pending;
     };

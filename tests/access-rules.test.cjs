@@ -444,3 +444,27 @@ test('legacy URL revocation is dry-run by default and only removes the link meta
     assert.equal(metadata.metadata.retained, 'yes');
     assert.equal((await revokeCloudLinks(bucket, false)).oldLinks, 0);
 });
+
+test('reviews stay private until moderation and publish only the server experience snapshot',async()=>{
+ const {createReviewService}=require('../cloud-functions/reviews.cjs'),projectId=process.env.GCLOUD_PROJECT||'demo-goom',app=initializeApp({projectId},'review-moderation');
+ try{const db=getFirestore(app);let now=Date.now();const service=createReviewService({db,getUser:async uid=>({uid,emailVerified:true,displayName:'Account name',email:uid+'@example.test'}),serverTimestamp:FieldValue.serverTimestamp,timestamp:Timestamp.fromMillis,now:()=>now});
+ const auth=uid=>({uid,token:{email_verified:true,email:uid+'@example.test'}}),call=(uid,data)=>service.handle({auth:auth(uid),data});
+ await db.doc('users/author').set({displayName:'Plan author'});await db.doc('goomEditorUsage/author').set({activeSeconds:18000});await db.doc('goomAdmins/moderator').set({role:'admin'});
+ const body={action:'submit',application:'EPS',message:'<script>ignore()</script> A useful tool.',operationId:'operation-review-0001',publishConsent:true,activeSeconds:999999999,uid:'someone-else'};
+ const result=await call('author',body);assert.equal(result.status,'pending');assert.deepEqual(await call('author',body),result);assert.equal((await service.listPublic()).reviews.length,0);
+ assert.equal((await db.doc('goomReviews/'+result.id).get()).data().activeSeconds,18000);
+ await assertFails(getDoc(doc(environment.authenticatedContext('author',auth('author').token).firestore(),'goomReviews/'+result.id)));
+ for(const uid of ['author','moderator'])await assertFails(setDoc(doc(environment.authenticatedContext(uid,auth(uid).token).firestore(),'goomPublishedReviews/'+result.id),{message:'Bypass moderation',activeSeconds:999999}));
+ await assert.rejects(call('outsider',{action:'moderate',id:result.id,decision:'publish'}),{code:'permission-denied'});await assert.rejects(call('author',{...body,operationId:'operation-review-0002'}),{code:'resource-exhausted'});
+ await assert.rejects(call('author',{...body,publishConsent:false}),{code:'invalid-argument'});await assert.rejects(service.handle({auth:{uid:'author',token:{email_verified:false}},data:body}),{code:'unauthenticated'});
+ await db.doc('goomEditorUsage/author').set({activeSeconds:50400});await call('moderator',{action:'moderate',id:result.id,decision:'publish'});
+ const published=(await service.listPublic()).reviews[0];assert.equal(published.authorName,'Plan author');assert.equal(published.activeSeconds,18000);assert.equal(published.uid,undefined);assert.equal(published.email,undefined);assert.match(published.message,/<script>/);
+ await call('moderator',{action:'moderate',id:result.id,decision:'reject'});assert.equal((await service.listPublic()).reviews.length,0);
+ now=Math.max(now+61000,Date.now()+61000);const later=await call('author',{...body,operationId:'operation-review-0002'});assert.equal((await db.doc('goomReviews/'+later.id).get()).data().activeSeconds,50400);
+ await call('moderator',{action:'moderate',id:later.id,decision:'publish'});await call('moderator',{action:'moderate',id:later.id,decision:'delete'});assert.deepEqual(await call('moderator',{action:'moderate',id:later.id,decision:'delete'}),{status:'deleted'});assert.equal((await db.doc('goomReviews/'+later.id).get()).exists,false);assert.equal((await service.listPublic()).reviews.length,0);
+ const batch=db.batch();for(let i=0;i<28;i++){const id='r_'+i.toString(16).padStart(40,'0'),data={authorName:'Author '+i,application:'PZTS',message:'Published text '+i,activeSeconds:i*3600,submittedAt:Timestamp.fromMillis(now),publishedAt:Timestamp.fromMillis(now),uid:'private',email:'private@example.test'};batch.set(db.doc('goomPublishedReviews/'+id),data);batch.set(db.doc('goomReviews/'+id),{...data,status:'published'});}await batch.commit();
+ const first=await service.listPublic(),second=await service.listPublic({cursor:first.cursor}),third=await service.listPublic({cursor:second.cursor});assert.equal(first.reviews.length,12);assert.equal(second.reviews.length,12);assert.equal(third.reviews.length,4);assert.equal(new Set([...first.reviews,...second.reviews,...third.reviews].map(r=>r.id)).size,28);assert.equal(first.reviews[0].uid,undefined);assert.equal(first.reviews[0].email,undefined);
+ const privatePage=await call('moderator',{action:'list',status:'all'});assert.equal(privatePage.reviews.length,25);assert.ok(privatePage.cursor);await assert.rejects(service.listPublic({cursor:{id:'invalid',time:now}}),{code:'invalid-argument'});
+ await db.doc('goomAdmins/moderator').delete();await assert.rejects(call('moderator',{action:'moderate',id:result.id,decision:'publish'}),{code:'permission-denied'});
+ }finally{await deleteApp(app);}
+});

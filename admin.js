@@ -17,7 +17,7 @@
     let feedbackCursor = null, feedbackLoading = false, feedbackRevision = 0;
     let feedbackEntries = [], selectedFeedback = new Set(), feedbackWriting = false;
     const nav = [...document.querySelectorAll('[data-view]')];
-    const viewTitles = { overview: 'Обзор', users: 'Пользователи', access: 'PROJECT и доступ', activity: 'Активность', feedback: 'Обратная связь' };
+    const viewTitles = { overview: 'Обзор', users: 'Пользователи', access: 'PROJECT и доступ', activity: 'Активность', feedback: 'Обратная связь', reviews:'Комментарии пользователей' };
     const server = { source: 'server' };
     const unavailable = Symbol('unavailable');
 
@@ -63,6 +63,7 @@
         byId('adminUsers').replaceChildren();
         byId('adminEvents').replaceChildren();
         byId('adminVisits').replaceChildren();
+        byId('adminReviews').replaceChildren();reviewRows=[];reviewCursor=null;reviewGeneration++;
         byId('adminFeedback').replaceChildren();
         byId('adminMoreFeedback').hidden = true;
         feedbackCursor = null;
@@ -222,15 +223,18 @@
         });
         const activity = view === 'activity';
         const feedback = view === 'feedback';
-        byId('adminPrograms').hidden = activity || feedback;
+        const reviews=view==='reviews';
+        byId('adminReviewsSection').hidden=!reviews;
+        byId('adminPrograms').hidden = activity || feedback || reviews;
         byId('adminSummary').hidden = view !== 'overview';
-        byId('adminUserList').hidden = activity || feedback;
+        byId('adminUserList').hidden = activity || feedback || reviews;
         byId('adminVisitsSection').hidden = !activity;
         byId('adminAuditSection').hidden = !activity;
         byId('adminFeedbackSection').hidden = !feedback;
         byId('adminTable').dataset.view = view;
         if (activity) void Promise.all([loadVisits(), loadAudit()]);
         if (feedback) void loadFeedback();
+        if(reviews)void loadReviews();
     }
 
     function paidLabel(user, application) {
@@ -536,6 +540,12 @@
         }
     }
 
+    let reviewRows=[],reviewCursor=null,reviewLoading=false,reviewGeneration=0,reviewWriting=false;
+    async function reviewRequest(data){const token=await auth.currentUser?.getIdToken();if(!token)throw denied();const response=await fetch('https://europe-west1-pztsepscctv.cloudfunctions.net/goomReviews',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({data}),signal:AbortSignal.timeout(20000)}),body=await response.json();if(!response.ok||body.error)throw Object.assign(Error('Review request failed'),{code:body.error?.status?.toLowerCase().replaceAll('_','-')||'unavailable'});return body.data??body.result;}
+    function renderReviews(){const filter=byId('adminReviewFilter').value,rows=reviewRows.filter(r=>filter==='all'||r.status===filter),labels={pending:'Ожидает проверки',published:'Опубликован',rejected:'Отклонён'};byId('adminReviews').replaceChildren(...(rows.length?rows.map(r=>{const li=element('li',undefined,'admin-review'),head=element('header'),name=element('div'),time=Math.max(0,r.activeSeconds||0)/3600,marks=[0,1,5,15,40,100,250,500,1000],level=marks.findLastIndex(h=>time>=h),upper=marks[level+1]||marks[level]+1000;name.append(element('strong',r.authorName),element('span',r.application+' · '+labels[r.status]+' · '+dateLabel(r.submittedAt),'subline'));const practice=element('div',undefined,'admin-review-practice');practice.append(element('small','Опыт при отправке: '+time.toLocaleString('ru',{maximumFractionDigits:1})+' ч · уровень '+(level+1)));const track=element('div',undefined,'admin-review-track'),fill=element('span');fill.style.width=Math.max(0,Math.min(100,(level+(time-marks[level])/(upper-marks[level]))/(marks.length-1)*100))+'%';track.append(fill);practice.append(track);name.append(practice);head.append(name);li.append(head,element('p',r.message,'admin-review-message'));const actions=element('div',undefined,'admin-review-actions');for(const[decision,label,cls]of [['publish','Опубликовать','primary'],['reject',r.status==='published'?'Снять публикацию':'Отклонить',''],['delete','Удалить','danger']]){if(decision==='publish'&&r.status==='published'||decision==='reject'&&r.status==='rejected')continue;const button=element('button',label,cls);button.type='button';button.disabled=reviewWriting;button.onclick=()=>{if(decision==='delete'&&!confirm('Удалить комментарий '+r.authorName+'?'))return;void moderateReview(r.id,decision);};actions.append(button);}li.append(actions);return li;}):[element('li',reviewLoading?'Загружаем…':'На этой странице нет комментариев для выбранного фильтра.','muted')]));byId('adminMoreReviews').hidden=!reviewCursor;byId('adminMoreReviews').disabled=reviewLoading||reviewWriting;byId('adminRefreshReviews').disabled=reviewLoading||reviewWriting;}
+    async function loadReviews(more=false){if(!session||reviewLoading||reviewWriting)return;const currentEpoch=epoch,generation=++reviewGeneration;reviewLoading=true;if(!more){reviewRows=[];reviewCursor=null;}status('',false,'adminReviewStatus');renderReviews();try{const result=await reviewRequest({action:'list',status:'all',cursor:more?reviewCursor:null});if(currentEpoch!==epoch||generation!==reviewGeneration)return;const known=new Set(reviewRows.map(r=>r.id));reviewRows.push(...result.reviews.filter(r=>!known.has(r.id)));reviewCursor=result.cursor;}catch(error){if(currentEpoch===epoch){if(error.code==='permission-denied'){reviewRows=[];reviewCursor=null;}status(readableError(error),true,'adminReviewStatus');}}finally{reviewLoading=false;if(currentEpoch===epoch)renderReviews();}}
+    async function moderateReview(id,decision){if(!session||reviewWriting)return;const currentEpoch=epoch;reviewWriting=true;renderReviews();try{const result=await reviewRequest({action:'moderate',id,decision});if(currentEpoch!==epoch)return;if(result.status==='deleted')reviewRows=reviewRows.filter(r=>r.id!==id);else reviewRows.forEach(r=>{if(r.id===id)r.status=result.status;});status('Изменения сохранены.',false,'adminReviewStatus');}catch(error){if(currentEpoch===epoch)status(readableError(error),true,'adminReviewStatus');}finally{reviewWriting=false;if(currentEpoch===epoch)renderReviews();}}
+    byId('adminRefreshReviews').onclick=()=>void loadReviews();byId('adminMoreReviews').onclick=()=>void loadReviews(true);byId('adminReviewFilter').onchange=renderReviews;
     async function onSession(user) {
         const currentEpoch = ++epoch;
         clearWorkspace();
