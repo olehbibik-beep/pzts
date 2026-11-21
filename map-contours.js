@@ -84,10 +84,11 @@ function drawMapScene(target,buildings,scene,image,cartoon=false){
  function path(parts,closed){target.beginPath();for(const part of parts){target.moveTo(...part[0]);for(const p of part.slice(1))target.lineTo(...p);if(closed)target.closePath();}}
  const scale=Math.max(.4,Math.min(4,2**((scene?.zoom||18)-18)));
  for(const feature of scene?.water||[]){path(feature.rings,true);target.fillStyle=cartoon?'#c5e4ec':'#f5f7f8';target.fill('evenodd');target.strokeStyle=cartoon?'#90bcc9':'#c3c8cb';target.lineWidth=.7;target.stroke();}
- let symbols=0;for(const feature of scene?.green||[]){path(feature.rings,true);target.fillStyle=cartoon?'#dce8c9':'#fafbf8';target.fill('evenodd');target.strokeStyle=cartoon?'#b4c992':'#c3c8bd';target.lineWidth=.6;target.stroke();
+ let symbols=0,attempts=0;for(const feature of scene?.green||[]){path(feature.rings,true);target.fillStyle=cartoon?'#dce8c9':'#fafbf8';target.fill('evenodd');target.strokeStyle=cartoon?'#b4c992':'#c3c8bd';target.lineWidth=.6;target.stroke();
+  if(feature.rings.reduce((n,ring)=>n+ring.length,0)>1200)continue;
   const wooded=/wood|forest|park|garden|orchard|scrub/.test(feature.class);const step=(wooded?34:58)*scale,ring=feature.rings[0];let minX=Math.min(...ring.map(p=>p[0])),maxX=Math.max(...ring.map(p=>p[0])),minY=Math.min(...ring.map(p=>p[1])),maxY=Math.max(...ring.map(p=>p[1]));
   const inside=(x,y)=>{let yes=false;for(const ring of feature.rings)for(let i=0,j=ring.length-1;i<ring.length;j=i++){const a=ring[i],b=ring[j];if((a[1]>y)!==(b[1]>y)&&x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0])yes=!yes;}return yes;};
-  for(let y=minY+step/2;y<maxY&&symbols<1200;y+=step)for(let x=minX+step/2;x<maxX&&symbols<1200;x+=step){if(!inside(x,y)||!inside(x+6*scale,y)||!inside(x-6*scale,y)||!inside(x,y+6*scale)||!inside(x,y-6*scale))continue;symbols++;
+  for(let y=minY+step/2;y<maxY&&symbols<1200&&attempts<6000;y+=step)for(let x=minX+step/2;x<maxX&&symbols<1200&&attempts<6000;x+=step){attempts++;if(!inside(x,y)||!inside(x+6*scale,y)||!inside(x-6*scale,y)||!inside(x,y+6*scale)||!inside(x,y-6*scale))continue;symbols++;
    target.beginPath();if(wooded)target.arc(x,y,5*scale,0,Math.PI*2);else{target.moveTo(x-3*scale,y);target.lineTo(x,y-3*scale);target.lineTo(x+3*scale,y);}target.strokeStyle=cartoon?'#96b47b':'#b9bfb3';target.lineWidth=.65;target.stroke();if(cartoon&&wooded){target.fillStyle='#c4dba8';target.fill();}
   }
  }

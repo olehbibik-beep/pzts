@@ -1,6 +1,6 @@
 (() => {
     // Change this version whenever publishing application files together.
-    const version = "20261121-suite-detail-3";
+    const version = "20261121-suite-detail-4";
     let started = false;
     let pdfLoading = null;
     let pdfAttempt = 0;

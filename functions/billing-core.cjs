@@ -155,11 +155,11 @@ function createBillingService({ stripe, db, getUser, priceIds, appOrigin, server
             if (previousLicense.companySeat) license.companySeat = previousLicense.companySeat;
             await syncCompanySeatPeriods(transaction, db, uid, companyApplicationExpiresAt);
             transaction.set(recordRef, record); transaction.set(licenseRef, license);
-            return { active: applications.length > 0, applications };
+            return { active: applications.length > 0, applications, receiptEligible: Boolean(period && !refunded.has(period.invoiceId) && ['active','past_due'].includes(status) && !record.paused && millis(period.paidThrough)>now()) };
         });
         // Only new, verified successful payments receive a receipt. Access is committed first;
         // a mail error makes Stripe retry the webhook without revoking the paid entitlement.
-        if (period && !period.refunded && !refundedInvoiceId && result.active && period.chargeId
+        if (period && result.receiptEligible && !period.refunded && !refundedInvoiceId && result.active && period.chargeId
             && (subscription.metadata.scope === 'suite-v1' || period.created >= 1795297200)) {
             const receiptRef = db.collection('proPaymentReceipts').doc(period.invoiceId);
             if (!(await receiptRef.get()).exists) {
@@ -177,6 +177,7 @@ function createBillingService({ stripe, db, getUser, priceIds, appOrigin, server
                 });
             }
         }
+        delete result.receiptEligible;
         return result;
     }
     async function confirmCheckout(uid, sessionId) {
