@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>GooM — администрирование</title>
     <link rel="icon" type="image/png" href="Logosite.png?v=20261120-experience">
-    <link rel="stylesheet" href="admin.css?v=20261122-common-6">
+    <link rel="stylesheet" href="admin.css?v=20261122-compact-7">
     <script defer src="config.js?v=20261110-whale-25"></script>
     <script defer src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script defer src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
     <script defer src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
-    <script defer src="admin.js?v=20261122-common-6"></script>
+    <script defer src="admin.js?v=20261122-compact-7"></script>
 </head>
 <body>
     <header class="admin-header">
@@ -36,7 +36,7 @@
             <nav class="admin-nav" aria-label="Разделы панели">
                 <button type="button" data-view="overview"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Обзор</button>
                 <button type="button" data-view="users"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="7" r="3"/><path d="M3 21v-3a7 7 0 0 1 14 0v3M17 4a3 3 0 0 1 0 6m2 4a6 6 0 0 1 2 4v3"/></svg>Пользователи</button>
-                <button type="button" data-view="access"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18m-14 5h4"/></svg>PROJECT и доступ</button>
+                <button type="button" data-view="access"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18m-14 5h4"/></svg>Pro и доступ</button>
                 <button type="button" data-view="activity"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12h5l3-7 4 14 3-7h5"/></svg>Активность</button>
                 <button type="button" data-view="feedback"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a7 7 0 0 1-7 7H8l-4 3v-6a7 7 0 0 1 6-11h3a7 7 0 0 1 7 7Z"/><path d="M8 10h8M8 13h5"/></svg>Обратная связь</button>
                 <button type="button" data-view="reviews"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v13H9l-5 4Z"/><path d="M8 8h8M8 12h6"/></svg>Комментарии пользователей</button>
@@ -67,7 +67,7 @@
                         <button type="button" id="adminReset">Все</button>
                     </form>
                 </div>
-                <div class="list-tools"><label>Показать <select id="adminUserFilter"><option value="all">Все аккаунты</option><option value="paid">Оплаченный PROJECT</option><option value="manual">Ручной PROJECT</option><option value="recent">Недавние посещения</option><option value="time">Активное время ↓</option></select></label><span class="muted" id="adminSearchHint">Поиск по началу e-mail. По 25 пользователей на страницу.</span></div>
+                <div class="list-tools"><label>Показать <select id="adminUserFilter"><option value="all">Все аккаунты</option><option value="paid">Оплаченный Pro</option><option value="manual">Ручной Pro</option><option value="recent">Недавние посещения</option><option value="time">Активное время ↓</option></select></label><span class="muted" id="adminSearchHint">Поиск по началу e-mail. По 25 пользователей на страницу.</span></div>
                 <div class="table-scroll">
                     <table id="adminTable">
                         <thead><tr><th scope="col">Аккаунт</th><th scope="col">Программы и доступ</th><th scope="col">Тариф</th><th scope="col" class="activity-column">Активность / время</th><th scope="col"><span class="sr-only">Действия</span></th></tr></thead>

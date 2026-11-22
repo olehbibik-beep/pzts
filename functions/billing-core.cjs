@@ -163,7 +163,7 @@ function createBillingService({ stripe, db, getUser, priceIds, appOrigin, server
             && (subscription.metadata.scope === 'suite-v1' || period.created >= 1795297200)) {
             const receiptRef = db.collection('proPaymentReceipts').doc(period.invoiceId);
             if (!(await receiptRef.get()).exists) {
-                const description = 'GooM ' + (OFFER_TIERS[offer] === 'company' ? 'COMPANY PROJECT' : 'PROJECT')
+                const description = 'GooM ' + (OFFER_TIERS[offer] === 'company' ? 'Team' : 'Pro')
                     + ' — PZTS, EPS, CCTV, SK · ' + expected.interval + ' · '
                     + period.periodStart.toISOString().slice(0,10) + ' / ' + period.paidThrough.toISOString().slice(0,10);
                 const receipt = await stripe.charges.update(period.chargeId, {receipt_email:user.email, description},

@@ -202,6 +202,7 @@ async function runCloudAction(action, operation, button) {
     try {
         const success = await operation(userId);
         if (userId !== cloudUser?.uid) return;
+        if (['save','delete'].includes(action) && success) document.dispatchEvent(new Event('goom-cloud-projects-changed'));
         if (action === 'save' && success) {
             setCloudSyncStatus(tr('Облако: сохранено'), 'saved');
             if (cloudProjectsModal.style.display === 'flex') await refreshCloudProjects(userId).catch(error => console.warn('Cloud project list:', error));

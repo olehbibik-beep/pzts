@@ -17,7 +17,7 @@
     let feedbackCursor = null, feedbackLoading = false, feedbackRevision = 0;
     let feedbackEntries = [], selectedFeedback = new Set(), feedbackWriting = false;
     const nav = [...document.querySelectorAll('[data-view]')];
-    const viewTitles = { overview: 'Обзор', users: 'Пользователи', access: 'PROJECT и доступ', activity: 'Активность', feedback: 'Обратная связь', reviews:'Комментарии пользователей' };
+    const viewTitles = { overview: 'Обзор', users: 'Пользователи', access: 'Pro и доступ', activity: 'Активность', feedback: 'Обратная связь', reviews:'Комментарии пользователей' };
     const server = { source: 'server' };
     const unavailable = Symbol('unavailable');
 
@@ -267,7 +267,7 @@
         const activityAvailable = loaded && users.every(user => user.visit !== unavailable);
         byId('adminMetrics').replaceChildren(...[
             ['Пользователи', loaded ? users.length : '—'],
-            ['Оплаченный PROJECT', billingAvailable ? paid : '—'],
+            ['Оплаченный Pro', billingAvailable ? paid : '—'],
             ['Ручной доступ', loaded ? manual : '—'],
             ['Посещали за 7 дней', activityAvailable ? recent : '—']
         ].map(([label, value]) => {
@@ -284,7 +284,7 @@
         donut.style.background = billingAvailable ? `conic-gradient(var(--paid) 0 ${paidStop}%, var(--manual) ${paidStop}% ${manualStop}%, var(--free) ${manualStop}% 100%)` : '';
         donut.firstElementChild.textContent = billingAvailable ? users.length : '—';
         byId('adminBreakdown').replaceChildren(...[
-            ['Оплаченный PROJECT', paid, 'paid'], ['Только ручной доступ', manualOnly, 'manual'], ['Без PROJECT', free, 'free']
+            ['Оплаченный Pro', paid, 'paid'], ['Только ручной доступ', manualOnly, 'manual'], ['Без Pro', free, 'free']
         ].map(([label, value, color]) => {
             const item = element('li', label);
             item.style.setProperty('--dot', `var(--${color})`);
@@ -302,10 +302,10 @@
     function accessState(user, application) {
         if(['owner','admin'].includes(user.role))return{label:'ADMIN',kind:'admin',icon:'◇',until:null};
         const access = user.programs[application], now = Date.now();
-        if (access.paidUntil > now) return { label: access.tier === 'company' ? 'COMPANY PROJECT' : 'PROJECT', kind: 'paid', icon: '▣', until: access.paidUntil };
-        if (access.companyUntil > now) return { label: 'PROJECT · команда', kind: 'company', icon: '♧', until: access.companyUntil };
-        if (access.manualUntil > now) return { label: 'PROJECT · вручную', kind: 'manual', icon: '◆', until: access.manualUntil };
-        return { label: user.billingAvailable ? 'BASIC' : 'Оплата: нет доступа', kind: 'basic', icon: '○' };
+        if (access.paidUntil > now) return { label: access.tier === 'company' ? 'Team' : 'Pro', kind: 'paid', icon: '▣', until: access.paidUntil };
+        if (access.companyUntil > now) return { label: 'Pro · команда', kind: 'company', icon: '♧', until: access.companyUntil };
+        if (access.manualUntil > now) return { label: 'Pro · вручную', kind: 'manual', icon: '◆', until: access.manualUntil };
+        return { label: user.billingAvailable ? 'Free' : 'Оплата: нет доступа', kind: 'basic', icon: '○' };
     }
     function renderUsers() {
         const rows = users.map(user => {
@@ -490,7 +490,7 @@
             const row = element('section', undefined, 'grant');
             const manual = user.programs[application].manualUntil;
             row.append(element('h3', application),
-                element('p', `Оплаченный PROJECT · ${paidLabel(user, application)}`, 'muted'),
+                element('p', `Оплаченный Pro · ${paidLabel(user, application)}`, 'muted'),
                 element('p', `Ручной доступ · ${manual > Date.now() ? dateLabel(manual) : '—'}`, 'muted'));
             if (!canGrant) return row;
             const form = element('form', undefined, 'control-row');
@@ -498,7 +498,7 @@
             const input = element('input');
             Object.assign(input, { type: 'number', min: '1', max: '365', step: '1', value: '30', required: true });
             label.append(input);
-            const grantButton = element('button', 'Выдать PROJECT', 'primary');
+            const grantButton = element('button', 'Выдать Pro', 'primary');
             grantButton.type = 'submit';
             const revoke = element('button', 'Отозвать', 'danger');
             revoke.type = 'button';

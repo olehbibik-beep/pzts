@@ -11,9 +11,11 @@
         const active = Boolean(window.hasProAccess?.());
         const administrative=Boolean(window.hasAdminAccess?.());
         const adminStatus=window.goomUI('Administrátor: plný přístup ke všem funkcím.','Administrator: full access to all features.','Administrator: voller Zugriff auf alle Funktionen.','Администратор: полный доступ ко всем функциям.');
-        byId('accountProStatus').textContent = administrative?adminStatus:tr(active ? 'PROJECT je aktivní.' : 'Váš účet používá bezplatnou verzi.');
+        const tier=window.getOwnProTier?.();
+        const activeLabel=tier==='company'?window.goomUI('Team je aktivní.','Team is active.','Team ist aktiv.','Team активен.','Team jest aktywny.'):tr('PROJECT je aktivní.');
+        document.querySelector('.pro-card h3').textContent=window.goomUI('Předplatné','Subscription','Abonnement','Подписка','Subskrypcja')+' '+(tier==='company'?'Team':'Pro');
+        byId('accountProStatus').textContent = administrative?adminStatus:active?activeLabel:tr('Váš účet používá bezplatnou verzi.');
         byId('accountProStatus').classList.toggle('active', active);
-        const tier = window.getOwnProTier?.();
         let suite=byId('proSuiteNote');if(!suite){suite=document.createElement('p');suite.id='proSuiteNote';suite.style.cssText='text-align:center;font-size:14px;margin:8px 0 16px';document.querySelector('.pro-pricing').before(suite);}
         suite.textContent=window.goomUI('Jedno předplatné: PZTS · EPS · CCTV · SK','One subscription: PZTS · EPS · CCTV · SK','Ein Abonnement: PZTS · EPS · CCTV · SK','Одна подписка: PZTS · EPS · CCTV · SK');
         for (const button of buyButtons) {
@@ -21,9 +23,9 @@
             button.disabled = purchasePending || active || !billingEnabled;
             button.title=billingEnabled?'':window.goomUI('Online platby připravujeme.','Online payments are coming soon.','Online-Zahlungen folgen in Kürze.','Онлайн-оплата скоро появится.');
         }
-        const basicAction=document.querySelector('.pro-plan-basic .pro-plan-action');if(basicAction)basicAction.textContent=tr(active?'Základní':'Aktivní');
-        for(const card of document.querySelectorAll('.pro-plan-standard,.pro-plan-company')){let badge=card.querySelector('.pro-entitlement-active');if(!badge){badge=document.createElement('div');badge.className='pro-entitlement-active';card.querySelector('.pro-plan-actions').append(badge);}badge.textContent=administrative?'ADMIN':tr('PROJECT je aktivní.');badge.hidden=!active||(tier==='company'?card.classList.contains('pro-plan-standard'):card.classList.contains('pro-plan-company'));}
-        byId('btnUpdatePro').textContent=administrative?'ADMIN':tr(active?'PROJECT je aktivní.':'Ceník PROJECT');
+        const basicAction=document.querySelector('.pro-plan-basic .pro-plan-action');if(basicAction){basicAction.setAttribute('data-user-content','');basicAction.textContent=active?'Free':tr('Aktivní');}
+        for(const card of document.querySelectorAll('.pro-plan-standard,.pro-plan-company')){let badge=card.querySelector('.pro-entitlement-active');if(!badge){badge=document.createElement('div');badge.className='pro-entitlement-active';card.querySelector('.pro-plan-actions').append(badge);}badge.textContent=administrative?'ADMIN':activeLabel;badge.hidden=!active||(tier==='company'?card.classList.contains('pro-plan-standard'):card.classList.contains('pro-plan-company'));}
+        byId('btnUpdatePro').textContent=administrative?'ADMIN':(active?activeLabel:tr('Ceník PROJECT'));
         for (const button of manageButtons) button.hidden = button.dataset.manageTier !== tier;
         for (const price of document.querySelectorAll('[data-pro-price]')) {
             const currency = price.dataset.currency;
@@ -39,12 +41,12 @@
         hideUpgradeHint();
         if (!window.getFirebaseUser()) { showWelcomeScreen(); return; }
         byId('proUpgradeModal').style.display = 'flex';
-        byId('proPurchaseStatus').textContent = window.hasProAccess?.() ? tr('PROJECT je aktivní.')
+        byId('proPurchaseStatus').textContent = window.hasProAccess?.() ? byId('accountProStatus').textContent
             : window.goomUI('Jedno předplatné pro PZTS, EPS, CCTV a SK. Online platby připravujeme.','One subscription for PZTS, EPS, CCTV and SK. Online payments are coming soon.','Ein Abonnement für PZTS, EPS, CCTV und SK. Online-Zahlungen folgen in Kürze.','Одна подписка для PZTS, EPS, CCTV и SK. Онлайн-оплата скоро появится.');
         render(); window.clearGoomTooltips?.();
     };
     const hint=document.createElement('div');hint.id='projectUpgradeHint';hint.hidden=true;hint.setAttribute('role','status');
-    hint.innerHTML='<button type="button" id="projectUpgradeAction"><span>UPGRADE</span><strong>PROJECT</strong></button><button type="button" id="projectUpgradeDismiss" aria-label="'+tr('Zavřít')+'">×</button>';
+    hint.innerHTML='<button type="button" id="projectUpgradeAction"><span>UPGRADE</span><strong>Pro</strong></button><button type="button" id="projectUpgradeDismiss" aria-label="'+tr('Zavřít')+'">×</button>';
     document.body.append(hint);let hintTimer;
     function hideUpgradeHint(){clearTimeout(hintTimer);hintTimer=null;hint.hidden=true;hint.getAnimations().forEach(a=>a.cancel());}
     function scheduleHide(){clearTimeout(hintTimer);hintTimer=setTimeout(hideUpgradeHint,5000);}

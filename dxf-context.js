@@ -96,6 +96,6 @@ class DXFPlanContext extends SVGPlanContext {
 function makePlanDXF(floor,options=planOutputOptions(floor)){
     const layout=planOutputLayout(floor,options),target=new DXFPlanContext(layout.widthMM,layout.heightMM);
     drawPlanOutput(target,floor,layout);
-    if(!window.hasProAccess?.()){target.save();target.setTransform(1,0,0,1,0,0);target.font='4px sans-serif';target.fillStyle='#666666';target.textAlign='right';target.textBaseline='bottom';target.fillText('GooM · BASIC',layout.widthMM-8,layout.heightMM-4);target.restore();}
+    if(!window.hasProAccess?.()){target.save();target.setTransform(1,0,0,1,0,0);target.font='4px sans-serif';target.fillStyle='#666666';target.textAlign='right';target.textBaseline='bottom';target.fillText('GooM · Free',layout.widthMM-8,layout.heightMM-4);target.restore();}
     return{dxf:target.toDXF(),layout,omittedRasters:target.omittedRasters};
 }

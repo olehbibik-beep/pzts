@@ -1,6 +1,11 @@
 // Czech is the default. Source aliases also cover labels in older saved menu sets.
 (() => {
+    window.goomPlanLabel=value=>String(value).replace(/COMPANY PROJECT|Company PROJECT|PROJECT für Firmen|PROJECT для компаний|PROJECT для компании|[Ff]iremního PROJECT|фирменного PROJECT|[Ff]iremní PROJECT|Firmen[- ]PROJECT|Unternehmens[- ]PROJECT|[Ff]irmowy PROJECT|[Ff]irmowego PROJECT|[Кк]орпоративный PROJECT|[Фф]ирменный PROJECT/g,'Team').replace(/PROJECT/g,'Pro').replace(/BASIC/g,'Free');
+
     const rows = [
+        ["Cloud: až 5 projektů v každém editoru","Cloud: up to 5 projects in each editor","Cloud: bis zu 5 Projekte je Editor","Cloud: до 5 проектов в каждой программе"],
+        ["Pro domácí práci","For home projects","Für Projekte zu Hause","Для домашней работы"],
+        ["Vlastní nástroje a profesionální sada Pro","Your own tools and the professional Pro tool set","Eigene Werkzeuge und das professionelle Pro-Werkzeugset","Свои инструменты и профессиональный набор Pro"],
         ["DXF: editovatelné čáry, zařízení a text v mm podle formátu listu. Křivky mohou být převedeny na polylinie. Rastrové fotografie a mapy se do DXF nevkládají.","DXF: editovatelné čáry, zařízení a text v mm podle formátu listu. Křivky mohou být převedeny na polylinie. Rastrové fotografie a mapy se do DXF nevkládají.","DXF: editable lines, devices and text in millimetres at the sheet size. Curves may become polylines. Raster photos and maps are not included in DXF.","DXF: bearbeitbare Linien, Geräte und Texte in mm im Blattformat. Kurven können als Polylinien ausgegeben werden. Rasterfotos und Karten werden nicht in DXF eingebettet.","DXF: редактируемые линии, устройства и текст в мм по размеру листа. Кривые могут быть представлены полилиниями. Растровые фотографии и карты в DXF не включаются."],
         ['Fotografie plánu z tabletu','Plan photography on a tablet','Planfotos auf dem Tablet','Фото плана с планшета'],
         ["Hybridní mapa","Hybrid map","Hybridkarte","Гибридная карта"],
@@ -479,7 +484,7 @@
     for (const row of rows) {
         const [source, cs, en, de, ru] = row.length === 4 ? [row[0], ...row] : row;
         const entry = { cs, en, de, ru, pl:window.goomPolish?.(en)||en };
-        for (const alias of [source, cs, en, de, ru, entry.pl]) if (!catalog.has(alias)) catalog.set(alias, entry);
+        for (const alias of [source, cs, en, de, ru, entry.pl, ...Object.values(entry).map(window.goomPlanLabel)]) if (!catalog.has(alias)) catalog.set(alias, entry);
     }
     let language = 'cs';
     try { language = normalizeLanguage(localStorage.getItem('goom.language')); } catch {}
@@ -499,7 +504,7 @@
             for (const translation of Object.values(entry)) renderedMessages.set(format(translation, values), { source, values });
             while (renderedMessages.size > 5000) renderedMessages.delete(renderedMessages.keys().next().value);
         }
-        return format(catalog.get(String(source))?.[language] ?? String(source), values);
+        return window.goomPlanLabel(format(catalog.get(String(source))?.[language] ?? String(source), values));
     };
     window.getGoomLanguage = () => language;
     window.getGoomLocale = () => locales[language];

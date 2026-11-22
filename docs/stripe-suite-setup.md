@@ -2,7 +2,7 @@
 
 Состояние на 21.11.2026: платёжные функции в production ещё не развёрнуты. На сайте онлайн-оплата помечена «Скоро».
 
-Подписка PROJECT включает PZTS, EPS, CCTV и SK. COMPANY PROJECT добавляет до трёх коллег с тем же доступом. Цены сохранены: PROJECT €6.90/месяц или €72.86/год; COMPANY PROJECT €8.90/месяц или €93.98/год.
+Подписка Pro включает PZTS, EPS, CCTV и SK. Team добавляет до трёх коллег с тем же доступом. Цены сохранены: Pro €6.90/месяц или €72.86/год; Team €8.90/месяц или €93.98/год.
 
 1. Завершить настройку бизнес-аккаунта Stripe и создать четыре повторяющиеся цены EUR без trial: monthly, annual, companyMonthly, companyAnnual.
 2. Задать STRIPE_SECRET_KEY и STRIPE_WEBHOOK_SECRET через Firebase Secret Manager; не хранить ключи в клиентском коде или GitHub.

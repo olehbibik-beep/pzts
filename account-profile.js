@@ -61,7 +61,7 @@
         byId('accountName').textContent = profile?.displayName || user?.displayName || '';
         byId('accountProBadge').hidden = !entitled;
         byId('welcomeProBadge').hidden = !entitled;
-        for(const id of ['accountProBadge','welcomeProBadge'])byId(id).textContent=window.hasAdminAccess()?'ADMIN':'PROJECT';
+        for(const id of ['accountProBadge','welcomeProBadge'])byId(id).textContent=window.hasAdminAccess()?'ADMIN':window.getOwnProTier?.()==='company'?'Team':'Pro';
         byId('accountEmail').textContent = user?.email || '';
         byId('accountTypeLabel').textContent = tr(company ? 'Firma' : 'Osobní účet');
         byId('accountIcoLabel').hidden = !company;
@@ -263,6 +263,7 @@
         render(); fillForm();
         await ready;
         render(); fillForm();
+        void window.refreshCloudCapacity?.();
     };
 
     document.addEventListener('goom-auth-state-changed', event => {

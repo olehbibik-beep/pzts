@@ -145,6 +145,7 @@ async function openApp(options = {}) {
             collection(name) { return reference(`${path}/${name}`); },
             doc(id) { return reference(`${path}/${id}`); },
             orderBy() { return this; },
+            limit() { return this; },
             onSnapshot(callbackOrOptions, handler) {
                 const callback = typeof callbackOrOptions === 'function' ? callbackOrOptions : handler;
                 const list = watchers.get(path) || []; list.push(callback); watchers.set(path, list);
@@ -1524,17 +1525,17 @@ test('German and Russian localize the account, pricing and detector search and p
         assert.equal(await page.locator('#proUpgradeTitle').textContent(), 'Tarife und Abos');
         assert.match(await page.locator('.pro-period').innerText(), /−12 %/);
         const features = tier => page.locator(`.pro-plan-${tier} .pro-plan-features`);
-        assert.match(await features('standard').innerText(), /Bis zu 5 Projekte in der Cloud/);
+        assert.match(await features('standard').innerText(), /bis zu 5 Projekte je Editor/);
         assert.doesNotMatch(await features('basic').innerText(), /Cloud/);
         assert.match(await features('basic').innerText(), /Einführung ins erste Projekt/);
-        assert.match(await features('company').innerText(), /Alles aus PROJECT/);
+        assert.match(await features('company').innerText(), /Alles aus Pro/);
         const card = page.locator('.pro-pricing');
         assert.ok(await card.evaluate(el => el.scrollWidth <= el.clientWidth));
         const headerHeights = await page.locator('.pro-plan-header').evaluateAll(headers => headers.map(header => header.offsetHeight));
         assert.ok(headerHeights.every(height => height === headerHeights[0]));
         assert.equal(await page.locator('#btnProClose').getAttribute('aria-label'), 'Schließen');
         assert.ok(await page.locator('.pro-plan-basic button').isDisabled());
-        assert.equal(await page.locator('.pro-plan-basic button').textContent(), 'Basis');
+        assert.equal(await page.locator('.pro-plan-basic button').textContent(), 'Free');
         assert.equal(await page.locator('.pro-price-option').first().evaluate(el => getComputedStyle(el).backgroundColor), 'rgba(0, 0, 0, 0)');
         assert.equal(await page.locator('.pro-period b').evaluate(el => getComputedStyle(el).backgroundColor), 'rgb(217, 244, 187)');
         assert.equal(await page.locator('.pro-plan-standard').evaluate(el => getComputedStyle(el).borderTopWidth), '0px');
@@ -1545,8 +1546,8 @@ test('German and Russian localize the account, pricing and detector search and p
         assert.equal(await page.locator('#userAccountTitle').textContent(), 'Аккаунт');
         await page.locator('#btnUpdatePro').click();
         assert.equal(await page.locator('#proUpgradeTitle').textContent(), 'Тарифы и подписки');
-        assert.equal(await page.locator('#proStandardTitle').textContent(), 'PROJECT');
-        assert.equal(await page.locator('.pro-plan-basic button').textContent(), 'Базовый');
+        assert.equal(await page.locator('#proStandardTitle').textContent(), 'Pro');
+        assert.equal(await page.locator('.pro-plan-basic button').textContent(), 'Free');
         assert.deepEqual(await page.locator('.pro-price-separator').allTextContents(), ['/', '/', '/', '/']);
         assert.match(await features('standard').innerText(), /без водяного знака/);
         await page.setViewportSize({ width: 600, height: 900 });
@@ -2723,13 +2724,13 @@ test('DXF export downloads editable vector plans, devices and cables with the co
             const first=makePlanDXF(f).dxf;scale=7;offsetX=-120;offsetY=75;const second=makePlanDXF(f).dxf;
             return{same:first===second,entities:new DxfParser().parseSync(first).entities.length,text:first};
         });
-        assert.equal(stable.same,true);assert.ok(stable.entities>8);assert.match(stable.text,/Přízemí · Этаж/);assert.doesNotMatch(stable.text,/GooM · BASIC/);
+        assert.equal(stable.same,true);assert.ok(stable.entities>8);assert.match(stable.text,/Přízemí · Этаж/);assert.doesNotMatch(stable.text,/GooM · Free/);
         await page.evaluate(()=>openPlanOutput());assert.equal(await page.locator('#btnExportDXF').count(),1);
         const download=page.waitForEvent('download');await page.locator('#btnExportDXF').click();const file=await download;assert.match(file.suggestedFilename(),/\.dxf$/);
         const raw=await readFile(await file.path(),'utf8');assert.match(raw,/AC1021/);assert.match(raw,/GOOM_GEOMETRY/);
         await page.evaluate(async()=>{const db=await getFirebaseDatabase();await db.collection('cloudLicenses').doc('test-user').set({});});
         await page.waitForFunction(()=>!window.hasProAccess());
-        assert.ok(await page.evaluate(()=>makePlanDXF(floors[currentFloorIndex]).dxf.includes('GooM · BASIC')));assert.deepEqual(errors,[]);
+        assert.ok(await page.evaluate(()=>makePlanDXF(floors[currentFloorIndex]).dxf.includes('GooM · Free')));assert.deepEqual(errors,[]);
     }finally{await context.close();}
 });
 
@@ -3331,3 +3332,5 @@ test('short desktop welcome keeps usable controls and scrollbars have no arrows'
 test('common menu link and drawing settings work in Basic and Polish without changing project content',{timeout:25000},async()=>{const{context,page,errors}=await openApp({initialSession:true});try{await page.locator('[data-language-select]').first().evaluate(select=>{if(![...select.options].some(x=>x.value==='pl'))throw Error('Missing Polish option');select.value='pl';select.dispatchEvent(new Event('change',{bubbles:true}));});await startRenderProject(page);await dismissOnboarding(page);assert.equal(await page.locator('.app-title .goom-site-link').count(),0);await page.locator('#btnLogo').click();const site=page.locator('#mainMenuModal .goom-site-link'),feedback=page.locator('#btnOpenFeedback');assert.equal(await site.getAttribute('target'),'_blank');assert.ok((await site.boundingBox()).y<(await feedback.boundingBox()).y);if(process.env.TEST_SCREENSHOT_DIR)await smoothScreenshot(page,{path:resolve(process.env.TEST_SCREENSHOT_DIR,'common6-menu.png')});await page.keyboard.press('Escape');await page.locator('#btnDetectionSettings').click();assert.equal(await page.locator('#detectionSettingsModal').isVisible(),true);assert.equal(await page.locator('#planSettingsTitle').innerText(),'USTAWIENIA PLANU I WARSTW');assert.equal(await page.evaluate(()=>hasProAccess()),false);const sensitive=await page.locator('label[for=wallThresholdInput]').textContent();assert.equal(sensitive,'Czułość rozpoznawania ścian');if(process.env.TEST_SCREENSHOT_DIR)await smoothScreenshot(page,{path:resolve(process.env.TEST_SCREENSHOT_DIR,'common6-settings.png')});await page.selectOption('#planThemeInput','original');await page.locator('#wallThresholdInput').fill('550');await page.locator('#btnSaveDetectionSettings').click();assert.equal(await page.evaluate(()=>getPlanTheme(floors[currentFloorIndex])),'original');assert.ok(await page.evaluate(()=>Math.abs(floors[currentFloorIndex].wallThreshold-140.25)<.001));await page.locator('#btnLogo').click();assert.match(await page.locator('#btnMenuNew').textContent(),/Nowy projekt/);await page.keyboard.press('Escape');assert.equal(await page.evaluate(()=>getGoomLocale()),'pl-PL');assert.match(await page.evaluate(()=>tr('Sběrnice {0}',12)),/12/);await page.evaluate(()=>{projectName='Nazwa użytkownika';});await page.reload();await page.waitForFunction(()=>document.documentElement.lang==='pl');assert.deepEqual(errors,[]);}finally{await context.close();}});
 
 test('program feedback hides after daily submission and stays hidden when reopened',async()=>{const{context,page,errors}=await openApp({initialSession:true});try{await page.selectOption('[data-language-select]','ru',{force:true});await startRenderProject(page);await dismissOnboarding(page);await page.locator('#btnLogo').click();await page.locator('#btnOpenFeedback').click();await page.waitForFunction(()=>!document.getElementById('feedbackMessage').hidden&&!document.getElementById('btnFeedbackSend').disabled);await page.locator('#feedbackMessage').fill('Нужна дополнительная функция в программе.');await page.locator('#btnFeedbackSend').click();await page.waitForFunction(()=>document.getElementById('feedbackStatus').textContent.includes('за сегодня'));assert.equal(await page.locator('#feedbackMessage').isVisible(),false);assert.equal(await page.locator('#btnFeedbackSend').isVisible(),false);assert.equal(await page.evaluate(()=>testFeedbackCalls.filter(x=>x.action==='feedback').length),1);await page.locator('#btnFeedbackClose').click();await page.locator('#btnOpenFeedback').click();await page.waitForFunction(()=>document.getElementById('feedbackStatus').textContent.includes('за сегодня'));assert.equal(await page.locator('#feedbackMessage').isVisible(),false);assert.deepEqual(errors,[]);}finally{await context.close();}});
+
+test('compact account shows Polish, support address and live Cloud quota with new plan names',async()=>{const{context,page,errors}=await openApp({initialSession:true,company:true});try{await startRenderProject(page);await dismissOnboarding(page);await page.locator('#arrowTabBtn').click();await page.locator('.sliding-row-container').evaluate(async el=>{await Promise.all(el.getAnimations().map(a=>a.finished.catch(()=>{})));});const oldStripStyle=await page.locator('#deviceSetTools').evaluate(el=>{const old=el.style.cssText;el.style.maxWidth='200px';el.style.width='200px';el.scrollLeft=0;return old;});await page.locator('.device-strip-progress').waitFor({state:'visible'});const handle=await page.locator('.device-strip-progress span').boundingBox();assert.ok(handle.width>=22&&handle.width<=36);assert.equal(handle.height,3);await page.locator('#deviceSetTools').hover();await page.mouse.wheel(0,220);await page.waitForFunction(()=>document.getElementById('deviceSetTools').scrollLeft>0);assert.notEqual(await page.locator('.device-strip-progress span').evaluate(el=>el.style.transform),'translateX(0px)');await page.locator('#deviceSetTools').evaluate((el,old)=>el.style.cssText=old,oldStripStyle);await page.locator('#btnOpenCloudProjectsToolbar').click();await page.waitForFunction(()=>document.getElementById('cloudCapacity').dataset.state==='ready');assert.equal(await page.locator('#cloudCapacity').getAttribute('aria-valuenow'),'4');assert.equal(await page.locator('#accountCloudTitle').textContent(),'Cloud');await page.locator('.account-language-controls .ui-select-trigger').click();const polish=page.getByRole('option',{name:'Polski',exact:true});assert.equal(await polish.isVisible(),true);const pos=await polish.boundingBox();assert.ok(pos.y+pos.height<=await page.evaluate(()=>innerHeight));await polish.click();await page.waitForFunction(()=>document.documentElement.lang==='pl');assert.match(await page.locator('#accountCloudInfo').textContent(),/Wolne miejsca/);if(process.env.TEST_SCREENSHOT_DIR)await smoothScreenshot(page,{path:resolve(process.env.TEST_SCREENSHOT_DIR,'compact7-account.png')});await page.locator('#btnUpdatePro').click();assert.deepEqual(await page.locator('#proBasicTitle,#proStandardTitle,#proCompanyTitle').allTextContents(),['Free','Pro','Team']);assert.match(await page.locator('.pro-plan-standard').textContent(),/profesjonalny/);await page.locator('#btnProClose').click();await page.locator('#btnAccountCloudProjects').click();await page.locator('.cloud-project-delete').first().click();await page.locator('#appDialogConfirm').click();await page.waitForFunction(()=>document.getElementById('cloudCapacity').getAttribute('aria-valuenow')==='5');await page.locator('#btnCloudProjectsClose').click();await page.locator('#btnLogo').click();await page.locator('#btnOpenFeedback').click();await page.waitForFunction(()=>!document.getElementById('btnFeedbackSend').disabled);assert.equal(await page.locator('#feedbackEmail').textContent(),'support@goom.cz');assert.equal(await page.locator('#feedbackEmail').getAttribute('href'),'mailto:support@goom.cz');assert.equal(await page.locator('#feedbackReply').textContent().then(t=>t.includes('test@example')),false);assert.deepEqual(errors,[]);}finally{await context.close();}});
