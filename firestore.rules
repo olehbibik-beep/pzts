@@ -73,7 +73,7 @@ service cloud.firestore {
       return p.keys().hasOnly(['displayName', 'email', 'accountType', 'ico', 'locale', 'createdAt', 'updatedAt'])
         && p.keys().hasAll(['displayName', 'email', 'accountType', 'ico', 'locale', 'createdAt', 'updatedAt'])
         && p.displayName is string && p.displayName.size() > 0 && p.displayName.size() <= 120
-        && p.email == request.auth.token.email && p.locale in ['cs', 'en', 'de', 'ru']
+        && p.email == request.auth.token.email && p.locale in ['cs', 'en', 'de', 'ru', 'pl']
         && ((p.accountType == 'personal' && p.ico == '') || (p.accountType == 'company' && validIco(p.ico)))
         && p.updatedAt == request.time;
     }
@@ -128,7 +128,7 @@ service cloud.firestore {
     match /goomFeedback/{messageId} {
       allow get: if administrator();
       allow list: if administrator() && request.query.limit <= 25;
-      allow create: if feedbackSender(request.resource.data.uid) && validFeedback();
+      allow create: if false; // All submissions use the server shared daily quota.
       allow update: if administrator()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readAt', 'readBy'])
         && ((request.resource.data.readAt == request.time && request.resource.data.readBy == request.auth.uid)
@@ -148,8 +148,8 @@ service cloud.firestore {
     }
     match /goomFeedbackSenders/{uid} {
       allow get: if feedbackSender(uid);
-      allow create: if feedbackSender(uid) && recordsNewFeedback();
-      allow update: if feedbackSender(uid) && request.time >= resource.data.sentAt + duration.value(30, 's') && recordsNewFeedback();
+      allow create: if false;
+      allow update: if false;
 
       function recordsNewFeedback() {
         let data = request.resource.data;

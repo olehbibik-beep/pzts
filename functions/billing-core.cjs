@@ -7,7 +7,7 @@ const PRODUCT = 'pzts_pro_monthly_v2';
 class BillingError extends Error { constructor(code, message) { super(message); this.code = code; } }
 const idOf = value => typeof value === 'string' ? value : value?.id;
 const invoiceSubscription = invoice => idOf(invoice.parent?.subscription_details?.subscription || invoice.subscription);
-const checkoutLocale = language => ['cs', 'en', 'de', 'ru'].includes(language) ? language : 'en';
+const checkoutLocale = language => ['cs', 'en', 'de', 'ru', 'pl'].includes(language) ? language : 'en';
 const millis = value => value?.toMillis?.() ?? (value instanceof Date ? value.getTime() : 0);
 
 function createBillingService({ stripe, db, getUser, priceIds, appOrigin, serverTimestamp, now = Date.now, allowLocalHttp = false, expectedLivemode }) {

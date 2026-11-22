@@ -5,9 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GOOM</title>
     <link rel="icon" type="image/png" href="Logosite.png?v=20261120-experience">
-    <script src="i18n.js?v=20261120-dxf-63"></script>
-    <script src="device-support.js?v=20261120-dxf-63"></script>
-    <link rel="stylesheet" href="viewer-map.css?v=20261120-dxf-63">
+    <script src="i18n-pl.js?v=20261122-common-6"></script>
+<script src="i18n.js?v=20261122-common-6"></script>
+    <script src="device-support.js?v=20261122-common-6"></script>
+    <link rel="stylesheet" href="viewer-map.css?v=20261122-common-6">
     <style>
         :root {
             --bg-main: #121214; --bg-toolbar: #1c1c1f; --bg-input: #252529;
@@ -453,10 +454,10 @@
 
 
     </style>
-    <link rel="stylesheet" href="ui-theme.css?v=20261117-intro-bg-55">
-<link rel="stylesheet" href="editor-experience.css?v=20261121-map-gauges-5">
-<script src="silent-video.js?v=20261121-silent-1"></script>
-<link rel="stylesheet" href="editor-polish.css?v=20261121-reviews-5">
+    <link rel="stylesheet" href="ui-theme.css?v=20261122-common-6">
+<link rel="stylesheet" href="editor-experience.css?v=20261122-common-6">
+<script src="silent-video.js?v=20261122-common-6"></script>
+<link rel="stylesheet" href="editor-polish.css?v=20261122-common-6">
 </head>
 <body>
     <div id="deviceSupportNotice" role="alert">
@@ -478,8 +479,8 @@
             
             <div class="app-title">
                 <button class="menu-logo-button" id="btnLogo" type="button" data-tooltip="Меню" aria-label="Nabídka">
-                    <img src="Link.png?v=20261121-reviews-5" class="menu-logo-default" alt="">
-                    <img src="Link2.png?v=20261121-reviews-5" class="menu-logo-hover" alt="">
+                    <img src="Link.png?v=20261122-common-6" class="menu-logo-default" alt="">
+                    <img src="Link2.png?v=20261122-common-6" class="menu-logo-hover" alt="">
                 </button>
                 <span class="app-brand-name" data-user-content translate="no">PZTS</span>
             </div>
@@ -613,7 +614,7 @@
         <div class="modal-content welcome-card" role="dialog" aria-modal="true" aria-label="Vítejte v GOOM">
             <div class="welcome-controls">
                 <button id="btnWelcomeAccount" class="welcome-back" type="button" aria-label="Zpět" title="Zpět" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"></path></svg></button>
-                <select class="language-picker" data-language-select aria-label="Jazyk"><option value="cs" data-language-name="Čeština">Cz</option><option value="en" data-language-name="English">En</option><option value="de" data-language-name="Deutsch">De</option><option value="ru" data-language-name="Русский">Ru</option></select>
+                <select class="language-picker" data-language-select aria-label="Jazyk"><option value="cs" data-language-name="Čeština">Cz</option><option value="en" data-language-name="English">En</option><option value="de" data-language-name="Deutsch">De</option><option value="ru" data-language-name="Русский">Ru</option><option value="pl" data-language-name="Polski">Pl</option></select>
             </div>
             <div class="welcome-panel">
                 <div class="welcome-identity">
@@ -700,7 +701,7 @@
             <div class="account-header">
                 <button id="btnAccountClose" class="btn-cad icon-editor-close" type="button" aria-label="Zavřít">×</button>
                 <h2 id="userAccountTitle">Uživatelský účet</h2>
-                <div class="account-language-controls"><select class="language-picker" data-language-select aria-label="Jazyk"><option value="cs" data-language-name="Čeština">Cz</option><option value="en" data-language-name="English">En</option><option value="de" data-language-name="Deutsch">De</option><option value="ru" data-language-name="Русский">Ru</option></select></div>
+                <div class="account-language-controls"><select class="language-picker" data-language-select aria-label="Jazyk"><option value="cs" data-language-name="Čeština">Cz</option><option value="en" data-language-name="English">En</option><option value="de" data-language-name="Deutsch">De</option><option value="ru" data-language-name="Русский">Ru</option><option value="pl" data-language-name="Polski">Pl</option></select></div>
             </div>
             <div class="account-columns"><div class="account-personal"><dl class="account-details">
                 <dt>Jméno</dt><dd class="pro-name"><span id="accountName" data-user-content></span><span id="accountProBadge" class="pro-badge" hidden>PROJECT</span></dd>
@@ -929,7 +930,7 @@
     </div>
     <div id="detectionSettingsModal" class="modal">
         <div class="modal-content" style="max-width: 430px;">
-            <div class="modal-title">Rozpoznání stěn a PIR</div>
+            <div class="modal-title"><span id="planSettingsTitle" data-user-content>Nastavení plánu a vrstev</span></div>
             <label class="setting-label" for="planThemeInput">Zobrazení výkresu</label>
             <select id="planThemeInput" style="width:100%;margin:8px 0 16px"><option value="dark">Bílé čáry na tmavém pozadí</option><option value="original">Původní výkres</option><option value="light">Černé čáry na bílém pozadí</option><option value="cartoon">Ilustrovaná mapa</option></select>
             <div class="wall-sensitivity-heading"><label class="setting-label" for="wallThresholdInput">Citlivost rozpoznání stěn</label><output id="wallSensitivityValue" for="wallThresholdInput">39 %</output></div>
@@ -1158,6 +1159,6 @@
         <button type="button" data-tablet-action="delete" class="tool-danger"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13m-8 3v7m4-7v7"/></svg></button>
         <button type="button" data-tablet-action="undo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 4-5 5 5 5M4 9h9a6 6 0 0 1 6 6v2"/></svg></button>
     </div>
-    <script src="bootstrap.js?v=20261121-reviews-5"></script>
+    <script src="bootstrap.js?v=20261122-common-6"></script>
 </body>
 </html>

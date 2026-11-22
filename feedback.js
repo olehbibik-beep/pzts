@@ -1,81 +1,11 @@
 (() => {
-    const dialog = document.getElementById('feedbackDialog');
-    const form = document.getElementById('feedbackForm');
-    const message = document.getElementById('feedbackMessage');
-    const status = document.getElementById('feedbackStatus');
-    const send = document.getElementById('btnFeedbackSend');
-    const close = document.getElementById('btnFeedbackClose');
-    let senderUid;
-    let sending = false;
-
-    function showStatus(text, error = false) {
-        status.textContent = tr(text);
-        status.dataset.error = String(error);
-        status.hidden = !text;
-    }
-
-    function updateSender() {
-        const user = window.getFirebaseUser();
-        if (senderUid !== user?.uid) {
-            message.value = '';
-            senderUid = user?.uid;
-            showStatus('');
-        }
-        const enabled = Boolean(user?.email && user.emailVerified);
-        document.getElementById('feedbackEmail').textContent = user?.email || '';
-        document.getElementById('feedbackReply').hidden = !enabled;
-        message.disabled = sending || !enabled;
-        send.disabled = sending || !enabled;
-        close.disabled = sending;
-        if (!enabled) showStatus('Pro odeslání zprávy se přihlaste s ověřeným e-mailem.', true);
-    }
-
-    document.getElementById('btnOpenFeedback').addEventListener('click', () => {
-        updateSender();
-        dialog.showModal();
-    });
-    close.addEventListener('click', () => dialog.close());
-    dialog.addEventListener('cancel', event => { if (sending) event.preventDefault(); });
-    dialog.addEventListener('keydown', event => event.stopPropagation());
-    message.addEventListener('input', () => showStatus(''));
-    document.addEventListener('goom-account-changed', () => { if (dialog.open) updateSender(); });
-
-    form.addEventListener('submit', async event => {
-        event.preventDefault();
-        const text = message.value.trim();
-        const user = window.getFirebaseUser();
-        if (sending || !user?.email || !user.emailVerified) return;
-        if (!text) {
-            showStatus('Napište zprávu.', true);
-            message.focus();
-            return;
-        }
-        sending = true;
-        updateSender();
-        showStatus('Odesílám zprávu…');
-        try {
-            const [db, token] = await Promise.all([window.getFirebaseDatabase(), user.getIdTokenResult()]);
-            if (window.getFirebaseUser()?.uid !== user.uid) return;
-            const sender = db.collection('goomFeedbackSenders').doc(user.uid);
-            const entry = db.collection('goomFeedback').doc();
-            await db.runTransaction(async transaction => {
-                const last = (await transaction.get(sender)).data()?.sentAt?.toMillis();
-                if (last && Date.now() - last < 30_000) throw new Error('feedback-cooldown');
-                const sentAt = firebase.firestore.FieldValue.serverTimestamp();
-                transaction.set(entry, { uid: user.uid, email: user.email, name: token.claims.name || '',
-                    application: APP_PRODUCT, message: text, sentAt });
-                transaction.set(sender, { messageId: entry.id, sentAt });
-            });
-            if (window.getFirebaseUser()?.uid !== user.uid) return;
-            message.value = '';
-            showStatus('Zpráva byla odeslána.');
-        } catch (error) {
-            if (window.getFirebaseUser()?.uid !== user.uid) return;
-            showStatus(error.message === 'feedback-cooldown'
-                ? 'Před další zprávou počkejte 30 sekund.' : 'Zprávu se nepodařilo odeslat. Zkuste to znovu.', true);
-        } finally {
-            sending = false;
-            updateSender();
-        }
-    });
+ const dialog=document.getElementById('feedbackDialog'),form=document.getElementById('feedbackForm'),message=document.getElementById('feedbackMessage'),status=document.getElementById('feedbackStatus'),send=document.getElementById('btnFeedbackSend'),close=document.getElementById('btnFeedbackClose'),label=form.querySelector('label[for=feedbackMessage]');
+ let uid=null,revision=0,sending=false,checking=false,failed=false,state=null,operation=null;
+ const ui=window.goomUI,today=()=>ui('Komentář za dnešek už byl odeslán. Další můžete odeslat zítra.','Your feedback for today has been sent. You can send another tomorrow.','Ihr Feedback für heute wurde gesendet. Ein weiteres ist morgen möglich.','Отзыв за сегодня уже отправлен. Следующий можно отправить завтра.','Dzisiejsza opinia została już wysłana. Kolejną możesz wysłać jutro.');
+ const retry=document.createElement('button');retry.type='button';retry.className='btn-cad';retry.id='btnFeedbackRetry';retry.hidden=true;form.querySelector('.app-dialog-actions').append(retry);
+ function show(text,error=false){status.textContent=text;status.dataset.error=String(error);status.hidden=!text;}
+ function render(){const user=window.getFirebaseUser(),enabled=Boolean(user?.email&&user.emailVerified),blocked=state?.submittedToday===true||state?.canSubmit===false;document.getElementById('feedbackEmail').textContent=user?.email||'';document.getElementById('feedbackReply').hidden=!enabled;const hidden=blocked||checking||failed;message.hidden=label.hidden=send.hidden=hidden;message.disabled=send.disabled=sending||checking||!enabled||blocked;close.disabled=sending;retry.hidden=!failed;retry.textContent=tr('Obnovit údaje');if(!enabled)show(tr('Pro odeslání zprávy se přihlaste s ověřeným e-mailem.'),true);else if(blocked)show(today());}
+ async function check(){const user=window.getFirebaseUser();if(uid!==user?.uid){uid=user?.uid;revision++;state=null;message.value='';operation=null;}if(!user?.emailVerified){render();return;}const gen=revision;checking=true;failed=false;show(ui('Ověřujeme stav…','Checking status…','Status wird geprüft…','Проверяем статус…','Sprawdzanie stanu…'));render();try{const result=await window.callProBilling('goomReviews',{action:'mine'});if(gen===revision)state=result;}catch{if(gen===revision){failed=true;show(tr('Zprávu se nepodařilo odeslat. Zkuste to znovu.'),true);}}finally{if(gen===revision){checking=false;render();if(!failed&&state?.canSubmit)show('');}}}
+ document.getElementById('btnOpenFeedback').addEventListener('click',()=>{dialog.showModal();void check();});close.onclick=()=>dialog.close();retry.onclick=()=>void check();dialog.addEventListener('cancel',e=>{if(sending)e.preventDefault();});dialog.addEventListener('keydown',e=>e.stopPropagation());message.oninput=()=>show('');document.addEventListener('goom-account-changed',()=>{if(dialog.open)void check();});
+ form.addEventListener('submit',async event=>{event.preventDefault();const user=window.getFirebaseUser(),text=message.value.trim();if(sending||checking||state?.canSubmit===false||!user?.emailVerified)return;if(!text){show(tr('Napište zprávu.'),true);return;}const gen=revision,key=user.uid+text;if(operation?.key!==key)operation={key,id:crypto.randomUUID()};sending=true;show(tr('Odesílám zprávu…'));render();try{const result=await window.callProBilling('goomReviews',{action:'feedback',message:text,application:APP_PRODUCT,operationId:operation.id});if(gen!==revision||window.getFirebaseUser()?.uid!==user.uid)return;state=result;message.value='';operation=null;show(today());}catch{if(gen===revision)show(tr('Zprávu se nepodařilo odeslat. Zkuste to znovu.'),true);}finally{if(gen===revision){sending=false;render();}}});
 })();

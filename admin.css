@@ -150,3 +150,5 @@ table{min-width:720px;font-size:.86rem}th,td{padding:10px 8px}th{font-size:.74re
 .review-admin-tools{display:flex;gap:20px;align-items:center;flex-wrap:wrap;padding:14px 20px}.review-admin-tools label{display:flex;align-items:center;gap:8px;font-size:14px}.admin-review{padding:20px!important}.admin-review-message{white-space:pre-wrap;overflow-wrap:anywhere;font-size:15px;line-height:1.6}.admin-review-actions{display:flex;gap:8px;flex-wrap:wrap}.admin-review-practice{margin-top:9px;max-width:350px}.admin-review-practice small{font-size:12px;color:#687387}.admin-review-track{height:3px;background:#e1e6e9;border-radius:9px;margin-top:6px;overflow:hidden}.admin-review-track span{display:block;height:100%;background:#9ace61;border-radius:inherit}.reviews-panel>.section-header{padding:16px 20px}.admin-nav button{font-size:13px}.admin-review header{display:flex;justify-content:space-between;gap:12px}
 
 .admin-review header>div{min-width:0}.admin-review strong{overflow-wrap:anywhere}
+
+.badge.admin,.program-dot.admin{background:#ede6ff;color:#6241b5}

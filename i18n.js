@@ -471,15 +471,15 @@
         ['Vyberte podlaží', 'Select a floor', "Geschoss auswählen", "Выберите этаж"], ['Zpět na půdorys', 'Back to plan', "Zum Grundriss zurück", "Вернуться к плану"], ['Počet prvků: {0}', 'Device count: {0}', "Anzahl Geräte: {0}", "Количество устройств: {0}"], ['ZPĚT', 'BACK', "ZURÜCK", "НАЗАД"]
     ];
 
-    const locales = { cs: 'cs-CZ', en: 'en-GB', de: 'de-DE', ru: 'ru-RU' };
+    const locales = { cs: 'cs-CZ', en: 'en-GB', de: 'de-DE', ru: 'ru-RU', pl:'pl-PL' };
     window.goomProduct = new URLSearchParams(location.search).get('app') === 'CCTV' ? 'CCTV' : 'PZTS';
-    const welcomeAcronyms = { cs: 'PZTS', en: 'I&HAS', de: 'GMA', ru: 'СОТС' };
+    const welcomeAcronyms = { cs: 'PZTS', en: 'I&HAS', de: 'GMA', ru: 'СОТС',pl:'SSWiN' };
     const normalizeLanguage = value => Object.hasOwn(locales, value) ? value : 'cs';
     const catalog = new Map();
     for (const row of rows) {
         const [source, cs, en, de, ru] = row.length === 4 ? [row[0], ...row] : row;
-        const entry = { cs, en, de, ru };
-        for (const alias of [source, cs, en, de, ru]) if (!catalog.has(alias)) catalog.set(alias, entry);
+        const entry = { cs, en, de, ru, pl:window.goomPolish?.(en)||en };
+        for (const alias of [source, cs, en, de, ru, entry.pl]) if (!catalog.has(alias)) catalog.set(alias, entry);
     }
     let language = 'cs';
     try { language = normalizeLanguage(localStorage.getItem('goom.language')); } catch {}

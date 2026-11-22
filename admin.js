@@ -109,12 +109,13 @@
         const license = purchase === unavailable ? null : purchase.data();
         const validPurchase = license?.uid === uid && license.plan === 'pro' && license.status === 'active'
             && license.source === 'stripe' && license.paymentStatus === 'paid' && ['monthly', 'annual'].includes(license.billingMode);
+        const activePaidApps=(license?.applications||[]).filter(app=>Object.hasOwn(programLabels,app));
+        const paidUntil=validPurchase?Math.max(0,...activePaidApps.map(app=>license.applicationExpiresAt?.[app]?.toMillis?.()||0)):0;
+        const companyUntil=license?.companySeat?.email===data.email?.toLowerCase()?Math.max(0,...Object.keys(programLabels).map(app=>license.companySeat.applicationExpiresAt?.[app]?.toMillis?.()||0)):0;
+        const suiteTier=activePaidApps.some(app=>license.applicationPlans?.[app]==='company'&&(license.applicationExpiresAt?.[app]?.toMillis?.()||0)>Date.now())?'company':'pro';
         const programs = Object.fromEntries(Object.keys(programLabels).map(app => [app, {
             manualUntil: grant.data()?.expiresAt?.[app]?.toMillis() ?? null,
-            companyUntil: license?.companySeat && license.companySeat.email === data.email?.toLowerCase() ? license.companySeat.applicationExpiresAt?.[app]?.toMillis?.() ?? null : null,
-            tier: license?.applicationPlans?.[app] || 'pro',
-            paidUntil: validPurchase && Array.isArray(license.applications) && license.applications.includes(app)
-                ? license.applicationExpiresAt?.[app]?.toMillis?.() ?? null : null
+            companyUntil, tier:suiteTier, paidUntil
         }]));
         return {
             uid, name: data.displayName || '', email: data.email || '', accountType: data.accountType, usage: usage === unavailable ? null : usage.data(), role: role.data()?.role || 'user',
@@ -299,6 +300,7 @@
         return hours ? hours + ' ч ' + minutes % 60 + ' мин' : minutes + ' мин';
     }
     function accessState(user, application) {
+        if(['owner','admin'].includes(user.role))return{label:'ADMIN',kind:'admin',icon:'◇',until:null};
         const access = user.programs[application], now = Date.now();
         if (access.paidUntil > now) return { label: access.tier === 'company' ? 'COMPANY PROJECT' : 'PROJECT', kind: 'paid', icon: '▣', until: access.paidUntil };
         if (access.companyUntil > now) return { label: 'PROJECT · команда', kind: 'company', icon: '♧', until: access.companyUntil };
