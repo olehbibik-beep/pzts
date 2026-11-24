@@ -296,7 +296,7 @@ if(btnMenuOpenBIPS) {
         document.getElementById('mainMenuModal').style.display = 'none'; 
         if (window.showOpenFilePicker) {
             try {
-                const [handle] = await window.showOpenFilePicker({ types: [{ description: 'TECH Projekt', accept: {'application/json': ['.tech', '.bips']} }] });
+                const [handle] = await window.showOpenFilePicker({ types: [{ description: 'TECH Projekt', accept: {'application/json': ['.tech', '.cctv', '.bips']} }] });
                 currentFileHandle = handle; const file = await handle.getFile(); importFileContent(file);
             } catch (e) {} 
         } else { document.getElementById('bipsLoader').click(); }
@@ -327,6 +327,7 @@ const planTextForm = document.getElementById('planTextForm');
 const planTextSize = document.getElementById('devTextSize');
 
 function openTextModal(device, placementFloor = null) {
+    if(!isOwnPlanEntity(device))return;
     editingDevice = device;
     pendingTextFloor = placementFloor;
     const annotation = device.type === 'textNode';
@@ -367,7 +368,7 @@ function startDeviceRotation(direction=1,initialStep=0) {
     if (!floor) return;
     const devices = Array.from(activeDeviceIds)
         .map(id => floor.devices.find(device => device.id === id))
-        .filter(Boolean)
+        .filter(device=>device&&isOwnPlanEntity(device))
         .map(device => ({ device, start: device.rotation || 0 }));
     if (devices.length === 0) return;
 
@@ -420,7 +421,7 @@ function startDeviceRotation(direction=1,initialStep=0) {
 planTextForm.addEventListener('submit', event => {
     event.preventDefault();
     const floor = floors[currentFloorIndex];
-    if (!editingDevice || !floor || (pendingTextFloor ? pendingTextFloor !== floor : !floor.devices.includes(editingDevice))) {
+    if (!editingDevice || !isOwnPlanEntity(editingDevice) || !floor || (pendingTextFloor ? pendingTextFloor !== floor : !floor.devices.includes(editingDevice))) {
         closeTextModal();
         return;
     }
@@ -450,6 +451,7 @@ planTextForm.addEventListener('keydown', event => {
 function placePlanDevice(floor, device) {
     const firstId = activeDeviceIds.size === 1 ? activeDeviceIds.values().next().value : null;
     const previous = firstId ? floor.devices.find(item => item.id === firstId) : null;
+    device.ownerApplication=APP_PRODUCT;
     floor.devices.push(device);
     if (!device.plainText) includeNewDeviceInLegend(floor, device.type);
     if (previous && !previous.plainText && !device.plainText) {
@@ -507,7 +509,7 @@ window.addEventListener('keydown', (e) => {
             let changed = false;
             activeDeviceIds.forEach(id => {
                 let dev = floor.devices.find(d => d.id === id);
-                if (dev && !independentDeviceNumberTypes.has(dev.type) && !['panel', 'textNode'].includes(dev.type)) {
+                if (dev && isOwnPlanEntity(dev) && !isInfrastructureDevice(dev) && !independentDeviceNumberTypes.has(dev.type) && !['panel', 'textNode'].includes(dev.type)) {
                     if (dev.type === 'deactivated') { dev.type = dev.oldType || 'pir'; } else { dev.oldType = dev.type; dev.type = 'deactivated'; }
                     changed = true;
                 }
@@ -529,7 +531,7 @@ window.addEventListener('keydown', (e) => {
     }
 
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
-        if (activeDeviceIds.size > 0) clipboardDevices = floor.devices.filter(d => activeDeviceIds.has(d.id)).map(d => JSON.parse(JSON.stringify(d)));
+        if (activeDeviceIds.size > 0) clipboardDevices = floor.devices.filter(d => activeDeviceIds.has(d.id)&&isOwnPlanEntity(d)).map(d => JSON.parse(JSON.stringify(d)));
         return;
     }
 
@@ -540,7 +542,7 @@ window.addEventListener('keydown', (e) => {
             let minY = Math.min(...clipboardDevices.map(d => d.y)), maxY = Math.max(...clipboardDevices.map(d => d.y));
             let centerX = minX + (maxX - minX) / 2, centerY = minY + (maxY - minY) / 2;
 
-            clipboardDevices.forEach(d => {
+            clipboardDevices.filter(isOwnPlanEntity).forEach(d => {
                 const newId = genId();
                 const pastedDev = { ...d, id: newId, x: lastMouseX + (d.x - centerX), y: lastMouseY + (d.y - centerY), h1x: 0, h1y: 0, h2x: 0, h2y: 0, h3x: 0, h3y: 0, hasCustomRoute: false };
                 floor.devices.push(pastedDev); activeDeviceIds.add(newId);
@@ -620,8 +622,9 @@ function moveDraggedDevices(floor, x, y, freeMove) {
     if (!drag.devices) {
         drag.ids = activeDeviceIds.has(draggedDevice.id) ? new Set(activeDeviceIds) : new Set([draggedDevice.id]);
         const devicesById = new Map(floor.devices.map(device => [device.id, device]));
-        drag.devices = floor.devices.filter(device => drag.ids.has(device.id));
+        drag.devices = floor.devices.filter(device => drag.ids.has(device.id)&&isOwnPlanEntity(device));
         drag.cables = floor.cables.flatMap(cable => {
+            if(!isOwnPlanEntity(cable))return[];
             if (!drag.ids.has(cable.fromId) && !drag.ids.has(cable.toId)) return [];
             const from = devicesById.get(cable.fromId), to = devicesById.get(cable.toId);
             if (!from || !to || from.type === 'textNode' || to.type === 'textNode') return [];
@@ -641,6 +644,7 @@ function moveDraggedDevices(floor, x, y, freeMove) {
     for (const device of drag.devices) {
         device.x += deltaX;
         device.y += deltaY;
+        if(device.attachedCableId){const route=floor.cables.find(c=>c.id===device.attachedCableId),a=floor.devices.find(d=>d.id===route?.fromId),b=floor.devices.find(d=>d.id===route?.toId);if(a&&b){const dx=b.x-a.x,dy=b.y-a.y;device.attachedT=Math.max(0,Math.min(1,((device.x-a.x)*dx+(device.y-a.y)*dy)/(dx*dx+dy*dy||1)));}}
     }
     for (const { cable, from, to, movesTogether } of drag.cables) {
         if (!Number.isFinite(cable.h1x) || !cable.isCustom) {
@@ -711,6 +715,7 @@ container.addEventListener('pointerdown', (e) => {
             const devicesById = new Map(floor.devices.map(device => [device.id, device]));
             let nearest = Infinity;
             for (const c of floor.cables) {
+                if(!isOwnPlanEntity(c)||c.kind==='trunk')continue;
                 if (!activeDeviceIds.has(c.fromId) && !activeDeviceIds.has(c.toId) && selectedTool !== 'cableTool') continue;
                 const from = devicesById.get(c.fromId), to = devicesById.get(c.toId);
                 if (!from || !to || from.type === 'textNode' || to.type === 'textNode') continue;
@@ -737,6 +742,7 @@ container.addEventListener('pointerdown', (e) => {
 
         for (let i = floor.devices.length - 1; i >= 0; i--) {
             let dev = floor.devices[i]; let inBody = false; let inText = false;
+            if(!isOwnPlanEntity(dev))continue;
             if (!showDeactivatedDevices && dev.type === 'deactivated') continue;
 
             if (dev.type === 'textNode') {
@@ -880,7 +886,7 @@ window.addEventListener('pointerup', (e) => {
             if (!e.shiftKey) activeDeviceIds.clear(); 
             floor.devices.forEach(d => { 
                 if (!showDeactivatedDevices && d.type === 'deactivated') return;
-                if (d.x >= minX && d.x <= maxX && d.y >= minY && d.y <= maxY) { activeDeviceIds.add(d.id); }
+                if (isOwnPlanEntity(d) && d.x >= minX && d.x <= maxX && d.y >= minY && d.y <= maxY) { activeDeviceIds.add(d.id); }
             });
         } else {
             if (selectedTool !== 'cableTool' && selectedTool !== 'select') {
@@ -989,6 +995,7 @@ function loadDefaultFloors(showWelcome = false, newProjectName = tr("Nový proje
     window.resetActiveCloudProject?.();
     customDeviceIcons = {};
     if (typeof applyToolbarMenuIcons === 'function') applyToolbarMenuIcons();
+    projectApplicationIcons={};projectApplicationSettings={};
     floors = STANDARD_FLOOR_NAMES.map(createEmptyProjectFloor);
     setPirCoverageVisible(true);
     let np1Index = floors.findIndex(f => f.name === "1NP");
@@ -1045,7 +1052,7 @@ async function deleteSelectedDevices() {
     const projectFloors = floors;
     const floor = projectFloors[currentFloorIndex];
     if (!floor || !isSystemReady || isOverviewMode || deviceDeletionPending) return;
-    const deletedIds = new Set(activeDeviceIds);
+    const deletedIds = new Set(floor.devices.filter(d=>activeDeviceIds.has(d.id)&&isOwnPlanEntity(d)&&!floor.cables.some(c=>!isOwnPlanEntity(c)&&(c.fromId===d.id||c.toId===d.id))).map(d=>d.id));
     const devices = floor.devices.filter(device => deletedIds.has(device.id));
     if (!devices.length) return;
     const uid = window.getFirebaseUser?.()?.uid;
@@ -1146,7 +1153,7 @@ async function initProject() {
                 if (!window.getFirebaseUser?.()) { showWelcomeScreen(); return; }
                 if (window.showOpenFilePicker) {
                     try {
-                        const [handle] = await window.showOpenFilePicker({ types: [{ description: 'TECH Projekt', accept: {'application/json': ['.tech', '.bips']} }] });
+                        const [handle] = await window.showOpenFilePicker({ types: [{ description: 'TECH Projekt', accept: {'application/json': ['.tech', '.cctv', '.bips']} }] });
                         const file = await handle.getFile();
                         if (await importFileContent(file)) currentFileHandle = handle;
                     } catch (error) {
@@ -1287,7 +1294,7 @@ function importFileContent(file, options = {}) {
             if (!text || text.trim() === "") throw new Error(tr("Soubor je prázdný."));
 
             const data = JSON.parse(text);
-            if ((data?.application ?? 'PZTS') !== APP_PRODUCT) throw new Error(tr('Tento soubor je z jiné aplikace GooM.'));
+
             let loadedFloors = [];
             
             if (Array.isArray(data)) {
@@ -1304,18 +1311,18 @@ function importFileContent(file, options = {}) {
                 throw new Error(tr("Neznámá struktura dat v souboru."));
             }
             
-            const preparedFloors = await loadFloorsImages(loadedFloors);
+            const preparedFloors = await loadFloorsImages(await prepareSharedProject(data));
             if (options.canApply && !options.canApply()) { resolve(false); return; }
             window.resetActiveCloudProject?.();
             if (data && data.currentMaxLines) currentMaxLines = data.currentMaxLines;
-            customDeviceIcons = sanitizeProjectIcons(data?.customDeviceIcons);
+            customDeviceIcons = projectIconsFromData(data);
             let slider = document.getElementById('deviceSizeSlider');
-            if (data && data.deviceSize && slider) slider.value = data.deviceSize;
+            if (slider) slider.value = projectDeviceSizeFromData(data);
             
             if (data && data.projectName) {
                 projectName = data.projectName;
             } else {
-                projectName = (file && file.name) ? file.name.replace(/\.(tech|bips)$/i, '') : tr("Obnovený projekt");
+                projectName = (file && file.name) ? file.name.replace(/\.(tech|cctv|bips)$/i, '') : tr("Obnovený projekt");
             }
             
             let pInput = document.getElementById('projectNameInput');
@@ -1381,7 +1388,8 @@ if (arrowTabBtn && slidingMenu) {
 // УМНОЕ ОКНО ВВОДА АДРЕСА (С ПРОВЕРКОЙ ДУБЛИКАТОВ)
 // ===============================================
 
-function openNumberModal(dev) { 
+function openNumberModal(dev) {
+    if(!isOwnPlanEntity(dev)||isInfrastructureDevice(dev))return; 
     editingDevice = dev; 
     let inp = document.getElementById('devNumberInput');
     const optics = APP_PRODUCT === 'CCTV' ? getCameraOptics(dev) : null;
@@ -1462,7 +1470,7 @@ const btnSaveNumber = document.getElementById('btnSaveNumber');
 if (btnSaveNumber) {
     btnSaveNumber.addEventListener('click', () => {
         if (btnSaveNumber.style.pointerEvents === 'none') return;
-        if (editingDevice) {
+        if (editingDevice && isOwnPlanEntity(editingDevice)) {
             if (APP_PRODUCT === 'CCTV' && getCameraOptics(editingDevice)) {
                 const angle = document.getElementById('cameraAngle');
                 const range = document.getElementById('cameraRange');

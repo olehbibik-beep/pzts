@@ -2,7 +2,7 @@
 (() => {
     const card=document.querySelector('.account-cloud'), info=document.getElementById('accountCloudInfo');
     const gauge=document.createElement('div');gauge.id='cloudCapacity';gauge.className='cloud-capacity';
-    gauge.innerHTML='<svg viewBox="0 0 200 115" aria-hidden="true"><path class="capacity-track" d="M18 100 A82 82 0 0 1 182 100" pathLength="100"/><path class="capacity-fill" d="M18 100 A82 82 0 0 1 182 100" pathLength="100"/></svg><div class="capacity-value" data-user-content>—</div>';
+    gauge.innerHTML='<svg viewBox="0 0 120 120" aria-hidden="true"><path class="capacity-track" d="M8 8 A52 52 0 0 1 8 112" pathLength="100"/><path class="capacity-fill" d="M8 8 A52 52 0 0 1 8 112" pathLength="100"/></svg><div class="capacity-value" data-user-content>—</div>';
     info.before(gauge);
     let owner=null, revision=0, used=null, loading=false, failed=false;
     const ui=window.goomUI;

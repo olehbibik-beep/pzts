@@ -143,7 +143,7 @@ async function getFirebaseAuth() {
             if (!window.firebase?.auth) await loadFirebaseScript(firebaseSdkUrls[1]);
             if (!window.firebase.apps.length) window.firebase.initializeApp(FIREBASE_CONFIG);
             firebaseAuthInstance = connectLocalFirebaseClient(window.firebase.auth(), 'http://127.0.0.1:9099');
-            await firebaseAuthInstance.setPersistence(window.firebase.auth.Auth.Persistence.LOCAL);
+            await firebaseAuthInstance.setPersistence(window.firebase.auth.Auth.Persistence.SESSION);
             firebaseAuthReadyPromise = new Promise(resolve => {
                 firebaseAuthInstance.onAuthStateChanged(user => {
                     verifyFirebaseSession(user).then(resolve).catch(error => {

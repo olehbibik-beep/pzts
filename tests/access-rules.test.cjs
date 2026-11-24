@@ -139,7 +139,7 @@ test('shared toolbar presets can only be published by admins and PROJECT require
     await assertSucceeds(setDoc(doc(admin, path('pro')), data));
     await assertSucceeds(getDoc(doc(free, path('default'))));
     await assertSucceeds(getDoc(doc(paid, path('pro'))));
-    await assertFails(getDoc(doc(free, path('pro'))));
+    await assertSucceeds(getDoc(doc(free, path('pro'))));
     await assertFails(setDoc(doc(paid, path('pro')), data));
     await assertFails(setDoc(doc(free, path('default')), data));
     await assertFails(setDoc(doc(unverified, path('default')), data));
@@ -154,7 +154,7 @@ test('EPS publishes its complete catalog without granting access to intrusion or
     const admin=signedIn('publisher').firestore(),basic=signedIn('basic').firestore(),customer=signedIn('customer').firestore();
     const data={name:'EPS',deviceTypes:[...catalog.map(d=>d.type),'textNode'],iconsJson:'{}'},preset='goomToolbarPresets/EPS/sets/';
     await assertSucceeds(setDoc(doc(admin,preset+'default'),data));await assertSucceeds(setDoc(doc(admin,preset+'pro'),data));
-    await assertSucceeds(getDoc(doc(basic,preset+'default')));await assertSucceeds(getDoc(doc(customer,preset+'pro')));await assertFails(getDoc(doc(basic,preset+'pro')));
+    await assertSucceeds(getDoc(doc(basic,preset+'default')));await assertSucceeds(getDoc(doc(customer,preset+'pro')));await assertSucceeds(getDoc(doc(basic,preset+'pro')));
     await assertFails(setDoc(doc(basic,preset+'default'),data));await assertFails(setDoc(doc(customer,preset+'default'),data));
     for(const type of ['pir','acs_reader','cctv_bullet'])await assertFails(setDoc(doc(admin,preset+'default'),{...data,deviceTypes:[type]}));
     await assertFails(setDoc(doc(admin,'goomToolbarPresets/PZTS/sets/default'),data));await assertFails(setDoc(doc(admin,'goomToolbarPresets/CCTV/sets/default'),data));
@@ -168,7 +168,7 @@ test('SK menus accept networking devices while keeping fire, camera and intrusio
     const admin=signedIn('publisher').firestore(),basic=signedIn('basic').firestore(),customer=signedIn('customer').firestore();
     const data={name:'SK',deviceTypes:[...catalog.map(d=>d.type),'textNode'],iconsJson:'{}'},preset='goomToolbarPresets/SK/sets/';
     await assertSucceeds(setDoc(doc(admin,preset+'default'),data));await assertSucceeds(setDoc(doc(admin,preset+'pro'),data));
-    await assertSucceeds(getDoc(doc(basic,preset+'default')));await assertSucceeds(getDoc(doc(customer,preset+'pro')));await assertFails(getDoc(doc(basic,preset+'pro')));
+    await assertSucceeds(getDoc(doc(basic,preset+'default')));await assertSucceeds(getDoc(doc(customer,preset+'pro')));await assertSucceeds(getDoc(doc(basic,preset+'pro')));
     await assertFails(setDoc(doc(basic,preset+'default'),data));await assertFails(setDoc(doc(customer,preset+'default'),data));
     for(const type of ['pir','eps_smoke','cctv_bullet'])await assertFails(setDoc(doc(admin,preset+'default'),{...data,deviceTypes:[type]}));
     for(const product of ['PZTS','EPS','CCTV'])await assertFails(setDoc(doc(admin,`goomToolbarPresets/${product}/sets/default`),data));
@@ -190,7 +190,7 @@ test('CCTV publishes its own device presets and does not mix them with PZTS', as
     await assertFails(setDoc(doc(admin, 'goomToolbarPresets/CCTV/sets/default'), { ...cameras, deviceTypes: ['pir'] }));
 });
 
-test('admins publish premium menus and only entitled accounts can list and read them', async () => {
+test('published premium menus can be previewed by signed-in Free users but only administrators can publish', async () => {
     await environment.withSecurityRulesDisabled(context => setDoc(doc(context.firestore(), 'goomAdmins/publisher'), { role: 'admin' }));
     await trustedLicense(license('customer'));
     await trustedLicense(license('other-program', ['EPS']));
@@ -204,7 +204,8 @@ test('admins publish premium menus and only entitled accounts can list and read 
     await assertSucceeds(getDocs(collection(admin, path)));
     await assertSucceeds(getDocs(collection(paid, path)));
     await assertSucceeds(getDoc(preset(paid)));
-    for (const context of [signedIn('free'), signedIn('customer', false), environment.unauthenticatedContext()]) {
+    for(const context of [signedIn('free'),signedIn('customer',false)]){const db=context.firestore();await assertSucceeds(getDocs(collection(db,path)));await assertSucceeds(getDoc(preset(db)));}
+    for (const context of [environment.unauthenticatedContext()]) {
         const db = context.firestore();
         await assertFails(getDocs(collection(db, path)));
         await assertFails(getDoc(preset(db)));

@@ -1,7 +1,16 @@
+function previewLockedToolbarMenu(menu){
+    const locked=menu.id!=='default';displayedToolbarMenu=menu;selectedTool='select';activeDeviceIds.clear();
+    const types=new Set([...menu.deviceTypes,'floorPassage','trunkTool']);
+    toolbarMenuDeviceButtons.forEach(button=>{button.hidden=!types.has(button.dataset.type);button.innerHTML=toolbarMenuButtonContent(button.dataset.type,menu);button.classList.remove('active');});
+    document.getElementById('textTools').hidden=!types.has('textNode');document.getElementById('deviceSetTools').dataset.previewLocked=String(locked);
+    const button=document.getElementById('btnCycleToolbarMenu');button.dataset.menuId=menu.id;button.classList.remove('pro-lock');button.setAttribute('data-project-locked','false');button.title=tr('Pro nástroje: pouze náhled');document.getElementById('activeToolbarMenuName').textContent=window.goomPlanLabel(menu.name)+(locked?' 🔒':'');window.goomRefreshDeviceStrip?.();
+}
+document.addEventListener('click',event=>{if(document.getElementById('deviceSetTools').dataset.previewLocked==='true'&&event.target.closest('#deviceSelector .device-btn,#btnCameraPicker')){event.preventDefault();event.stopImmediatePropagation();window.requestProUpgrade?.();}},true);
 const toolbarMenuStorageKey = productStorageKey('goom-toolbar-menus-v1');
 const toolbarMenuLimit = 7;
 const toolbarMenuDeviceButtons = [...document.querySelectorAll('#deviceSelector .device-btn[data-type]:not([data-type="plainText"])')];
 const toolbarMenuTypeLabels = {
+    floorPassage:tr('Mezipodlažní průchod'),trunkTool:tr('Hlavní trasa'),
     panel: tr('Центральный блок'),
     expander: tr('Расширитель'),
     abax: tr('Беспроводной модуль'),
@@ -109,8 +118,8 @@ function sanitizeToolbarMenus(value) {
 
 function loadToolbarMenus() {
     const allowed = canEditToolbarMenus();
-    const presets = allowed ? builtInToolbarMenus : [defaultToolbarMenu];
-    const premiumMenus = allowed ? toolbarMenus.filter(menu => isPremiumToolbarId(menu.id)) : [];
+    const presets = builtInToolbarMenus;
+    const premiumMenus = toolbarMenus.filter(menu => isPremiumToolbarId(menu.id));
     toolbarMenus = presets.map(preset => sharedToolbarMenus[preset.id] || preset);
     toolbarMenus.push(...premiumMenus);
     activeToolbarMenuId = defaultToolbarMenu.id;
@@ -213,7 +222,7 @@ async function watchSharedToolbarMenus(uid, allowed) {
     try {
         const db = await window.getFirebaseDatabase();
         if (generation !== toolbarSyncGeneration) return;
-        for (const preset of allowed ? builtInToolbarMenus : [defaultToolbarMenu]) {
+        for (const preset of builtInToolbarMenus) {
             const stop = sharedToolbarRef(db, preset).onSnapshot(snapshot => {
                 if (generation === toolbarSyncGeneration && !snapshot.metadata?.hasPendingWrites) {
                     updateSharedToolbarMenu(preset, snapshot.data());
@@ -221,7 +230,7 @@ async function watchSharedToolbarMenus(uid, allowed) {
             }, () => { /* Bundled presets also work offline or before rules are deployed. */ });
             toolbarSubscriptions.push(stop);
         }
-        if (allowed) {
+        {
             const stop = db.collection('goomToolbarPresets').doc(APP_PRODUCT).collection('premiumSets')
                 .onSnapshot({ includeMetadataChanges: true }, snapshot => {
                     if (generation !== toolbarSyncGeneration || snapshot.metadata?.hasPendingWrites) return;
@@ -238,13 +247,15 @@ async function watchSharedToolbarMenus(uid, allowed) {
 
 function applyToolbarMenu(menu, persist = true) {
     if (!menu) return;
+    if(menu.id!=='default'&&!canEditToolbarMenus()){previewLockedToolbarMenu(menu);return;}
+    document.getElementById('deviceSetTools').dataset.previewLocked='false';
     const cycleButton = document.getElementById('btnCycleToolbarMenu');
     activeToolbarMenuId = menu.id;
     if (displayedToolbarMenu !== menu || !isSystemReady) {
         displayedToolbarMenu = menu;
         applyToolbarMenuIcons(menu);
     }
-    const visibleTypes = new Set(menu.deviceTypes);
+    const visibleTypes = new Set([...menu.deviceTypes,'floorPassage','trunkTool']);
     toolbarMenuDeviceButtons.forEach(button => {
         button.hidden = !visibleTypes.has(button.dataset.type);
     });
@@ -269,8 +280,8 @@ function applyToolbarMenu(menu, persist = true) {
     cycleButton.setAttribute('aria-label', tr`Текущий набор меню: ${menu.name}. Переключить набор`);
     document.getElementById('activeToolbarMenuName').textContent = menu.name;
     cycleButton.disabled = false;
-    cycleButton.setAttribute('data-project-locked',String(!canEditToolbarMenus()));
-    cycleButton.classList.toggle('pro-lock',!canEditToolbarMenus());
+    cycleButton.setAttribute('data-project-locked','false');
+    cycleButton.classList.remove('pro-lock');
 
     if (persist) {
         preferredSharedToolbarMenuId = null;
@@ -670,7 +681,6 @@ document.getElementById('toolbarMenuShare').addEventListener('change', event => 
     updateToolbarMenuEditorStatus();
 });
 document.getElementById('btnCycleToolbarMenu').addEventListener('click', async () => {
-    if(!canEditToolbarMenus()){window.requestProUpgrade?.();return;}
     if (isToolbarMenuCycling) return;
     const tools = document.getElementById('deviceSetTools');
     const animate = !matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -679,11 +689,10 @@ document.getElementById('btnCycleToolbarMenu').addEventListener('click', async (
     try {
         if (animate) await tools.animate([{ opacity: 1, transform: 'translateY(0)' },
             { opacity: 0, transform: 'translateY(-12px)' }], { duration: 120, easing: 'ease-in' }).finished;
-        if (!canEditToolbarMenus()) return;
-        const activeIndex = toolbarMenus.findIndex(menu => menu.id === activeToolbarMenuId);
-        applyToolbarMenu(toolbarMenus[(activeIndex + 1) % toolbarMenus.length]);
+        const activeIndex = toolbarMenus.findIndex(menu => menu.id === (displayedToolbarMenu?.id||activeToolbarMenuId));
+        if(canEditToolbarMenus())applyToolbarMenu(toolbarMenus[(activeIndex + 1) % toolbarMenus.length]);else previewLockedToolbarMenu(toolbarMenus[(activeIndex + 1) % toolbarMenus.length]);
         tools.scrollLeft = 0;
-        if (isSystemReady) triggerAutoSave();
+        if (isSystemReady&&canEditToolbarMenus()) triggerAutoSave();
         if (animate) await tools.animate([{ opacity: 0, transform: 'translateY(12px)' },
             { opacity: 1, transform: 'translateY(0)' }], { duration: 190, easing: 'cubic-bezier(.22,.61,.36,1)' }).finished;
     } finally {
@@ -716,7 +725,7 @@ function updateToolbarAccount() {
         toolbarMenus = [];
         displayedToolbarMenu = null;
     }
-    if (!allowed) delete sharedToolbarMenus.pro;
+
     if (accountChanged || accessChanged || lostAdmin || !displayedToolbarMenu) {
         loadToolbarMenus();
         applyToolbarMenu(getActiveToolbarMenu(), false);

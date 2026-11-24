@@ -69,6 +69,7 @@ function getCameraOptics(device) {
     };
 }
 function hasDeviceCoverage(device) {
+    if(!isOwnPlanEntity(device))return false;
     return APP_PRODUCT === 'CCTV' ? Object.hasOwn(CCTV_CAMERAS, device.type) : ['pir', 'pir_wl', 'glassbreak'].includes(device.type);
 }
 const STANDARD_FLOOR_NAMES=['3PP','2PP','1PP','1NP','2NP','3NP','4NP','5NP','6NP'];

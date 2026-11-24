@@ -62,7 +62,7 @@ const pirCoverageCache = new WeakMap();
 function getPIRCoveragePoints(floor, device) {
     const mask = floor.wallMask;
     const optics = getCameraOptics(device);
-    const rangePixels = optics?.range ?? 300;
+    const rangePixels = (optics?.range ?? 300)*(Number(document.getElementById('deviceSizeSlider').value)||16)/16;
     const fovDegrees = optics?.angle ?? 90;
 
     const cached = pirCoverageCache.get(device);
@@ -221,6 +221,8 @@ function hitTestPlanTextNode(device, x, y, labelScale) {
 }
 
 function drawDevice(ctx, dev, skipSelection = false, theme = 'dark', options = {}) {
+    if(!options.portableCapture&&!isOwnPlanEntity(dev)){drawForeignPlanDevice(ctx,dev);return;}
+    if(isInfrastructureDevice(dev)){drawInfrastructureDevice(ctx,dev,options.baseSize??Number(document.getElementById('deviceSizeSlider').value));return;}
     let slider = document.getElementById('deviceSizeSlider');
     let baseSize = options.baseSize ?? ((slider && slider.value) ? parseInt(slider.value) : 16);
     let sMult = (baseSize / 14); 
@@ -377,6 +379,7 @@ function drawDevice(ctx, dev, skipSelection = false, theme = 'dark', options = {
     }
     ctx.restore(); 
 
+    if(options.skipLabels)return;
     const label = getDeviceAddressParts(dev);
     const labelText = label.prefix + label.number;
 
@@ -407,7 +410,7 @@ function drawDevice(ctx, dev, skipSelection = false, theme = 'dark', options = {
 function drawFloorData(ctx, floor, skipSelection = false, theme = getPlanTheme(floor)) {
     if (!floor) return;
     if (!isSystemReady) return;
-
+    updateTrunkJunctions(floor);
     if (floor.showConnections) {
         const devicesById=new Map(floor.devices.map(device=>[device.id,device]));
         floor.cables.forEach(c => {
@@ -422,10 +425,11 @@ function drawFloorData(ctx, floor, skipSelection = false, theme = getPlanTheme(f
                 if (d1.type === 'textNode') arrowEnd = true; if (d2.type === 'textNode') arrowStart = true;
                 drawDirectLeaderLine(ctx, d1.x, d1.y, d2.x, d2.y, color, lineWidth, arrowStart, arrowEnd);
             } else {
-                const color=cableRouteColor(d1,d2);
-                const lineWidth=isExporting||skipSelection?5.5:Math.max(5.5,2.5/Math.max(.01,scale));
+                const color=c.kind==='trunk'?'#38bdf8':(!isOwnPlanEntity(c)&&c.routeColor)||cableRouteColor(d1,d2);
+                const routeWidth=c.kind==='trunk'?8.5:4;
+                const lineWidth=isExporting||skipSelection?routeWidth:Math.max(routeWidth,2/Math.max(.01,scale));
                 drawCableRoute(ctx, c, d1, d2, color, lineWidth);
-                if (!isExporting && !skipSelection && (selectedTool === 'cableTool' || activeDeviceIds.has(d1.id) || activeDeviceIds.has(d2.id) || (draggedHandle && draggedHandle.cable === c))) {
+                if (isOwnPlanEntity(c) && c.kind!=='trunk' && !isExporting && !skipSelection && (selectedTool === 'cableTool' || activeDeviceIds.has(d1.id) || activeDeviceIds.has(d2.id) || (draggedHandle && draggedHandle.cable === c))) {
                     drawHandles(ctx, c, color);
                 }
             }
@@ -436,6 +440,7 @@ function drawFloorData(ctx, floor, skipSelection = false, theme = getPlanTheme(f
         drawDevice(ctx, dev, skipSelection, theme);
     });
     drawProjectLegend(ctx, floor, !skipSelection && !isExporting, theme);
+    drawForeignLegends(ctx,floor);
 }
 
 const planWatermarkImages = new Map();

@@ -16,7 +16,7 @@
         document.querySelector('.pro-card h3').textContent=window.goomUI('Předplatné','Subscription','Abonnement','Подписка','Subskrypcja')+' '+(tier==='company'?'Team':'Pro');
         byId('accountProStatus').textContent = administrative?adminStatus:active?activeLabel:tr('Váš účet používá bezplatnou verzi.');
         byId('accountProStatus').classList.toggle('active', active);
-        let suite=byId('proSuiteNote');if(!suite){suite=document.createElement('p');suite.id='proSuiteNote';suite.style.cssText='text-align:center;font-size:14px;margin:8px 0 16px';document.querySelector('.pro-pricing').before(suite);}
+        let suite=byId('proSuiteNote');if(!suite){suite=document.createElement('p');suite.id='proSuiteNote';suite.style.cssText='text-align:center;font-size:14px;margin:8px 0 16px';document.querySelector('.pro-pricing .pro-period').after(suite);}
         suite.textContent=window.goomUI('Jedno předplatné: PZTS · EPS · CCTV · SK','One subscription: PZTS · EPS · CCTV · SK','Ein Abonnement: PZTS · EPS · CCTV · SK','Одна подписка: PZTS · EPS · CCTV · SK');
         for (const button of buyButtons) {
             button.hidden = active;

@@ -1,5 +1,7 @@
 function deviceBriefName(device){
+    if(!isOwnPlanEntity(device))return device.ownerApplication+' · '+(device.manualName||device.type)+' 🔒';
     if (device.type === 'textNode' && device.plainText === true) return tr('Text na výkresu');
+    if(isInfrastructureDevice(device))return tr(device.type==='floorPassage'?'Mezipodlažní průchod':'Hlavní trasa');
     const names={pir:'PIR detektor',pir_wl:'Bezdrátový PIR',magnet:'Magnetický kontakt',magnet_wl:'Bezdrátový magnet',glassbreak:'Detektor rozbití skla',panic:'Tísňové tlačítko',siren:'Siréna',panel:'Ústředna',keypad:'Klávesnice',expander:'Expandér',abax:'ABAX',textNode:'Poznámka',deactivated:'Neaktivní detektor',...ADDITIONAL_DEVICE_LABELS};
     return tr(names[device.type]||'Detektor');
 }

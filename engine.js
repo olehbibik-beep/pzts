@@ -41,6 +41,7 @@ function distToSegmentSquared(p, v, w) {
 }
 
 function getCableRoute(cable, from, to) {
+    if(cable.kind==='trunk')return[from,to];
     const { h1x, h1y, h2x, h2y, h3x, h3y } = cable;
     return [from, { x: h1x, y: from.y }, { x: h1x, y: h1y }, { x: h2x, y: h1y }, { x: h2x, y: h2y },
         { x: h3x, y: h2y }, { x: h3x, y: h3y }, { x: to.x, y: h3y }, to];
@@ -53,6 +54,7 @@ function hitTestCables(canvasX, canvasY, floor, showDeac) {
     let hit = null;
     for (let i = floor.cables.length - 1; i >= 0; i--) {
         const cable = floor.cables[i];
+        if(!isOwnPlanEntity(cable))continue;
         const from = devicesById.get(cable.fromId), to = devicesById.get(cable.toId);
         if (!from || !to || (!showDeac && (from.type === 'deactivated' || to.type === 'deactivated'))) continue;
         const points = from.type === 'textNode' || to.type === 'textNode' ? [from, to] : getCableRoute(cable, from, to);
@@ -92,12 +94,14 @@ function refreshAutomaticCableEnds(cable, from, to) {
 const independentDeviceNumberTypes = new Set(['expander', 'keypad', 'abax', 'siren', 'acs_module', 'acs_reader', 'cctv_nvr', 'cctv_poe']);
 
 function getDeviceAddressParts(device) {
+    if(!isOwnPlanEntity(device))return device.portableSymbol?.address||{prefix:'',number:''};
     if (!device.number || ['panel', 'abax', 'textNode', 'deactivated', 'cableTool'].includes(device.type)) return { prefix: '', number: '' };
     const prefix = independentDeviceNumberTypes.has(device.type) ? '' : `${device.loopId || 1}/`;
     return { prefix, number: String(device.number) };
 }
 
 function getDeviceNumberGroup(device) {
+    if(!isOwnPlanEntity(device)||isInfrastructureDevice(device))return null;
     if (['panel', 'deactivated', 'textNode', 'cableTool'].includes(device.type)) return null;
     if (independentDeviceNumberTypes.has(device.type)) return device.type;
     return `bus:${device.loopId || 1}`;
@@ -153,6 +157,7 @@ function calculateDynamicNumbersGlobal(floorsArray) {
     const blocked = floorsArray.flatMap(floor => floor?.addressReservations || []);
     const counters = new Map();
     for (const device of devices) {
+        if(!isOwnPlanEntity(device))continue;
         const group = getDeviceNumberGroup(device);
         if (!group) continue;
         if (!counters.has(group)) counters.set(group, { next: 1, offset: 0, ranges: [] });
@@ -185,7 +190,8 @@ function getProjectBounds(floor, showDeac) {
         minX=Math.min(minX,legendBounds.minX); minY=Math.min(minY,legendBounds.minY);
         maxX=Math.max(maxX,legendBounds.minX+legendBounds.width); maxY=Math.max(maxY,legendBounds.minY+legendBounds.height);
     }
-    if (floor.devices.length === 0 && !floor.image && !legendBounds) return { minX: 0, minY: 0, width: 1920, height: 1080 };
+    for(const legend of floor.foreignLegends||[]){const factor=Math.max(.01,Math.min(100,Number(legend.scale)||1)),w=Math.max(200,...legend.entries.map(e=>String(e.label||'').length*8))*factor,h=(38+legend.entries.length*24)*factor;minX=Math.min(minX,legend.x);minY=Math.min(minY,legend.y);maxX=Math.max(maxX,legend.x+w);maxY=Math.max(maxY,legend.y+h);}
+    if (floor.devices.length === 0 && !floor.image && !legendBounds && !(floor.foreignLegends||[]).length) return { minX: 0, minY: 0, width: 1920, height: 1080 };
 
     floor.devices.forEach(d => {
         if (!showDeac && d.type === 'deactivated') return;

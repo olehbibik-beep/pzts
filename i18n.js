@@ -3,6 +3,11 @@
     window.goomPlanLabel=value=>String(value).replace(/COMPANY PROJECT|Company PROJECT|PROJECT für Firmen|PROJECT для компаний|PROJECT для компании|[Ff]iremního PROJECT|фирменного PROJECT|[Ff]iremní PROJECT|Firmen[- ]PROJECT|Unternehmens[- ]PROJECT|[Ff]irmowy PROJECT|[Ff]irmowego PROJECT|[Кк]орпоративный PROJECT|[Фф]ирменный PROJECT/g,'Team').replace(/PROJECT/g,'Pro').replace(/BASIC/g,'Free');
 
     const rows = [
+        ["Velikost značek a dosahu","Symbol and coverage size","Symbol- und Reichweitengröße","Размер значков и зон"],
+        ["Mezipodlažní průchod","Inter-floor passage","Geschossdurchführung","Межэтажный переход"],
+        ["Hlavní trasa","Main cable route","Haupttrasse","Главная трасса"],
+        ["Cílové podlaží","Destination floor","Zielgeschoss","Целевой этаж"],
+        ["Pro nástroje: pouze náhled","Pro tools: preview only","Pro-Werkzeuge: nur Vorschau","Инструменты Pro: только просмотр"],
         ["Cloud: až 5 projektů v každém editoru","Cloud: up to 5 projects in each editor","Cloud: bis zu 5 Projekte je Editor","Cloud: до 5 проектов в каждой программе"],
         ["Pro domácí práci","For home projects","Für Projekte zu Hause","Для домашней работы"],
         ["Vlastní nástroje a profesionální sada Pro","Your own tools and the professional Pro tool set","Eigene Werkzeuge und das professionelle Pro-Werkzeugset","Свои инструменты и профессиональный набор Pro"],
