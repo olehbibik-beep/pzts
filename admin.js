@@ -1,4 +1,4 @@
-(() => {
+(async () => {
     const byId = id => document.getElementById(id);
     const roleLabels = { owner: 'Владелец', admin: 'Администратор', user: 'Пользователь' };
     const programLabels = {
@@ -584,6 +584,7 @@
     try {
         if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
         auth = firebase.auth();
+        await auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
         db = firebase.firestore();
         auth.onAuthStateChanged(onSession, error => status(readableError(error), true));
     } catch (error) { status(readableError(error), true); return; }

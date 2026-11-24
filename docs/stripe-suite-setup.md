@@ -7,7 +7,7 @@
 1. Завершить настройку бизнес-аккаунта Stripe и создать четыре повторяющиеся цены EUR без trial: monthly, annual, companyMonthly, companyAnnual.
 2. Задать STRIPE_SECRET_KEY и STRIPE_WEBHOOK_SECRET через Firebase Secret Manager; не хранить ключи в клиентском коде или GitHub.
 3. В конфигурации Firebase функций указать STRIPE_MONTHLY_PRICE_ID, STRIPE_ANNUAL_PRICE_ID, STRIPE_COMPANY_MONTHLY_PRICE_ID, STRIPE_COMPANY_ANNUAL_PRICE_ID и APP_ORIGIN=https://goom.cz/pzts/.
-4. Развернуть createProCheckout, confirmProCheckout, createProPortal, stripeProWebhook и goomCompanySeats из codebase pro-billing. На Stripe webhook направить события checkout.session.completed, checkout.session.async_payment_succeeded, customer.subscription.created/updated/deleted/paused/resumed, invoice.paid, invoice.payment_failed и charge.refunded.
+4. Развернуть createProCheckout, confirmProCheckout, createProPortal, stripeProWebhook из codebase pro-billing. Сервисы goomAdmin и goomCompanySeats разворачиваются отдельно из codebase project-cloud и не требуют секретов Stripe. На Stripe webhook направить события checkout.session.completed, checkout.session.async_payment_succeeded, customer.subscription.created/updated/deleted/paused/resumed, invoice.paid, invoice.payment_failed и charge.refunded.
 5. Проверить сценарии в локальном Stripe sandbox: успешная оплата, продление, ошибка оплаты, возврат, отмена, доступ во всех четырёх редакторах и корпоративные места. Тестовый режим не подтверждает доставку настоящего письма.
 6. В pro-billing.js всех четырёх программ включить billingEnabled и убрать пометку «Скоро» в текстах сайта после проверки конфигурации.
 

@@ -366,10 +366,10 @@ async function importPlanSource(file, floor) {
         const page=await getPlanPdfPage(candidate), base=page.getViewport({scale:3});
         const raster=await rasterizePlanPdf(candidate,Math.min(base.width,Math.sqrt(12000000*base.width/base.height)));
         imgData=raster.toDataURL('image/png'); image=await loadPlanImage(imgData);
-    } else if (/\.dxf$/i.test(file.name)) {
+    } else if (/\.(dxf|dwg)$/i.test(file.name)) {
         await window.planLibrariesReady;
         if(!window.DxfParser)throw new Error(tr('Knihovna DXF není dostupná.'));
-        vectorPlan=makeVectorPlan(new DxfParser().parseSync(await file.text()));
+        vectorPlan=makeVectorPlan(new DxfParser().parseSync(/\.dwg$/i.test(file.name)?await window.convertGoomDwg(file):await file.text()));
         const raster=document.createElement('canvas');raster.width=vectorPlan.width;raster.height=vectorPlan.height;
         const target=raster.getContext('2d');target.fillStyle='#fff';target.fillRect(0,0,raster.width,raster.height);
         drawVectorPlan(target,vectorPlan,'original');imgData=raster.toDataURL('image/png');image=await loadPlanImage(imgData);

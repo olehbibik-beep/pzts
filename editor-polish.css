@@ -31,3 +31,15 @@
 @media(max-width:440px){.account-cloud{grid-template-columns:1fr}.cloud-capacity{grid-row:auto}.account-cloud #accountCloudInfo,.account-cloud #btnAccountCloudProjects{grid-column:1;text-align:center}}
 
 #proUpgradeModal{align-items:center;justify-content:center}#proUpgradeModal>.pro-pricing{flex:none;width:min(1200px,calc(100vw - 40px));margin:auto;min-width:0;max-width:calc(100vw - 40px);overflow-x:hidden}.pro-pricing #proSuiteNote{display:block;max-width:100%;overflow-wrap:anywhere;align-self:stretch}.account-cloud{position:relative;overflow:hidden;grid-template-columns:100px minmax(0,1fr);gap:8px 16px;min-height:150px}.cloud-capacity{grid-column:1;grid-row:1/4;position:absolute;left:-14px;top:50%;transform:translateY(-50%);width:130px;height:130px;max-width:none}.cloud-capacity svg{height:130px;width:130px}.capacity-value{left:30%;top:50%;font-size:22px}.account-cloud #accountCloudTitle,.account-cloud #accountCloudInfo,.account-cloud #btnAccountCloudProjects{grid-column:2}.account-cloud:has(.cloud-capacity[hidden]) #accountCloudTitle{grid-column:1}@media(max-width:440px){.account-cloud{grid-template-columns:95px minmax(0,1fr)}.account-cloud #accountCloudTitle,.account-cloud #accountCloudInfo,.account-cloud #btnAccountCloudProjects{grid-column:2;text-align:left}}
+
+/* Use available desktop width; scale controls with genuinely larger viewports. */
+:root{--editor-ui-scale:1}
+.sliding-row-container .device-selector-group{width:100%;max-width:none}
+@media(min-width:1921px) and (min-height:1081px){
+ .toolbar{zoom:var(--editor-ui-scale)}
+ .modal>.modal-content,.modal>.welcome-card{zoom:var(--editor-ui-scale);max-height:calc((100dvh - 40px)/var(--editor-ui-scale))!important;max-width:calc((100vw - 40px)/var(--editor-ui-scale))!important}
+ #proUpgradeModal>.pro-pricing{width:min(1200px,calc((100vw - 40px)/var(--editor-ui-scale)))}
+ #welcomeModal .welcome-card{height:min(720px,calc((100dvh - 48px)/var(--editor-ui-scale)))}
+}
+.capacity-track{stroke:#080a0d}.capacity-value{display:flex;flex-direction:column;align-items:center;gap:4px}.capacity-value small{font-size:10px;font-weight:500;color:#aebec6}
+#fileDropOverlay{position:fixed;inset:12px;z-index:11020;display:grid;place-items:center;border:2px dashed #7dd3fc;border-radius:18px;background:#14232ee8;color:#e0f2fe;font-size:22px;font-weight:650;pointer-events:none;padding:24px;text-align:center}#fileDropOverlay[hidden]{display:none}

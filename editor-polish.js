@@ -1,5 +1,7 @@
 // One product heading and predictable scrolling across all four editors.
 (() => {
+    function resizeInterface(){document.documentElement.style.setProperty('--editor-ui-scale',String(Math.max(1,Math.min(2,innerWidth/1920,innerHeight/1080))));window.goomRefreshDeviceStrip?.();}
+    window.addEventListener('resize',resizeInterface);resizeInterface();
     const names={PZTS:{cs:'PZTS',en:'I&HAS',de:'GMA',ru:'СОТС',pl:'SSWiN'},EPS:{cs:'EPS',en:'FDAS',de:'BMA',ru:'АПС',pl:'SSP'},CCTV:{cs:'CCTV',en:'CCTV',de:'VÜA',ru:'СВН',pl:'CCTV'},SK:{cs:'SK',en:'SCS',de:'IT-Netz',ru:'СКС',pl:'OS'}};
     function brand(){
         const lang=document.documentElement.lang;const settings=({cs:'Nastavení plánu a vrstev',en:'Plan and layer settings',de:'Plan- und Ebeneneinstellungen',ru:'Настройки плана и слоёв',pl:'Ustawienia planu i warstw'})[lang]||'Plan and layer settings';

@@ -126,6 +126,12 @@ test('active time is private, monotonic, bounded by elapsed time and isolated to
     await assertFails(getDocs(collection(admin, 'goomEditorUsage')));
     await assertFails(getDocs(query(collection(user, 'goomEditorUsage'), limit(25))));
 });
+test('legacy usage maps gain missing zero counters without changing another application',async()=>{
+ const user=signedIn().firestore(),ref=doc(user,'goomEditorUsage/owner');await assertSucceeds(setDoc(doc(user,'users/owner'),profile('personal')));
+ await environment.withSecurityRulesDisabled(context=>setDoc(doc(context.firestore(),'goomEditorUsage/owner'),{application:'CCTV',applications:{PZTS:5,CCTV:7},activeSeconds:12,updatedAt:new Date(Date.now()-65000)}));
+ const base={application:'SK',applications:{PZTS:5,EPS:0,CCTV:7,SK:0},activeSeconds:12,updatedAt:serverTimestamp()};await assertSucceeds(setDoc(ref,base));
+ await assertFails(setDoc(ref,{...base,applications:{PZTS:5,EPS:1,CCTV:7,SK:0},activeSeconds:13}));
+});
 test('shared toolbar presets can only be published by admins and PROJECT requires access', async () => {
     await environment.withSecurityRulesDisabled(context => setDoc(doc(context.firestore(), 'goomAdmins/publisher'), { role: 'admin' }));
     await trustedLicense(license('customer'));

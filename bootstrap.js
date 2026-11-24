@@ -1,6 +1,6 @@
 (() => {
     // Change this version whenever publishing application files together.
-    const version = "20261124-shared-8";
+    const version = "20261124-workspace-9";
     let started = false;
     let pdfLoading = null;
     let pdfAttempt = 0;
@@ -55,7 +55,7 @@
                 ] : [])
             ].map(promise => promise.catch(error => console.warn('Библиотека импорта/экспорта недоступна:', error)));
             window.planLibrariesReady = Promise.all(libraries);
-            for (const name of ['modal-ui', 'busy-ui', 'config', 'editor-polish', 'map-vector-tiles', 'map-buildings', 'shared-symbols', 'shared-project', 'infrastructure-tools', 'state', 'project-legend', 'engine', 'storage', 'dialogs', 'render', 'map-contours', 'plan-renderer', 'render-performance', 'mobile-viewer', 'editor-interactions', 'editor-session', 'building-overview', 'svg-context', 'dxf-context', 'plan-export', 'app', 'satellite-map', 'photo-plan', 'experience-i18n', 'guide-steps', 'onboarding', 'help-guide', 'project-readiness', 'idle-break', 'firebase-auth', 'project-activity', 'editor-usage', 'account-experience', 'account-profile', 'pro-billing', 'firebase-sync', 'cloud-capacity', 'icon-editor', 'toolbar-menus', 'select-controls', 'tablet-tools', 'feedback', 'welcome-intro']) {
+            for (const name of ['modal-ui', 'busy-ui', 'config', 'editor-polish', 'map-vector-tiles', 'map-buildings', 'shared-symbols', 'shared-project', 'infrastructure-tools', 'state', 'project-legend', 'engine', 'storage', 'dialogs', 'render', 'map-contours', 'plan-renderer', 'render-performance', 'mobile-viewer', 'editor-interactions', 'editor-session', 'building-overview', 'svg-context', 'dxf-context', 'plan-export', 'app', 'drawing-files', 'satellite-map', 'photo-plan', 'experience-i18n', 'guide-steps', 'onboarding', 'help-guide', 'project-readiness', 'idle-break', 'firebase-auth', 'project-activity', 'editor-usage', 'account-experience', 'account-profile', 'pro-billing', 'firebase-sync', 'cloud-capacity', 'icon-editor', 'toolbar-menus', 'select-controls', 'tablet-tools', 'feedback', 'welcome-intro']) {
                 if (name === 'state' && window.goomProduct === 'CCTV') await loadScript(`cctv.js?v=${version}`);
                 await loadScript(`${name}.js?v=${version}`);
             }

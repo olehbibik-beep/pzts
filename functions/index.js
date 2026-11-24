@@ -6,8 +6,7 @@ const { defineSecret, defineString } = require('firebase-functions/params');
 const logger = require('firebase-functions/logger');
 const Stripe = require('stripe');
 const { createBillingService, BillingError } = require('./billing-core.cjs');
-const { createAdminService } = require('./admin.cjs');
-const { createCompanySeatService, CompanySeatError } = require('./company-seats.cjs');
+const { CompanySeatError } = require('./company-seats.cjs');
 
 initializeApp();
 const stripeSecret = defineSecret('STRIPE_SECRET_KEY');
@@ -20,17 +19,6 @@ const singlePrice = defineString('STRIPE_SINGLE_PRICE_ID', { default: '' });
 const suitePrice = defineString('STRIPE_SUITE_PRICE_ID', { default: '' });
 const appOrigin = defineString('APP_ORIGIN', { default: 'https://goom.cz/pzts/' });
 const region = 'europe-west1';
-exports.goomAdmin = onCall({ region }, async request => {
-    try {
-        const handle = createAdminService({ auth: getAuth(), db: getFirestore(),
-            timestamp: millis => Timestamp.fromMillis(millis), serverTimestamp: () => FieldValue.serverTimestamp() });
-        return await handle(request);
-    } catch (error) {
-        if (error instanceof HttpsError) throw error;
-        logger.error('Admin request failed', { code: error.code || 'unknown' });
-        throw new HttpsError('unavailable', 'Administration is temporarily unavailable.');
-    }
-});
 function service() {
     const key = stripeSecret.value();
     const localSandbox = process.env.FUNCTIONS_EMULATOR === 'true' && process.env.GCLOUD_PROJECT === 'demo-goom';
@@ -63,15 +51,6 @@ exports.createProPortal = onCall({ region, secrets: [stripeSecret] }, async requ
     if (!request.auth) throw new HttpsError('unauthenticated', 'Sign in first.');
     try { return await service().createPortal(request.auth.uid, request.data?.language); }
     catch (error) { throw publicError(error); }
-});
-exports.goomCompanySeats = onCall({ region }, async request => {
-    if (!request.auth) throw new HttpsError('unauthenticated', 'Sign in first.');
-    const seats = createCompanySeatService({ db: getFirestore(), getUser: uid => getAuth().getUser(uid) });
-    try {
-        if (request.data?.action === 'claim') return await seats.claim(request.auth.uid);
-        if (request.data?.action === 'save') return await seats.save(request.auth.uid, request.data.emails);
-        throw new CompanySeatError('invalid-argument', 'Invalid action.');
-    } catch (error) { throw publicError(error); }
 });
 exports.stripeProWebhook = onRequest({ region, secrets: [stripeSecret, webhookSecret] }, async (request, response) => {
     if (request.method !== 'POST') { response.status(405).send('Method not allowed'); return; }

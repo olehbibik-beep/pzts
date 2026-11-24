@@ -344,3 +344,10 @@ test('central admin panel assigns roles and app-specific access while the server
         assert.deepEqual(errors,[]);
     } finally { await context.close(); }
 });
+
+
+test('EPS and SK open administration in the same signed-in session without editor catalogs',async()=>{
+ const app=initializeApp({projectId},'admin-navigation-'+Date.now()),adminDb=getFirestore(app),adminAuth=getAuth(app),email='admin-nav-'+Date.now()+'@example.test',password='integration-password-123';const user=await adminAuth.createUser({email,password,emailVerified:true,displayName:'Admin Navigation'});
+ await adminDb.collection('users').doc(user.uid).set({displayName:'Admin Navigation',email,accountType:'personal',ico:'',locale:'cs',createdAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()});await adminDb.collection('goomAdmins').doc(user.uid).set({role:'owner'});
+ for(const product of ['EPS','SK']){const{context,page,errors}=await openApp('/'+product+'/');try{await page.evaluate(async({email,password})=>{const auth=await getFirebaseAuth();await auth.signInWithEmailAndPassword(email,password);},{email,password});await page.waitForFunction(()=>window.hasAdminAccess?.());await page.goto(origin+'/'+product+'/admin.html');await page.locator('#adminWorkspace').waitFor({state:'visible'});assert.match(await page.locator('#adminIdentity').textContent(),/Владелец/);assert.equal(await page.locator('#adminLogin').isVisible(),false);assert.deepEqual(errors,[]);}finally{await context.close();}}
+});

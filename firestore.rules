@@ -177,7 +177,12 @@ service cloud.firestore {
         && request.resource.data.activeSeconds - resource.data.activeSeconds <= 60
         && (request.resource.data.activeSeconds - resource.data.activeSeconds) * 1000
           <= request.time.toMillis() - resource.data.updatedAt.toMillis()
-        && request.resource.data.applications.diff(resource.data.applications).affectedKeys().hasOnly([request.resource.data.application]);
+        && unchangedOtherUsage('PZTS') && unchangedOtherUsage('EPS')
+        && unchangedOtherUsage('CCTV') && unchangedOtherUsage('SK');
+      function unchangedOtherUsage(application) {
+        return request.resource.data.application == application
+          || request.resource.data.applications[application] == resource.data.applications.get(application, 0);
+      }
       function usageOwner(uid) {
         return owner(uid) && request.auth.token.email_verified == true
           && exists(/databases/$(database)/documents/users/$(uid));

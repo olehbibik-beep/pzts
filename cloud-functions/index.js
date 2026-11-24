@@ -41,3 +41,16 @@ exports.goomPublicReviews=onRequest({region:'europe-west1',memory:'256MiB',timeo
  try{let input={};if(req.query.cursor){if(typeof req.query.cursor!=='string'||req.query.cursor.length>300)throw Error();try{input.cursor=JSON.parse(req.query.cursor);}catch{res.status(400).json({error:'Invalid cursor'});return;}}const result=await reviews.listPublic(input);res.set('Cache-Control','public, max-age=30, s-maxage=30').json(result);}
  catch(error){res.set('Cache-Control','no-store').status(error.code==='invalid-argument'?400:503).json({error:'Reviews temporarily unavailable'});}
 });
+
+// Account services have no payment-secret dependency.
+const {createAdminService}=require('./account-admin.cjs');
+const {createCompanySeatService,CompanySeatError}=require('./company-seats.cjs');
+exports.goomAdmin=onCall({region:'europe-west1',cors:true,invoker:'public',maxInstances:3},async request=>{
+ try{return await createAdminService({auth:getAuth(),db:getFirestore(),timestamp:ms=>Timestamp.fromMillis(ms),serverTimestamp:()=>FieldValue.serverTimestamp()})(request);}
+ catch(error){if(error instanceof HttpsError)throw error;logger.error('Admin request failed',{code:error.code||'unknown'});throw new HttpsError('unavailable','Administration is temporarily unavailable.');}
+});
+exports.goomCompanySeats=onCall({region:'europe-west1',cors:true,invoker:'public',maxInstances:3},async request=>{
+ if(!request.auth)throw new HttpsError('unauthenticated','Sign in first.');
+ try{const seats=createCompanySeatService({db:getFirestore(),getUser:uid=>getAuth().getUser(uid)});if(request.data?.action==='claim')return await seats.claim(request.auth.uid);if(request.data?.action==='save')return await seats.save(request.auth.uid,request.data.emails);throw new HttpsError('invalid-argument','Invalid action.');}
+ catch(error){if(error instanceof HttpsError)throw error;if(error instanceof CompanySeatError)throw new HttpsError(error.code,error.message);logger.warn('Company seat request failed',{code:error.code||'unknown'});throw new HttpsError('unavailable','Team service is temporarily unavailable.');}
+});

@@ -296,8 +296,8 @@ if(btnMenuOpenBIPS) {
         document.getElementById('mainMenuModal').style.display = 'none'; 
         if (window.showOpenFilePicker) {
             try {
-                const [handle] = await window.showOpenFilePicker({ types: [{ description: 'TECH Projekt', accept: {'application/json': ['.tech', '.cctv', '.bips']} }] });
-                currentFileHandle = handle; const file = await handle.getFile(); importFileContent(file);
+                const [handle] = await window.showOpenFilePicker({ types: [{ description: 'TECH Projekt', accept: {'application/json': ['.tech', '.cctv', '.bips', '.dxf', '.dwg', '.xcx']} }] });
+                const file = await handle.getFile(); if(await window.openGoomFile(file))currentFileHandle = /\.(tech|cctv|bips)$/i.test(file.name)?handle:null;
             } catch (e) {} 
         } else { document.getElementById('bipsLoader').click(); }
     });
@@ -320,7 +320,7 @@ for (const [id,format] of [['btnExportPNG','png'],['btnExportPDF','pdf'],['btnEx
  document.getElementById(id).addEventListener('click', () => exportPlanFile(format));
 }
 
-document.getElementById('bipsLoader').addEventListener('change', (e) => { const f = e.target.files[0]; if(f) importFileContent(f); e.target.value = ''; });
+document.getElementById('bipsLoader').addEventListener('change', (e) => { const f = e.target.files[0]; if(f) window.openGoomFile(f); e.target.value = ''; });
 
 let pendingTextFloor = null;
 const planTextForm = document.getElementById('planTextForm');
@@ -1155,7 +1155,7 @@ async function initProject() {
                     try {
                         const [handle] = await window.showOpenFilePicker({ types: [{ description: 'TECH Projekt', accept: {'application/json': ['.tech', '.cctv', '.bips']} }] });
                         const file = await handle.getFile();
-                        if (await importFileContent(file)) currentFileHandle = handle;
+                        if (await window.openGoomFile(file)) currentFileHandle = /\.(tech|cctv|bips)$/i.test(file.name)?handle:null;
                     } catch (error) {
                         if (error.name !== 'AbortError') showAppAlert(error.message, tr('Ошибка открытия проекта'));
                     }
@@ -1267,21 +1267,25 @@ function changeFloor() {
     centerCurrentFloor(); activeDeviceIds.clear(); requestRedraw(); triggerAutoSave();
 }
 
-document.getElementById('imageLoader').addEventListener('change', async function(e) {
- const floor=floors[currentFloorIndex],file=e.target.files[0];e.target.value='';
- if(!floor||!file||!isSystemReady||window.isGoomReadOnly?.())return;
+window.importGoomDrawing=async function(file) {
+ const wasReady=isSystemReady,ownerUid=window.getFirebaseUser?.()?.uid,inputFloors=floors,floor=floors[currentFloorIndex]||createEmptyProjectFloor('1NP');
+ if(!file||container.getAttribute('aria-busy')==='true'||window.isGoomReadOnly?.())return false;
  isSystemReady=false;container.setAttribute('aria-busy','true');requestRedraw();
  const endImport=window.startGoomBusy?.();
  try {
   await window.goomBusyPaint?.();
   await new Promise(requestAnimationFrame);
   const imported=await importPlanSource(file,floor);
-  if(imported){window.resetActiveCloudProject?.();Object.assign(floor,imported);isSystemReady=true;changeFloor();saveStateToHistory();triggerAutoSave();
+  if(window.getFirebaseUser?.()?.uid!==ownerUid||floors!==inputFloors)return false;
+  if(imported){if(!wasReady)loadDefaultFloors(false,file.name.replace(/\.[^.]+$/,''));window.resetActiveCloudProject?.();Object.assign(floors[currentFloorIndex],imported);isSystemReady=true;changeFloor();saveStateToHistory();triggerAutoSave();
    if(imported.vectorPlan?.unsupported.length)showAppAlert(tr`Nepodporované prvky DXF: ${imported.vectorPlan.unsupported.join(', ')}`,tr('Import DXF'));
+   document.getElementById('welcomeModal').style.display='none';document.getElementById('mainMenuModal').style.display='none';return true;
   }
- } catch(error){console.error(error);showAppAlert(error.message,tr('Chyba načítání výkresu'));}
- finally{endImport?.();isSystemReady=true;container.removeAttribute('aria-busy');requestRedraw();}
-});
+  isSystemReady=wasReady;return false;
+ } catch(error){console.error(error);showAppAlert(error.message,tr('Chyba načítání výkresu'));isSystemReady=wasReady;return false;}
+ finally{endImport?.();container.removeAttribute('aria-busy');requestRedraw();}
+};
+document.getElementById('imageLoader').addEventListener('change',function(e){const file=e.target.files[0];e.target.value='';if(file)void window.openGoomFile(file);});
 
 function importFileContent(file, options = {}) {
     if (window.isGoomReadOnly?.() && options.source !== 'cloud') return Promise.resolve(false);
