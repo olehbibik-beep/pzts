@@ -152,3 +152,5 @@ table{min-width:720px;font-size:.86rem}th,td{padding:10px 8px}th{font-size:.74re
 .admin-review header>div{min-width:0}.admin-review strong{overflow-wrap:anywhere}
 
 .badge.admin,.program-dot.admin{background:#ede6ff;color:#6241b5}
+
+.account-delete{margin-top:24px;padding-top:18px;border-top:1px solid #e6d7dc}.account-delete h3{font-size:15px}.account-delete p{font-size:13px;line-height:1.5;color:#697384}.account-delete label{display:grid;gap:8px;font-size:13px;margin-bottom:12px}.account-delete input{width:100%;box-sizing:border-box}

@@ -22,10 +22,9 @@ function cableRouteColor(from,to) {
     if(types.every(type=>modules.includes(type)))return '#38bdf8';
     return '#22c55e';
 }
-function drawCableRoute(ctx, cable, from, to, color, lineWidth) {
+function drawCableRoute(ctx, cable, from, to, color, lineWidth, paintParts) {
     const points = getCableRoute(cable, from, to);
-    ctx.beginPath(); ctx.moveTo(points[0].x, points[0].y);
-    for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+    drawCableWithJumps(ctx,points,paintParts);
     ctx.strokeStyle = color; ctx.lineWidth = lineWidth; ctx.stroke();
 }
 
@@ -413,6 +412,7 @@ function drawFloorData(ctx, floor, skipSelection = false, theme = getPlanTheme(f
     updateTrunkJunctions(floor);
     if (floor.showConnections) {
         const devicesById=new Map(floor.devices.map(device=>[device.id,device]));
+        const cablePaint=getCablePaintPlan(floor);
         floor.cables.forEach(c => {
             const d1=devicesById.get(c.fromId),d2=devicesById.get(c.toId);
             if(!d1 || !d2) return;
@@ -428,7 +428,7 @@ function drawFloorData(ctx, floor, skipSelection = false, theme = getPlanTheme(f
                 const color=c.kind==='trunk'?'#38bdf8':(!isOwnPlanEntity(c)&&c.routeColor)||cableRouteColor(d1,d2);
                 const routeWidth=c.kind==='trunk'?8.5:4;
                 const lineWidth=isExporting||skipSelection?routeWidth:Math.max(routeWidth,2/Math.max(.01,scale));
-                drawCableRoute(ctx, c, d1, d2, color, lineWidth);
+                drawCableRoute(ctx, c, d1, d2, color, lineWidth,cablePaint.get(c.id));
                 if (isOwnPlanEntity(c) && c.kind!=='trunk' && !isExporting && !skipSelection && (selectedTool === 'cableTool' || activeDeviceIds.has(d1.id) || activeDeviceIds.has(d2.id) || (draggedHandle && draggedHandle.cable === c))) {
                     drawHandles(ctx, c, color);
                 }

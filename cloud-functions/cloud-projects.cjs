@@ -27,6 +27,7 @@ function storedProjectPath(collection, id, row) {
 
 function createCloudProjectService({ db, bucket, timestamp, serverTimestamp, now = Date.now, logError = () => {} }) {
     async function verifyAccess(transaction, auth, application) {
+        const deleted=db.collection('goomDeletedAccounts').doc(auth.uid);if((await (transaction?transaction.get(deleted):deleted.get())).exists)throw new HttpsError('permission-denied','Account is deleted.');
         const [license, grant, administrator] = await Promise.all(['cloudLicenses', 'goomProgramGrants', 'goomAdmins'].map(name => {
             const ref = db.collection(name).doc(auth.uid);
             return transaction ? transaction.get(ref) : ref.get();

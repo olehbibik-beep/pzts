@@ -13,7 +13,7 @@
   let extension=file.name.split('.').pop().toLowerCase();
   if(extension==='xcx'){
    const head=await file.slice(0,2048).text();extension=/^AC10\d\d/.test(head)?'dwg':/\bSECTION\b/.test(head)?'dxf':/^\s*[\[{]/.test(head)?'tech':'';
-   if(!extension){await showAppAlert(words('Neznámý formát XCX. Použijte export DXF z CAD.','Unknown XCX format. Export DXF from your CAD application.','Unbekanntes XCX-Format. Bitte aus CAD als DXF exportieren.','Формат XCX не распознан. Экспортируйте чертёж из CAD в DXF.','Nieznany format XCX. Wyeksportuj rysunek z CAD do DXF.'));return false;}
+   if(!extension){await showAppAlert(words('XCX může být konfigurace SATEL DLOADX. Přímý import těchto dat zatím není podporován. Pro výkres použijte DXF nebo DWG.','XCX may contain a SATEL DLOADX configuration. Direct configuration import is not yet supported. Use DXF or DWG for drawings.','XCX kann eine SATEL-DLOADX-Konfiguration enthalten. Ein direkter Import wird noch nicht unterstützt. Für Pläne DXF oder DWG verwenden.','XCX может содержать конфигурацию SATEL DLOADX. Прямой импорт таких данных пока недоступен. Для чертежа используйте DXF или DWG.','XCX może zawierać konfigurację SATEL DLOADX. Bezpośredni import tych danych nie jest jeszcze obsługiwany. Do rysunków użyj DXF lub DWG.'));return false;}
    file=new File([file],file.name.replace(/\.xcx$/i,'.'+extension),{type:file.type});
   }
   if(['tech','bips','cctv'].includes(extension))return importFileContent(file);

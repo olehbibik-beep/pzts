@@ -28,15 +28,16 @@ before(async () => {
     const reviews=require('../cloud-functions/reviews.cjs').createReviewService({db:adminDb,getUser:uid=>adminAuth.getUser(uid),timestamp:Timestamp.fromMillis,serverTimestamp:FieldValue.serverTimestamp});
     const cloud = createCloudProjectService({ db: adminDb, bucket: getStorage(app).bucket(),
         timestamp: Timestamp.fromMillis, serverTimestamp: FieldValue.serverTimestamp });
+    const accountAdmin=require('../cloud-functions/account-admin.cjs').createAdminService({auth:adminAuth,db:adminDb,timestamp:Timestamp.fromMillis,serverTimestamp:FieldValue.serverTimestamp,deleteAccount:require('../cloud-functions/account-deletion.cjs').createAccountDeletion({auth:adminAuth,db:adminDb,bucket:getStorage(app).bucket(),serverTimestamp:FieldValue.serverTimestamp})});
     server = createServer(async (request, response) => {
-        if ([`/${projectId}/europe-west1/goomCloudProjects`,`/${projectId}/europe-west1/goomReviews`].includes(request.url) && request.method === 'POST') {
+        if ([`/${projectId}/europe-west1/goomCloudProjects`,`/${projectId}/europe-west1/goomReviews`,`/${projectId}/europe-west1/goomAdmin`].includes(request.url) && request.method === 'POST') {
             response.setHeader('Content-Type', 'application/json');
             try {
                 const chunks = [];
                 for await (const chunk of request) chunks.push(chunk);
                 const { data } = JSON.parse(Buffer.concat(chunks));
                 const token = await adminAuth.verifyIdToken(request.headers.authorization?.replace(/^Bearer /, ''));
-                const result = request.url.endsWith('/goomReviews')?await reviews.handle({auth:{uid:token.uid,token},data}):await cloud({ auth: { uid: token.uid, token }, data });
+                const result = request.url.endsWith('/goomAdmin')?await accountAdmin({auth:{uid:token.uid,token},data,rawRequest:{get:name=>request.headers[name.toLowerCase()]}}):request.url.endsWith('/goomReviews')?await reviews.handle({auth:{uid:token.uid,token},data}):await cloud({ auth: { uid: token.uid, token }, data });
                 response.end(JSON.stringify({ result }));
             } catch (error) {
                 response.writeHead(error.httpErrorCode?.status || 500).end(JSON.stringify({ error: error.toJSON?.() || { status: 'INTERNAL', message: error.message } }));
@@ -72,6 +73,7 @@ async function openApp(path = '/') {
             if (name === 'firebase-functions-compat.js') body += `\nfirebase.app().functions('europe-west1').useEmulator('127.0.0.1',${server.address().port});`;
             return route.fulfill({ contentType: 'text/javascript', body });
         }
+        if(url==='https://europe-west1-pztsepscctv.cloudfunctions.net/goomAdmin'){if(route.request().method()==='OPTIONS')return route.fulfill({status:204,headers:{'Access-Control-Allow-Origin':origin,'Access-Control-Allow-Methods':'POST','Access-Control-Allow-Headers':'authorization,content-type'}});const response=await route.fetch({url:origin+'/'+projectId+'/europe-west1/goomAdmin'});return route.fulfill({response,headers:{...response.headers(),'Access-Control-Allow-Origin':origin}});}
         const local = [origin, authOrigin, firestore.origin, storageOrigin].some(prefix => url.startsWith(prefix));
         return local ? route.continue() : route.fulfill({ contentType: 'text/javascript', body: '' });
     });
@@ -350,4 +352,11 @@ test('EPS and SK open administration in the same signed-in session without edito
  const app=initializeApp({projectId},'admin-navigation-'+Date.now()),adminDb=getFirestore(app),adminAuth=getAuth(app),email='admin-nav-'+Date.now()+'@example.test',password='integration-password-123';const user=await adminAuth.createUser({email,password,emailVerified:true,displayName:'Admin Navigation'});
  await adminDb.collection('users').doc(user.uid).set({displayName:'Admin Navigation',email,accountType:'personal',ico:'',locale:'cs',createdAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()});await adminDb.collection('goomAdmins').doc(user.uid).set({role:'owner'});
  for(const product of ['EPS','SK']){const{context,page,errors}=await openApp('/'+product+'/');try{await page.evaluate(async({email,password})=>{const auth=await getFirebaseAuth();await auth.signInWithEmailAndPassword(email,password);},{email,password});await page.waitForFunction(()=>window.hasAdminAccess?.());await page.goto(origin+'/'+product+'/admin.html');await page.locator('#adminWorkspace').waitFor({state:'visible'});assert.match(await page.locator('#adminIdentity').textContent(),/Владелец/);assert.equal(await page.locator('#adminLogin').isVisible(),false);assert.deepEqual(errors,[]);}finally{await context.close();}}
+});
+
+
+test('admin user details require typed confirmation before a real emulator-only deletion',async()=>{
+ const email='delete-ui-'+Date.now()+'@example.test',password='integration-password-123',owner=await adminAuth.createUser({email:'delete-owner-'+Date.now()+'@example.test',password,emailVerified:true,displayName:'Owner delete test'}),target=await adminAuth.createUser({email,password,emailVerified:true,displayName:'Delete UI target'});
+ for(const user of [owner,target])await adminDb.doc('users/'+user.uid).set({displayName:user.displayName,email:user.email,accountType:'personal',ico:'',locale:'cs',createdAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()});await adminDb.doc('goomAdmins/'+owner.uid).set({role:'owner'});
+ const{context,page,errors}=await openApp();try{await page.evaluate(async credentials=>{await(await getFirebaseAuth()).signInWithEmailAndPassword(credentials.email,credentials.password);},{email:owner.email,password});await page.waitForFunction(()=>window.hasAdminAccess?.());await page.goto(origin+'/admin.html');await page.locator('#adminWorkspace').waitFor({state:'visible'});await page.locator('[data-view=users]').click();await page.locator('#adminSearchField').selectOption('email');await page.locator('#adminQuery').fill(email);await page.locator('#adminSearch').evaluate(form=>form.requestSubmit());await page.locator('#adminUsers tr').filter({hasText:email}).locator('.row-action').click();assert.equal(await page.locator('#adminDeleteUserForm').isVisible(),true);assert.equal(await page.locator('#adminDeleteUser').isDisabled(),true);await page.locator('#adminDeleteConfirmation').fill('wrong');assert.equal(await page.locator('#adminDeleteUser').isDisabled(),true);await page.locator('#adminDeleteConfirmation').fill(email);await page.locator('#adminDeleteUser').click();await page.locator('#adminUserDialog').waitFor({state:'hidden'});assert.match(await page.locator('#adminStatus').textContent(),/удалены/);await assert.rejects(adminAuth.getUser(target.uid),e=>e.code==='auth/user-not-found');assert.equal((await adminDb.doc('goomDeletedAccounts/'+target.uid).get()).data().state,'complete');assert.deepEqual(errors,[]);}finally{await context.close();}
 });

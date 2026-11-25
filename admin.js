@@ -400,7 +400,7 @@
             const items = events.map(event => {
                 const actor = event.actorEmail || event.actorUid;
                 const target = event.targetEmail || event.targetUid;
-                const change = event.action === 'role'
+                const change = event.action==='delete'?'Пользователь удалён':event.action === 'role'
                     ? `Роль — ${roleLabels[event.before]} → ${roleLabels[event.after]}`
                     : event.after ? `${event.application} — доступ до ${dateLabel(event.after)}` : `${event.application} — ручной доступ отозван`;
                 const item = element('li', change);
@@ -482,6 +482,7 @@
         byId('adminUserUid').textContent = `${user.email || ''} · ${user.uid} · ${roleLabels[user.role]}`;
         byId('adminUserVisit').textContent = `Последнее посещение · ${visitLabel(user.visit)} · Активное время: ${durationLabel(user.usage?.activeSeconds)} (после обновления)`;
         const canEdit = user.uid !== session.uid && user.role !== 'owner' && (session.role === 'owner' || user.role === 'user');
+        byId('adminDeleteUserForm').hidden=!canEdit;byId('adminDeleteConfirmation').value='';byId('adminDeleteConfirmation').placeholder=user.email||user.uid;byId('adminDeleteUser').disabled=true;
         const canEditRole = canEdit && session.role === 'owner';
         const canGrant = canEdit || (user.uid === session.uid && session.role === 'owner');
         byId('adminRoleForm').hidden = !canEditRole;
@@ -618,6 +619,15 @@
     nav.forEach(button => button.addEventListener('click', () => showView(button.dataset.view)));
     byId('adminCloseDialog').addEventListener('click', () => dialog.close());
     dialog.addEventListener('cancel', event => { if (changing) event.preventDefault(); });
+
+    byId('adminDeleteConfirmation').addEventListener('input',()=>{byId('adminDeleteUser').disabled=changing||!selectedUser||byId('adminDeleteConfirmation').value.trim().toLowerCase()!==(selectedUser.email||selectedUser.uid).toLowerCase();});
+    byId('adminDeleteUserForm').addEventListener('submit',async event=>{
+        event.preventDefault();if(changing||!selectedUser||byId('adminDeleteUser').disabled)return;const user=selectedUser,currentEpoch=epoch,confirmation=byId('adminDeleteConfirmation').value.trim();changing=true;dialog.querySelectorAll('input,button,select').forEach(el=>el.disabled=true);status('Удаляем аккаунт и облачные проекты…',false,'adminUserStatus');
+        try{const token=await auth.currentUser.getIdToken(true),response=await fetch('https://europe-west1-pztsepscctv.cloudfunctions.net/goomAdmin',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({data:{action:'delete',uid:user.uid,confirmation}}),signal:AbortSignal.timeout(180000)}),body=await response.json();if(!response.ok||body.error)throw Object.assign(Error(body.error?.message||'Deletion failed'),{code:body.error?.status?.toLowerCase().replaceAll('_','-'),reason:body.error?.details?.reason});if(currentEpoch!==epoch)return;dialog.close();users=users.filter(row=>row.uid!==user.uid);selectedUser=null;renderUsers();status('Пользователь и облачные проекты удалены.');void loadAudit();}
+        catch(error){if(currentEpoch===epoch)status(error.reason==='active-subscription'?'Сначала урегулируйте действующую платную подписку пользователя. Удаление не выполнено.':readableError(error),true,'adminUserStatus');}
+        finally{if(currentEpoch===epoch){changing=false;dialog.querySelectorAll('input,button,select').forEach(el=>el.disabled=false);byId('adminDeleteUser').disabled=!selectedUser||byId('adminDeleteConfirmation').value.trim().toLowerCase()!==(selectedUser.email||selectedUser.uid).toLowerCase();}}
+    });
+
     byId('adminRoleForm').addEventListener('submit', event => {
         event.preventDefault();
         const role = byId('adminRole').value;

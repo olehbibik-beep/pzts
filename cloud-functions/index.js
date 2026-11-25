@@ -44,9 +44,10 @@ exports.goomPublicReviews=onRequest({region:'europe-west1',memory:'256MiB',timeo
 
 // Account services have no payment-secret dependency.
 const {createAdminService}=require('./account-admin.cjs');
+const {createAccountDeletion}=require('./account-deletion.cjs');
 const {createCompanySeatService,CompanySeatError}=require('./company-seats.cjs');
-exports.goomAdmin=onCall({region:'europe-west1',cors:true,invoker:'public',maxInstances:3},async request=>{
- try{return await createAdminService({auth:getAuth(),db:getFirestore(),timestamp:ms=>Timestamp.fromMillis(ms),serverTimestamp:()=>FieldValue.serverTimestamp()})(request);}
+exports.goomAdmin=onCall({region:'europe-west1',cors:true,invoker:'public',maxInstances:3,timeoutSeconds:180},async request=>{
+ try{return await createAdminService({auth:getAuth(),db:getFirestore(),timestamp:ms=>Timestamp.fromMillis(ms),serverTimestamp:()=>FieldValue.serverTimestamp(),deleteAccount:createAccountDeletion({auth:getAuth(),db:getFirestore(),bucket:getStorage().bucket(storageBucket.value()||undefined),serverTimestamp:()=>FieldValue.serverTimestamp()})})(request);}
  catch(error){if(error instanceof HttpsError)throw error;logger.error('Admin request failed',{code:error.code||'unknown'});throw new HttpsError('unavailable','Administration is temporarily unavailable.');}
 });
 exports.goomCompanySeats=onCall({region:'europe-west1',cors:true,invoker:'public',maxInstances:3},async request=>{

@@ -5,7 +5,9 @@ function previewLockedToolbarMenu(menu){
     document.getElementById('textTools').hidden=!types.has('textNode');document.getElementById('deviceSetTools').dataset.previewLocked=String(locked);
     const button=document.getElementById('btnCycleToolbarMenu');button.dataset.menuId=menu.id;button.classList.remove('pro-lock');button.setAttribute('data-project-locked','false');button.title=tr('Pro nástroje: pouze náhled');document.getElementById('activeToolbarMenuName').textContent=window.goomPlanLabel(menu.name)+(locked?' 🔒':'');window.goomRefreshDeviceStrip?.();
 }
-document.addEventListener('click',event=>{if(document.getElementById('deviceSetTools').dataset.previewLocked==='true'&&event.target.closest('#deviceSelector .device-btn,#btnCameraPicker')){event.preventDefault();event.stopImmediatePropagation();window.requestProUpgrade?.();}},true);
+document.addEventListener('click',event=>{if(document.getElementById('deviceSetTools').dataset.previewLocked==='true'&&event.target.closest('#deviceSelector .device-btn:not([data-type="floorPassage"]):not([data-type="trunkTool"]),#btnCameraPicker')){event.preventDefault();event.stopImmediatePropagation();window.requestProUpgrade?.();}},true);
+// Preserve native artwork and text for every tool across palette previews.
+for(const button of document.querySelectorAll('#deviceSelector .device-btn[data-type]'))if(!defaultDeviceButtonContent.has(button.dataset.type))defaultDeviceButtonContent.set(button.dataset.type,button.innerHTML);
 const toolbarMenuStorageKey = productStorageKey('goom-toolbar-menus-v1');
 const toolbarMenuLimit = 7;
 const toolbarMenuDeviceButtons = [...document.querySelectorAll('#deviceSelector .device-btn[data-type]:not([data-type="plainText"])')];
@@ -297,6 +299,7 @@ function applyToolbarMenuIcons(menu = getActiveToolbarMenu()) {
 }
 
 function toolbarMenuButtonContent(type, menu) {
+    if(['floorPassage','trunkTool'].includes(type))return defaultDeviceButtonContent.get(type)||'';
     const iconDataUrl = menu.icons && Object.prototype.hasOwnProperty.call(menu.icons, type)
         ? getCustomDeviceIconDataUrl(type, menu.icons)
         : null;

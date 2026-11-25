@@ -2,8 +2,8 @@
 (() => {
     const palette=document.getElementById('deviceSetTools'),text=document.getElementById('textTools');
     for(const[type,label,icon]of [
-        ['floorPassage','Mezipodlažní průchod','<circle cx="12" cy="12" r="9"/><path d="M12 18V6m-4 4 4-4 4 4"/>'],
-        ['trunkTool','Hlavní trasa','<path d="M3 18V7h18" stroke-width="4"/><circle cx="3" cy="18" r="2"/><circle cx="21" cy="7" r="2"/>']
+        ['floorPassage','Mezipodlažní průchod','<circle cx="12" cy="12" r="9"/><path d="M7 17 17 7M10 7h7v7"/>'],
+        ['trunkTool','Hlavní trasa','<path d="M3 12h18" stroke-width="4"/><path d="M7 7v10m10-10v10" stroke-width="1.5"/>']
     ]){const button=document.createElement('button');button.type='button';button.className='device-btn';button.dataset.type=type;button.title=tr(label);button.setAttribute('aria-label',tr(label));button.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="1.8">${icon}</svg>`;palette.insertBefore(button,text);}
     let trunkStart=null,press=null;
     const host=document.getElementById('canvasContainer');
@@ -49,8 +49,8 @@ function updateTrunkJunctions(floor){
 }
 function drawInfrastructureDevice(context,device,baseSize){
     const size=baseSize/14;context.save();context.translate(device.x,device.y);context.strokeStyle='#38bdf8';context.fillStyle='#38bdf8';context.lineWidth=2*size;context.beginPath();
-    if(device.type==='trunkJunction'){context.arc(0,0,3*size,0,Math.PI*2);context.fill();}
-    else{context.arc(0,0,11*size,0,Math.PI*2);context.stroke();context.beginPath();context.moveTo(0,7*size);context.lineTo(0,-7*size);context.moveTo(-4*size,-3*size);context.lineTo(0,-7*size);context.lineTo(4*size,-3*size);context.stroke();if(device.targetFloorName){context.font=`${10*size}px sans-serif`;context.textAlign='center';context.fillText(device.targetFloorName,0,23*size);}}
+    if(device.type==='trunkJunction'){context.arc(0,0,(device.attachedCableId?5:3)*size,0,Math.PI*2);context.fill();}
+    else{context.arc(0,0,11*size,0,Math.PI*2);context.stroke();context.save();context.rotate((device.rotation||0)*Math.PI/180);context.beginPath();context.moveTo(-6*size,6*size);context.lineTo(6*size,-6*size);context.moveTo(0,-6*size);context.lineTo(6*size,-6*size);context.lineTo(6*size,0);context.stroke();context.restore();if(device.targetFloorName){context.font=`${10*size}px sans-serif`;context.textAlign='center';context.fillText(device.targetFloorName,0,23*size);}}
     if(device.manualName){context.font=`${10*size}px sans-serif`;context.textAlign='center';context.fillText(device.manualName,0,(device.targetFloorName?37:23)*size);}
     context.restore();
 }

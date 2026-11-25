@@ -4,7 +4,7 @@ const APPLICATIONS = ['PZTS','EPS','CCTV','SK'];
 const PAGE_SIZE = 25;
 const DAY_MS = 86_400_000;
 
-function createAdminService({ auth, db, timestamp, serverTimestamp, now = Date.now }) {
+function createAdminService({ auth, db, timestamp, serverTimestamp, deleteAccount, now = Date.now }) {
     const roles = db.collection('goomAdmins');
     const grants = db.collection('goomProgramGrants');
     const licenses = db.collection('cloudLicenses');
@@ -140,6 +140,7 @@ function createAdminService({ auth, db, timestamp, serverTimestamp, now = Date.n
                 if (role !== 'owner') throw new HttpsError('permission-denied', 'Only the owner can manage roles.');
                 return changeAccess(actor, data, 'role');
             case 'grant': return changeAccess(actor, data, 'grant');
+            case 'delete': if(!deleteAccount)throw new HttpsError('failed-precondition','Account deletion is unavailable.');return deleteAccount(actor,data);
             default: throw new HttpsError('invalid-argument', 'Unknown administrator operation.');
         }
     };

@@ -43,3 +43,19 @@
 }
 .capacity-track{stroke:#080a0d}.capacity-value{display:flex;flex-direction:column;align-items:center;gap:4px}.capacity-value small{font-size:10px;font-weight:500;color:#aebec6}
 #fileDropOverlay{position:fixed;inset:12px;z-index:11020;display:grid;place-items:center;border:2px dashed #7dd3fc;border-radius:18px;background:#14232ee8;color:#e0f2fe;font-size:22px;font-weight:650;pointer-events:none;padding:24px;text-align:center}#fileDropOverlay[hidden]{display:none}
+
+/* A stationary whale with a light sweep, shared by startup and file preparation. */
+.plan-loading-disc{position:relative;display:grid;place-items:center;width:84px;height:84px;border-radius:0;background:none!important}
+.plan-loading img,.goom-busy-whale img{width:76px;height:76px;object-fit:contain;animation:none!important;transform:none!important;will-change:auto}
+.plan-loading-disc::after,.goom-busy-whale .busy-whale-mark::after{content:'';position:absolute;inset:4px;background:linear-gradient(110deg,transparent 38%,#fff 49%,transparent 60%);background-size:260% 100%;mask:url('Logo.png') center/contain no-repeat;-webkit-mask:url('Logo.png') center/contain no-repeat;animation:whale-light-sweep 2.6s ease-in-out infinite;pointer-events:none}
+.goom-busy-whale{position:absolute;inset:0;z-index:10005;display:grid;place-items:center;pointer-events:none;background:none}.goom-busy-whale .busy-whale-mark{position:relative;display:grid;place-items:center;width:84px;height:84px}body>.goom-busy-whale{position:fixed}
+@keyframes whale-light-sweep{0%,12%{background-position:160% 0}75%,100%{background-position:-60% 0}}
+@media(prefers-reduced-motion:reduce){.plan-loading-disc::after,.goom-busy-whale .busy-whale-mark::after{animation:none;opacity:0}}
+.toolbar,.sliding-row-container{border-bottom:0!important}.sliding-row-container:not(.open){border:0!important;box-shadow:none!important;background:transparent!important}#canvasContainer{border-top:0!important}
+.cloud-capacity{left:-18px;width:144px;height:144px}.cloud-capacity svg{width:144px;height:144px;filter:drop-shadow(-5px 0 7px #0009);mask-image:linear-gradient(to right,transparent,#000 20%);-webkit-mask-image:linear-gradient(to right,transparent,#000 20%)}
+.cloud-capacity .capacity-value{left:28%;font-size:16px;line-height:1.15;gap:3px}.cloud-capacity .capacity-value small{font-size:8px}.cloud-capacity .capacity-track{stroke:#070a0e}
+
+/* Keep the expanded palette centred, and fall back to its start when it overflows. */
+.sliding-row-container .device-selector-group{width:min(100%,1800px);max-width:none;margin-inline:auto}
+#deviceSelector .device-set-tools{justify-content:safe center!important}
+#deviceSelector .device-btn[data-type="floorPassage"],#deviceSelector .device-btn[data-type="trunkTool"]{min-width:32px;color:#38bdf8}

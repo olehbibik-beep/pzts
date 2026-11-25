@@ -2,20 +2,22 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    function owner(uid) { return request.auth != null && request.auth.uid == uid; }
+    function owner(uid) { return request.auth != null && request.auth.uid == uid && !exists(/databases/$(database)/documents/goomDeletedAccounts/$(uid)); }
     function adminRole(uid) {
       let role = get(/databases/$(database)/documents/goomAdmins/$(uid));
       return role == null ? 'user' : role.data.role;
     }
     function administrator() {
       return request.auth != null && request.auth.token.email_verified == true
-        && adminRole(request.auth.uid) in ['owner', 'admin'];
+        && adminRole(request.auth.uid) in ['owner', 'admin']
+        && !exists(/databases/$(database)/documents/goomDeletedAccounts/$(request.auth.uid));
     }
     function canManage(uid) {
       return administrator() && request.auth.uid != uid
         && adminRole(uid) != 'owner'
         && (adminRole(request.auth.uid) == 'owner' || adminRole(uid) == 'user')
-        && exists(/databases/$(database)/documents/users/$(uid));
+        && exists(/databases/$(database)/documents/users/$(uid))
+        && !exists(/databases/$(database)/documents/goomDeletedAccounts/$(uid));
     }
     function hasAudit(uid, action, before, after, application) {
       let event = getAfter(/databases/$(database)/documents/goomAdminAudit/$(request.resource.data.auditId)).data;
