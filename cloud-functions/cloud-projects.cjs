@@ -137,4 +137,4 @@ function createCloudProjectService({ db, bucket, timestamp, serverTimestamp, now
     };
 }
 
-module.exports = { createCloudProjectService };
+module.exports = { createCloudProjectService, projectLimit, maxProjectBytes };

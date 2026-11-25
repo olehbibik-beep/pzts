@@ -1,96 +1,60 @@
 (() => {
     const byId = id => document.getElementById(id);
-    let purchasePending = false;
-    const billingEnabled = false; // Enable after live Stripe prices, keys and webhook are configured.
+    const pricing = byId('btnUpdatePro');
     let returnHandled = false;
-    const pricesInCzk = { monthly: 990, annual: 10454, companyMonthly: 1485, companyAnnual: 15681 };
-    const buyButtons = [...document.querySelectorAll('[data-buy-tier]')];
-    const manageButtons = [...document.querySelectorAll('[data-manage-tier]')];
+
     function render() {
         const active = Boolean(window.hasProAccess?.());
-        const administrative=Boolean(window.hasAdminAccess?.());
-        const adminStatus=window.goomUI('Administrátor: plný přístup ke všem funkcím.','Administrator: full access to all features.','Administrator: voller Zugriff auf alle Funktionen.','Администратор: полный доступ ко всем функциям.');
-        const tier=window.getOwnProTier?.();
-        const activeLabel=tier==='company'?window.goomUI('Team je aktivní.','Team is active.','Team ist aktiv.','Team активен.','Team jest aktywny.'):tr('PROJECT je aktivní.');
-        document.querySelector('.pro-card h3').textContent=window.goomUI('Předplatné','Subscription','Abonnement','Подписка','Subskrypcja')+' '+(tier==='company'?'Team':'Pro');
-        byId('accountProStatus').textContent = administrative?adminStatus:active?activeLabel:tr('Váš účet používá bezplatnou verzi.');
-        byId('accountProStatus').classList.toggle('active', active);
-        byId('proSuiteNote')?.remove();
-        for(const card of document.querySelectorAll('.pro-plan-basic,.pro-plan-standard,.pro-plan-company')){let item=card.querySelector('.pro-suite-feature');if(!item){item=document.createElement('li');item.className='pro-suite-feature';card.querySelector('ul').prepend(item);}item.setAttribute('data-user-content','');item.textContent=card.classList.contains('pro-plan-basic')?'PZTS · EPS · CCTV · SK':window.goomUI('Jedno předplatné: PZTS · EPS · CCTV · SK','One subscription: PZTS · EPS · CCTV · SK','Ein Abonnement: PZTS · EPS · CCTV · SK','Одна подписка: PZTS · EPS · CCTV · SK','Jedna subskrypcja: PZTS · EPS · CCTV · SK');}
-        const currencyNote=byId('proCurrencyNote');currencyNote.setAttribute('data-user-content','');currencyNote.textContent=window.goomUI('Ceny jsou v českých korunách (CZK).','Prices are in Czech crowns (CZK).','Preise in tschechischen Kronen (CZK).','Цены указаны в чешских кронах (CZK).','Ceny podano w koronach czeskich (CZK).');
-        for (const button of buyButtons) {
-            button.hidden = active;
-            button.disabled = purchasePending || active || !billingEnabled;
-            button.title=billingEnabled?'':window.goomUI('Online platby připravujeme.','Online payments are coming soon.','Online-Zahlungen folgen in Kürze.','Онлайн-оплата скоро появится.');
-        }
-        const basicAction=document.querySelector('.pro-plan-basic .pro-plan-action');if(basicAction){basicAction.setAttribute('data-user-content','');basicAction.textContent=active?'Free':tr('Aktivní');}
-        for(const card of document.querySelectorAll('.pro-plan-standard,.pro-plan-company')){let badge=card.querySelector('.pro-entitlement-active');if(!badge){badge=document.createElement('div');badge.className='pro-entitlement-active';card.querySelector('.pro-plan-actions').append(badge);}badge.textContent=administrative?'ADMIN':activeLabel;badge.hidden=!active||(tier==='company'?card.classList.contains('pro-plan-standard'):card.classList.contains('pro-plan-company'));}
-        byId('btnUpdatePro').textContent=administrative?'ADMIN':(active?activeLabel:tr('Ceník PROJECT'));
-        for (const button of manageButtons) button.hidden = button.dataset.manageTier !== tier;
-        for (const price of document.querySelectorAll('[data-pro-price]')) {
-            const currency = price.dataset.currency;
-            const value = pricesInCzk[price.dataset.proPrice];
-            const formatted = new Intl.NumberFormat(getGoomLocale(), { style: 'currency', currency,
-                maximumFractionDigits: currency === 'CZK' ? 0 : 2 }).format(value);
-            price.textContent = formatted;
-        }
-        document.getElementById('btnOpenToolbarMenuEditor').classList.toggle('pro-lock', !active && !window.hasAdminAccess?.());
+        const administrative = Boolean(window.hasAdminAccess?.());
+        const tier = window.getOwnProTier?.() === 'company' ? 'Team' : 'Pro';
+        document.querySelector('.pro-card h3').textContent = window.goomUI('Předplatné', 'Subscription', 'Abonnement', 'Подписка', 'Subskrypcja') + ' ' + tier;
+        const status = byId('accountProStatus');
+        status.textContent = administrative
+            ? window.goomUI('Administrátor: plný přístup ke všem funkcím.', 'Administrator: full access to all features.', 'Administrator: voller Zugriff auf alle Funktionen.', 'Администратор: полный доступ ко всем функциям.', 'Administrator: pełny dostęp do funkcji.')
+            : active ? tier + ' · ' + tr('Aktivní') : tr('Váš účet používá bezplatnou verzi.');
+        status.classList.toggle('active', active);
+        pricing.href = 'https://goom.cz/?lang=' + encodeURIComponent(getGoomLanguage()) + '#pricing';
+        pricing.textContent = window.goomUI('Zobrazit tarify', 'View plans', 'Tarife ansehen', 'Смотреть тарифы', 'Zobacz plany');
+        const guide = byId('goomGuideLink');
+        guide.href = getGoomLanguage() === 'ru' ? 'https://goom.cz/guide/ru/' : 'https://goom.cz/guide/';
+        guide.textContent = window.goomUI('Příručka', 'Guide', 'Handbuch', 'Справочник', 'Instrukcja');
+        byId('btnOpenToolbarMenuEditor').classList.toggle('pro-lock', !active);
     }
+
     window.openProjectUpgrade = () => {
         hideUpgradeHint();
-        if (!window.getFirebaseUser()) { showWelcomeScreen(); return; }
-        byId('proUpgradeModal').style.display = 'flex';
-        byId('proPurchaseStatus').textContent = window.hasProAccess?.() ? byId('accountProStatus').textContent
-            : window.goomUI('Jedno předplatné pro PZTS, EPS, CCTV a SK. Online platby připravujeme.','One subscription for PZTS, EPS, CCTV and SK. Online payments are coming soon.','Ein Abonnement für PZTS, EPS, CCTV und SK. Online-Zahlungen folgen in Kürze.','Одна подписка для PZTS, EPS, CCTV и SK. Онлайн-оплата скоро появится.');
-        render(); window.clearGoomTooltips?.();
+        const link = document.createElement('a');
+        link.href = pricing.href;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        link.click();
     };
-    const hint=document.createElement('div');hint.id='projectUpgradeHint';hint.hidden=true;hint.setAttribute('role','status');
-    hint.innerHTML='<button type="button" id="projectUpgradeAction"><span>UPGRADE</span><strong>Pro</strong></button><button type="button" id="projectUpgradeDismiss" aria-label="'+tr('Zavřít')+'">×</button>';
-    document.body.append(hint);let hintTimer;
-    function hideUpgradeHint(){clearTimeout(hintTimer);hintTimer=null;hint.hidden=true;hint.getAnimations().forEach(a=>a.cancel());}
-    function scheduleHide(){clearTimeout(hintTimer);hintTimer=setTimeout(hideUpgradeHint,5000);}
-    window.requestProUpgrade=()=>{if(window.hasProAccess?.())return;window.clearGoomTooltips?.();hint.hidden=false;hint.getAnimations().forEach(a=>a.cancel());
-        if(!matchMedia('(prefers-reduced-motion: reduce)').matches)hint.animate([{transform:'translate(-50%,30px)',opacity:0},{transform:'translate(-50%,0)',opacity:1}],{duration:220,easing:'ease-out'});
-        scheduleHide();};
-    document.addEventListener('pointerdown',event=>{if(!hint.contains(event.target))hideUpgradeHint();},true);
-    document.addEventListener('keydown',event=>{if(event.key==='Escape')hideUpgradeHint();});
-    document.addEventListener('visibilitychange',()=>{if(document.hidden)hideUpgradeHint();});
-    byId('projectUpgradeAction').onclick=window.openProjectUpgrade;byId('projectUpgradeDismiss').onclick=hideUpgradeHint;
-    document.addEventListener('goom-account-changed',hideUpgradeHint);
-    byId('btnUpdatePro').addEventListener('click', window.openProjectUpgrade);
-    byId('btnProClose').addEventListener('click', () => { byId('proUpgradeModal').style.display = 'none'; });
-    async function startCheckout(event) {
-        if (!billingEnabled || purchasePending || window.hasProAccess?.()) return;
-        const company = event.currentTarget.dataset.buyTier === 'company';
-        if (!window.getFirebaseUser()?.emailVerified) {
-            byId('proPurchaseStatus').textContent = tr('Před nákupem potvrďte svou e-mailovou adresu v nastavení účtu.');
-            return;
-        }
-        if (company && !window.isGoomCompanyAccount?.()) {
-            byId('proPurchaseStatus').textContent = tr('Pro nákup firemního PROJECT potřebujete firemní účet.');
-            return;
-        }
-        const annual = document.querySelector('input[name="proPeriod"]:checked').value === 'annual';
-        const offer = company ? (annual ? 'companyAnnual' : 'companyMonthly') : (annual ? 'annual' : 'monthly');
-        purchasePending = true;
-        render();
-        byId('proPurchaseStatus').textContent = tr('Připravujeme zabezpečenou platbu…');
-        try {
-            const result = await window.callProBilling('createProCheckout', { offer, application: APP_PRODUCT });
-            const url = new URL(result.url);
-            if (url.protocol !== 'https:' || url.hostname !== 'checkout.stripe.com') throw new Error('Invalid checkout URL');
-            window.location.assign(url.href);
-        } catch (error) {
-            byId('proPurchaseStatus').textContent = tr(error.code?.includes('already-exists')
-                ? 'Máte již předplatné. Spravujte je v uživatelském účtu.'
-                : 'Platbu nyní nelze otevřít. Zkuste to později.');
-        } finally { purchasePending = false; render(); }
+
+    const hint = document.createElement('div');
+    hint.id = 'projectUpgradeHint';
+    hint.hidden = true;
+    hint.setAttribute('role', 'status');
+    hint.innerHTML = '<button type="button" id="projectUpgradeAction"><span>UPGRADE</span><strong>Pro</strong></button><button type="button" id="projectUpgradeDismiss">×</button>';
+    document.body.append(hint);
+    let hintTimer;
+    function hideUpgradeHint() {
+        clearTimeout(hintTimer);
+        hint.hidden = true;
     }
-    for (const button of buyButtons) button.addEventListener('click', startCheckout);
-    for (const button of manageButtons) button.addEventListener('click', () => {
-        byId('proUpgradeModal').style.display = 'none';
-        byId('btnManageSubscription').click();
-    });
+    window.requestProUpgrade = () => {
+        if (window.hasProAccess?.()) return;
+        window.clearGoomTooltips?.();
+        clearTimeout(hintTimer);
+        hint.hidden = false;
+        hintTimer = setTimeout(hideUpgradeHint, 5000);
+    };
+    byId('projectUpgradeAction').onclick = window.openProjectUpgrade;
+    byId('projectUpgradeDismiss').onclick = hideUpgradeHint;
+    byId('projectUpgradeDismiss').setAttribute('aria-label', tr('Zavřít'));
+    document.addEventListener('pointerdown', event => { if (!hint.contains(event.target)) hideUpgradeHint(); }, true);
+    document.addEventListener('keydown', event => { if (event.key === 'Escape') hideUpgradeHint(); });
+    document.addEventListener('visibilitychange', () => { if (document.hidden) hideUpgradeHint(); });
+    document.addEventListener('goom-account-changed', hideUpgradeHint);
     async function handleReturn() {
         const params = new URLSearchParams(location.search);
         if (returnHandled || !params.has('checkout') || !window.getFirebaseUser()) return;

@@ -20,7 +20,7 @@ function sanitizeSharedSymbol(symbol){
     return {ops,stock:symbol.stock===true,size:Math.max(5,Math.min(80,Number(symbol.size)||14)),address:{prefix:String(symbol.address?.prefix||'').slice(0,20),number:String(symbol.address?.number||'').slice(0,30)},color:/^#[a-f0-9]{3,8}$/i.test(symbol.color)?symbol.color:'#8b9caa'};
 }
 function recordSharedSymbol(device,size=Number(document.getElementById('deviceSizeSlider')?.value)||14,shapes=null){
-    const shapeSource=shapes||window.getCustomDeviceShapes?.(device.type),asset=window.epsSymbolAssets?.get(device.type)||window.skSymbolAssets?.get(device.type),key=APP_PRODUCT+':'+device.type+':'+size+(isInfrastructureDevice(device)?':'+(device.targetFloorName||''):''),cached=sharedSymbolCache.get(key);
+    const shapeSource=shapes||window.getCustomDeviceShapes?.(device.type),asset=window.epsSymbolAssets?.get(device.type)||window.skSymbolAssets?.get(device.type),key=APP_PRODUCT+':'+device.type+':'+(device.cadSymbol===true?'cad':'native')+':'+size+(isInfrastructureDevice(device)?':'+(device.targetFloorName||''):''),cached=sharedSymbolCache.get(key);
     if(cached&&cached.shapeSource===shapeSource&&cached.asset===asset)return{...cached.symbol,address:getDeviceAddressParts(device)};
     const surface=document.createElement('canvas');surface.width=surface.height=128;const target=surface.getContext('2d'),ops=[];
     const recorder=new Proxy(target,{set(object,key,value){if(sharedSymbolProperties.has(key))ops.push(['property',key,value]);object[key]=value;return true;},get(object,key){
@@ -29,7 +29,7 @@ function recordSharedSymbol(device,size=Number(document.getElementById('deviceSi
         return(...args)=>{if(sharedSymbolMethods.has(key))ops.push([key,...args]);return value.apply(object,args);};
     }});
     const normalized={...device,x:0,y:0,rotation:0};
-    if(shapes?.length){recorder.save();recorder.scale(.1*size/14,.1*size/14);recorder.translate(-200,-200);for(const shape of shapes)drawEditorShape(recorder,shape);recorder.restore();}
+    if(shapes?.length&&device.cadSymbol!==true){recorder.save();recorder.scale(.1*size/14,.1*size/14);recorder.translate(-200,-200);for(const shape of shapes)drawEditorShape(recorder,shape);recorder.restore();}
     else drawDevice(recorder,normalized,true,'original',{baseSize:size,skipLabels:true,portableCapture:true});
     const symbol=sanitizeSharedSymbol({ops,size,address:getDeviceAddressParts(device),color:COLORS[device.type]||'#8b9caa'});sharedSymbolCache.set(key,{shapeSource,asset,symbol});return symbol;
 }

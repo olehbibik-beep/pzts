@@ -285,7 +285,10 @@ function drawDevice(ctx, dev, skipSelection = false, theme = 'dark', options = {
 
     ctx.save(); ctx.translate(dev.x, dev.y); ctx.rotate((dev.rotation || 0) * Math.PI / 180);
     const customShapes = !options.defaultIcon && typeof getCustomDeviceShapes === 'function' ? getCustomDeviceShapes(dev.type) : null;
-    if (customShapes?.length) {
+    const cadDrawn = dev.cadSymbol === true && drawCadSymbol(ctx, dev.type, sMult, theme);
+    if (cadDrawn) {
+        // The rest of the drawing routine still renders the original device address.
+    } else if (customShapes?.length) {
         ctx.save();
         ctx.scale(.1 * sMult, .1 * sMult);
         ctx.translate(-200, -200);

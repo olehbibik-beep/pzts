@@ -214,6 +214,7 @@ document.getElementById('deviceSelector').addEventListener('click', (e) => {
     
     document.querySelectorAll('.device-btn').forEach(b => b.classList.remove('active')); 
     btn.classList.add('active');
+    selectedCadType = null;
     selectedTool = btn.dataset.type;
     window.tabletPanMode = false;
     if (selectedTool === 'plainText') {
@@ -453,7 +454,7 @@ function placePlanDevice(floor, device) {
     const previous = firstId ? floor.devices.find(item => item.id === firstId) : null;
     device.ownerApplication=APP_PRODUCT;
     floor.devices.push(device);
-    if (!device.plainText) includeNewDeviceInLegend(floor, device.type);
+    if (!device.plainText) includeNewDeviceInLegend(floor, device.type, device.cadSymbol === true);
     if (previous && !previous.plainText && !device.plainText) {
         const cable = { id: genId(), fromId: previous.id, toId: device.id, isCustom: false };
         recalcCableHandles(cable, previous, device);
@@ -482,6 +483,7 @@ window.addEventListener('keydown', (e) => {
     }
 
     if (e.key === 'Escape') { 
+        selectedCadType = null;
         let modalClosed = false;
         document.querySelectorAll('.modal').forEach(m => { if (m.style.display === 'flex' || m.style.display === 'block') { m.style.display = 'none'; modalClosed = true; } });
         let hPanel = document.getElementById('helpPanel');
@@ -546,7 +548,7 @@ window.addEventListener('keydown', (e) => {
                 const newId = genId();
                 const pastedDev = { ...d, id: newId, x: lastMouseX + (d.x - centerX), y: lastMouseY + (d.y - centerY), h1x: 0, h1y: 0, h2x: 0, h2y: 0, h3x: 0, h3y: 0, hasCustomRoute: false };
                 floor.devices.push(pastedDev); activeDeviceIds.add(newId);
-                includeNewDeviceInLegend(floor, pastedDev.type);
+                includeNewDeviceInLegend(floor, pastedDev.type, pastedDev.cadSymbol === true);
             });
             saveStateToHistory(); requestRedraw(); triggerAutoSave();
         }
@@ -905,6 +907,7 @@ window.addEventListener('pointerup', (e) => {
                 if (['pir', 'pir_wl'].includes(selectedTool)) {
                     tempDev.pirRangePixels = floor.pirRangePixels;
                 }
+                if (selectedCadType === tempDev.type) tempDev.cadSymbol = true;
                 placePlanDevice(floor, tempDev);
                 saveStateToHistory();
             } else { activeDeviceIds.clear(); }

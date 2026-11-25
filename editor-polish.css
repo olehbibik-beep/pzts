@@ -65,3 +65,21 @@
 #deviceSelector .device-set-tools{justify-content:flex-start!important}
 
 .icon-editor-route-properties{border:1px solid #45494f;border-radius:8px;padding:10px 12px;margin:14px 0;color:var(--text-main);display:flex;gap:18px;align-items:center;flex-wrap:wrap}.icon-editor-route-properties[hidden]{display:none}.icon-editor-route-properties legend{font-size:13px}.icon-editor-route-properties label{display:flex;gap:10px;align-items:center;font-size:12px}.icon-editor-route-properties input[type=number]{width:72px}
+
+/* A separate compact palette of common drawing symbols. */
+.cad-symbol-toggle { flex: 0 0 auto; min-width: 44px; font: 700 12px system-ui; }
+.cad-symbol-toggle[aria-pressed="true"] { background: #16749a; color: white; }
+.cad-symbol-dialog { box-sizing: border-box; width: min(590px, calc(100% - 32px)); max-height: 80dvh; padding: 20px; border: 1px solid #47515b; border-radius: 14px; background: #202529; color: #f3f5f6; }
+.cad-symbol-dialog::backdrop { background: #101417a8; }
+.cad-symbol-dialog form { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 14px; }
+.cad-symbol-dialog h2 { margin: 0; font-size: 20px; }
+.cad-symbol-dialog form button { color: inherit; background: none; border: 0; cursor: pointer; font-size: 25px; }
+.cad-symbol-options { display: grid; grid-template-columns: repeat(auto-fit,minmax(128px,1fr)); gap: 8px; }
+.cad-symbol-options button { display: grid; justify-items: center; align-content: start; gap: 6px; padding: 8px 6px 12px; background: #eef2f4; color: #1c252b; border: 1px solid transparent; border-radius: 8px; min-height: 86px; font: 600 12px system-ui; cursor: pointer; }
+.cad-symbol-options button:hover, .cad-symbol-options button:focus-visible { border-color: #26a5dc; background: #dbeefa; }
+.main-menu-guide { color: inherit; font-size: .86rem; margin-top: 8px; text-underline-offset: .2em; }
+#btnUpdatePro { text-decoration: none; }
+#drawingImportLabel { font-size: clamp(10px, 1.2vw, 13px); white-space: normal; }
+
+#deviceSelector { grid-template-columns: 44px 32px auto minmax(0, 1fr) auto 86px; }
+@media (max-width: 700px) { #deviceSelector { grid-template-columns: 44px 28px auto minmax(0, 1fr) auto 62px; } }

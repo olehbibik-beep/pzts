@@ -4,7 +4,7 @@ const APPLICATIONS = ['PZTS','EPS','CCTV','SK'];
 const PAGE_SIZE = 25;
 const DAY_MS = 86_400_000;
 
-function createAdminService({ auth, db, timestamp, serverTimestamp, deleteAccount, now = Date.now }) {
+function createAdminService({ auth, db, timestamp, serverTimestamp, deleteAccount, capacity, now = Date.now }) {
     const roles = db.collection('goomAdmins');
     const grants = db.collection('goomProgramGrants');
     const licenses = db.collection('cloudLicenses');
@@ -128,6 +128,10 @@ function createAdminService({ auth, db, timestamp, serverTimestamp, deleteAccoun
         const data = request.data || {};
         switch (data.action) {
             case 'session': return { uid: actor.uid, role, programs: APPLICATIONS };
+            case 'capacity':
+                if (role !== 'owner') throw new HttpsError('permission-denied', 'Only the owner can view capacity.');
+                if (!capacity) throw new HttpsError('unavailable', 'Capacity data is unavailable.');
+                return capacity(actor.uid, APPLICATIONS);
             case 'users': return listUsers(data);
             case 'audit': {
                 const result = await audit.orderBy('createdAt', 'desc').limit(PAGE_SIZE).get();

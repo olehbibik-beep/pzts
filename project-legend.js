@@ -15,7 +15,7 @@ function sanitizeProjectLegend(value) {
         x: finite(value.x, 0, -1e7, 1e7), y: finite(value.y, 0, -1e7, 1e7),
         scale: finite(value.scale, 1, .01, 1000),
         entries: value.entries.slice(0, 50).filter(entry => entry && legendDeviceTypes.has(entry.type)).map(entry => ({
-            type: entry.type, label: typeof entry.label === 'string' ? entry.label.slice(0, 160) : entry.type,
+            type: entry.type, ...(entry.cadSymbol === true ? {cadSymbol: true} : {}), label: typeof entry.label === 'string' ? entry.label.slice(0, 160) : entry.type,
             // Keep the snapshot even during early startup, before the icon editor has loaded.
             shapes: Array.isArray(entry.shapes) ? entry.shapes.slice(0, 100).filter(s => s && typeof s === 'object').map(s => ({
                 kind:s.kind,x:s.x,y:s.y,size:s.size,rotation:s.rotation,color:s.color,fill:s.fill,fillColor:s.fillColor,stroke:s.stroke,fontWeight:s.fontWeight,
@@ -34,7 +34,14 @@ function projectLegendEntries(menu = getActiveToolbarMenu(), icons = customDevic
         shapes: sanitizeIconShapes(icons[type])
     }));
 }
-function includeNewDeviceInLegend(floor, type) {
+function includeNewDeviceInLegend(floor, type, cadSymbol = false) {
+    if (cadSymbol) {
+        const entries = floor.legend?.entries;
+        if (entries && !entries.some(entry => entry.type === type && entry.cadSymbol)) {
+            floor.legend.entries = [...entries, {type, cadSymbol: true, label: deviceBriefName({type}) + " · CAD", shapes: []}];
+        }
+        return;
+    }
     if (!(NEW_TOOLBAR_DEVICE_TYPES.includes(type) || ['floorPassage','trunkTool'].includes(type)) || !floor.legend || floor.legend.entries.some(entry => entry.type === type)) return;
     const entry = projectLegendEntries().find(item => item.type === type);
     if (entry) floor.legend.entries = [...floor.legend.entries, entry];
@@ -46,7 +53,10 @@ function updateProjectLegendsFromMenu(menu) {
     const signature = JSON.stringify(entries);
     const changed = legends.filter(legend => JSON.stringify(legend.entries) !== signature);
     if (!changed.length) return;
-    changed.forEach(legend => { legend.entries = entries; });
+    for (const floor of floors) if (changed.includes(floor.legend)) {
+        floor.legend.entries = entries;
+        for (const device of floor.devices) if (device.cadSymbol && isOwnPlanEntity(device)) includeNewDeviceInLegend(floor, device.type, true);
+    }
     if (!entries.length) selectedProjectLegend = null;
     requestRedraw();
     if (isSystemReady) triggerAutoSave();
@@ -86,7 +96,7 @@ function drawProjectLegend(target, floor, editing, theme) {
         if (shapes.length) {
             target.scale(.075, .075); target.translate(-200, -200);
             shapes.forEach(shape => drawEditorShape(target, shape));
-        } else drawDevice(target, {type:entry.type, x:0, y:0}, true, theme, {baseSize:10, defaultIcon:true});
+        } else drawDevice(target, {type:entry.type, cadSymbol:entry.cadSymbol, x:0, y:0}, true, theme, {baseSize:10, defaultIcon:true});
         target.restore();
         target.fillStyle = theme === 'dark' ? '#f4f4f5' : '#171719';
         target.font = '13px sans-serif'; target.textAlign = 'left'; target.textBaseline = 'middle';
@@ -149,6 +159,8 @@ function toggleProjectLegend() {
     if (floor.legend) floor.legend.visible = !floor.legend.visible;
     else {
         const legend = {visible:true,x:0,y:0,scale:1,entries:projectLegendEntries()};
+        const legendFloor = {legend};
+        for (const device of floor.devices) if (device.cadSymbol && isOwnPlanEntity(device)) includeNewDeviceInLegend(legendFloor, device.type, true);
         if (!legend.entries.length) return;
         const layout = projectLegendLayout(legend), width = planCanvasWidth(), height = planCanvasHeight();
         const displayScale = Math.min(1, width*.38/layout.width, height*.65/layout.height);

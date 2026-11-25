@@ -1,4 +1,4 @@
-const { initializeApp } = require('firebase-admin/app');
+const { initializeApp, applicationDefault } = require('firebase-admin/app');
 const { getFirestore, FieldValue, Timestamp, AggregateField } = require('firebase-admin/firestore');
 const { getAuth } = require('firebase-admin/auth');
 const { createReviewService } = require('./reviews.cjs');
@@ -46,8 +46,16 @@ exports.goomPublicReviews=onRequest({region:'europe-west1',memory:'256MiB',timeo
 const {createAdminService}=require('./account-admin.cjs');
 const {createAccountDeletion}=require('./account-deletion.cjs');
 const {createCompanySeatService,CompanySeatError}=require('./company-seats.cjs');
+const {createCapacityService}=require('./capacity.cjs');
+let readCapacity;
 exports.goomAdmin=onCall({region:'europe-west1',cors:true,invoker:'public',maxInstances:3,timeoutSeconds:180},async request=>{
- try{return await createAdminService({auth:getAuth(),db:getFirestore(),timestamp:ms=>Timestamp.fromMillis(ms),serverTimestamp:()=>FieldValue.serverTimestamp(),deleteAccount:createAccountDeletion({auth:getAuth(),db:getFirestore(),bucket:getStorage().bucket(storageBucket.value()||undefined),serverTimestamp:()=>FieldValue.serverTimestamp()})})(request);}
+ try {
+    const db = getFirestore(), auth = getAuth(), bucket = getStorage().bucket(storageBucket.value() || undefined);
+    const serverTimestamp = () => FieldValue.serverTimestamp();
+    readCapacity ||= createCapacityService({db, projectId:process.env.GCLOUD_PROJECT, bucketName:bucket.name, credential:applicationDefault()});
+    return await createAdminService({auth, db, timestamp:ms=>Timestamp.fromMillis(ms), serverTimestamp,
+        capacity:readCapacity, deleteAccount:createAccountDeletion({auth, db, bucket, serverTimestamp})})(request);
+ }
  catch(error){if(error instanceof HttpsError)throw error;logger.error('Admin request failed',{code:error.code||'unknown'});throw new HttpsError('unavailable','Administration is temporarily unavailable.');}
 });
 exports.goomCompanySeats=onCall({region:'europe-west1',cors:true,invoker:'public',maxInstances:3},async request=>{

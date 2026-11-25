@@ -17,7 +17,7 @@
     let feedbackCursor = null, feedbackLoading = false, feedbackRevision = 0;
     let feedbackEntries = [], selectedFeedback = new Set(), feedbackWriting = false;
     const nav = [...document.querySelectorAll('[data-view]')];
-    const viewTitles = { overview: 'Обзор', users: 'Пользователи', access: 'Pro и доступ', activity: 'Активность', feedback: 'Обратная связь', reviews:'Комментарии пользователей' };
+    const viewTitles = { overview: 'Обзор', users: 'Пользователи', access: 'Pro и доступ', activity: 'Активность', feedback: 'Обратная связь', reviews:'Комментарии пользователей', capacity:'Квоты и ёмкость' };
     const server = { source: 'server' };
     const unavailable = Symbol('unavailable');
 
@@ -50,6 +50,7 @@
 
     function clearWorkspace() {
         session = null;
+        window.clearGoomInfrastructureCapacity();
         selectedUser = null;
         users = [];
         loaded = false;
@@ -225,10 +226,12 @@
         const activity = view === 'activity';
         const feedback = view === 'feedback';
         const reviews=view==='reviews';
+        const capacity = view === 'capacity' && session?.role === 'owner';
+        byId('adminCapacitySection').hidden = !capacity;
         byId('adminReviewsSection').hidden=!reviews;
-        byId('adminPrograms').hidden = activity || feedback || reviews;
+        byId('adminPrograms').hidden = activity || feedback || reviews || capacity;
         byId('adminSummary').hidden = view !== 'overview';
-        byId('adminUserList').hidden = activity || feedback || reviews;
+        byId('adminUserList').hidden = activity || feedback || reviews || capacity;
         byId('adminVisitsSection').hidden = !activity;
         byId('adminAuditSection').hidden = !activity;
         byId('adminFeedbackSection').hidden = !feedback;
@@ -236,6 +239,7 @@
         if (activity) void Promise.all([loadVisits(), loadAudit()]);
         if (feedback) void loadFeedback();
         if(reviews)void loadReviews();
+        if (capacity && auth.currentUser) void window.loadGoomInfrastructureCapacity(auth.currentUser);
     }
 
     function paidLabel(user, application) {
@@ -561,6 +565,7 @@
             const verified = await readSession();
             if (currentEpoch !== epoch) return;
             session = verified;
+            byId('adminCapacityNav').hidden = session.role !== 'owner';
             byId('adminUserFilter').querySelector('[value=paid]').disabled = session.role !== 'owner';
             byId('adminIdentity').textContent = `${user.email || user.uid} · ${roleLabels[session.role]}`;
             program = session.programs[0];
@@ -617,6 +622,9 @@
     byId('adminDeleteFeedback').addEventListener('click', () => void changeFeedback('delete', [...selectedFeedback]));
     byId('adminMoreFeedback').addEventListener('click', () => loadFeedback(true));
     nav.forEach(button => button.addEventListener('click', () => showView(button.dataset.view)));
+    byId('adminRefreshCapacity').onclick = () => {
+        if (session?.role === 'owner' && auth.currentUser) void window.loadGoomInfrastructureCapacity(auth.currentUser);
+    };
     byId('adminCloseDialog').addEventListener('click', () => dialog.close());
     dialog.addEventListener('cancel', event => { if (changing) event.preventDefault(); });
 

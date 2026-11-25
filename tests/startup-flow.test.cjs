@@ -440,12 +440,11 @@ test('administrator PROJECT access hides purchase offers and expires back to the
     const {context,page,errors}=await openApp({initialSession:true});
     try{
         await page.evaluate(()=>firebase.firestore().collection('goomProgramGrants').doc('test-user').set({uid:'test-user',expiresAt:{[APP_PRODUCT]:{seconds:Date.now()/1000+600}}}));await page.waitForFunction(()=>hasProAccess());
-        await page.evaluate(()=>window.openProjectUpgrade());await page.locator('#proUpgradeModal').waitFor({state:'visible'});
-        assert.equal(await page.locator('#btnProPurchase').isVisible(),false);assert.equal(await page.locator('#btnCompanyProPurchase').isVisible(),false);assert.equal(await page.locator('.pro-plan-standard .pro-entitlement-active').isVisible(),true);assert.doesNotMatch(await page.locator('.pro-plan-basic .pro-plan-action').textContent(),/Aktivní/);
-        assert.match(await page.locator('#btnUpdatePro').textContent(),/aktivní/);
+        assert.equal(await page.locator('#proUpgradeModal').count(),0);
+        assert.match(await page.locator('#accountProStatus').textContent(),/Aktivní/);
         if(process.env.TEST_SCREENSHOT_DIR)await smoothScreenshot(page,{path:resolve(process.env.TEST_SCREENSHOT_DIR,'admin-project-active.png')});
         await page.evaluate(()=>firebase.firestore().collection('goomProgramGrants').doc('test-user').set({uid:'test-user',expiresAt:{[APP_PRODUCT]:{seconds:Date.now()/1000-1}}}));await page.waitForFunction(()=>!hasProAccess());
-        if(await page.evaluate(()=>APP_PRODUCT==='PZTS'))assert.equal(await page.locator('#btnProPurchase').isVisible(),true);assert.deepEqual(errors,[]);
+        assert.match(await page.locator('#accountProStatus').textContent(),/bezplatnou/);assert.deepEqual(errors,[]);
     }finally{await context.close();}
 });
 
@@ -1082,9 +1081,9 @@ test('personal email registration exposes user information and never queries clo
         assert.equal(await cloudButton.evaluate(node => getComputedStyle(node).backgroundColor), 'rgb(65, 69, 75)');
         await cloudButton.click();
         await page.locator('#projectUpgradeHint').waitFor({ state: 'visible' });
-        await page.locator('#projectUpgradeAction').click();
-        await page.locator('#proUpgradeModal').waitFor({ state: 'visible' });
-        await page.locator('#btnProClose').click();
+        assert.equal(await page.locator('#btnUpdatePro').getAttribute('target'), '_blank');
+        assert.match(await page.locator('#btnUpdatePro').getAttribute('href'), /goom\.cz.*#pricing$/);
+        await page.locator('#projectUpgradeDismiss').click();
         assert.equal(await page.evaluate(() => window.hasCloudAccess()), false);
         assert.equal(await page.evaluate(() => window.testVerificationSent), 1);
         await page.locator('#btnAccountClose').click();
@@ -1127,22 +1126,8 @@ test('registration and email confirmation remain free until a trusted paid entit
         await page.evaluate(() => { window.testConfirmEmail = true; });
         await page.locator('#btnAccountRefresh').click();
         assert.equal(await page.evaluate(() => window.hasCloudAccess()), false);
-        await page.locator('#btnUpdatePro').click();
-        const price = (plan, period) => page.locator(`.pro-plan-${plan} [data-period="${period}"]`);
-        assert.match(await price('standard', 'monthly').innerText(), /990\sKč/s);
-        assert.match(await price('company', 'monthly').innerText(), /1\s485\sKč/);
-        assert.equal(await price('standard', 'annual').isVisible(), false);
-        await page.locator('input[name="proPeriod"][value="annual"]').check();
-        assert.match(await price('standard', 'annual').innerText(), /10\s454\sKč/s);
-        assert.match(await price('company', 'annual').innerText(), /15\s681\sKč/);
-        assert.equal(await price('company', 'monthly').isVisible(), false);
-        await page.locator('#btnProPurchase').click();
-        await page.waitForFunction(() => window.testBillingCalls?.length > 0);
-        assert.equal(await page.evaluate(() => window.testBillingCalls.at(-1).data.offer), 'annual');
-        await page.locator('#btnCompanyProPurchase').click();
-        await page.waitForFunction(() => window.testBillingCalls?.at(-1).data.offer === 'companyAnnual');
-        assert.equal(await page.evaluate(() => window.hasProAccess()), false);
-        await page.locator('#btnProClose').click();
+        assert.match(await page.locator('#btnUpdatePro').getAttribute('href'), /goom\.cz.*#pricing$/);
+        assert.equal(await page.locator('#proUpgradeModal').count(), 0);
         await page.evaluate(async () => {
             const db = firebase.firestore();
             await db.runTransaction(transaction => transaction.set(db.collection('cloudLicenses').doc('test-user'), {
@@ -1160,9 +1145,7 @@ test('registration and email confirmation remain free until a trusted paid entit
         await page.locator('#btnSaveCompanySeats').click();
         await page.locator('#companySeatStatus').waitFor({ state: 'visible' });
         assert.equal(await page.locator('#companySeatStatus').textContent(), 'Firemní přístupy byly uloženy.');
-        await page.locator('#btnUpdatePro').click();
-        assert.equal(await page.locator('#btnProPurchase').isVisible(), false);
-        await page.locator('#btnProClose').click();
+        assert.equal(await page.locator('#proUpgradeModal').count(), 0);
         if (process.env.TEST_SCREENSHOT_DIR) await smoothScreenshot(page, { path: resolve(process.env.TEST_SCREENSHOT_DIR, 'pro-account-czech.png') });
         assert.deepEqual(errors, []);
     } finally { await context.close(); }
@@ -1286,8 +1269,7 @@ test('PROJECT gates the icon editor while the starter guide is available to ever
             assert.equal(await page.locator('.app-tooltip').isVisible(), false);
             assert.equal(await page.locator('#projectUpgradeHint').isVisible(), !paid);
             assert.equal(await page.locator('#proUpgradeModal').isVisible(), false);
-            if(!paid)await page.locator('#projectUpgradeAction').click();
-            assert.equal(await page.locator('#proUpgradeModal').isVisible(), !paid);
+            assert.match(await page.locator('#btnUpdatePro').getAttribute('href'), /goom\.cz.*#pricing$/);
             assert.equal(await page.locator('#iconEditorModal').isVisible(), paid);
             if (!paid && process.env.TEST_SCREENSHOT_DIR) await smoothScreenshot(page, { path: resolve(process.env.TEST_SCREENSHOT_DIR, 'pro-purchase-english.png') });
             assert.equal(await page.locator('.toolbar [data-language-select]').count(), 0);
@@ -1474,19 +1456,8 @@ test('account and subscription dialogs use compact columns and abbreviated langu
         assert.equal(await card.evaluate(el => el.scrollHeight <= el.clientHeight + 1), true);
         assert.equal(await card.evaluate(el => getComputedStyle(el).scrollbarColor), 'rgb(115, 117, 121) rgb(16, 17, 18)');
         if (process.env.TEST_SCREENSHOT_DIR) await smoothScreenshot(page, { path: resolve(process.env.TEST_SCREENSHOT_DIR, 'compact-account-czech.png') });
-        await page.locator('#btnUpdatePro').click();
-        const price = page.locator('.pro-plan-standard [data-period="monthly"]');
-        assert.match(await price.innerText(), /6,90\s€/);
-        const headings = await page.locator('.pro-plan-header').all();
-        const positions = await Promise.all(headings.map(heading => heading.boundingBox()));
-        assert.equal(positions.length, 3);
-        assert.ok((await price.boundingBox()).y >= positions[1].y + positions[1].height);
-        assert.ok(positions.every(position => position.y === positions[0].y));
-        assert.ok(positions[1].x > positions[0].x + positions[0].width);
-        assert.ok(positions[2].x > positions[1].x + positions[1].width);
-        const colors = await page.locator('.pro-plan-header').evaluateAll(headers => headers.map(header => getComputedStyle(header).backgroundColor));
-        assert.deepEqual(colors, ['rgb(220, 224, 229)', 'rgb(246, 213, 138)', 'rgb(190, 231, 246)']);
-        if (process.env.TEST_SCREENSHOT_DIR) await smoothScreenshot(page, { path: resolve(process.env.TEST_SCREENSHOT_DIR, 'compact-subscriptions-czech.png') });
+        assert.match(await page.locator('#btnUpdatePro').getAttribute('href'), /goom\.cz.*#pricing$/);
+        assert.equal(await page.locator('#proUpgradeModal').count(), 0);
         assert.deepEqual(errors, []);
     } finally { await context.close(); }
 });
@@ -1522,39 +1493,13 @@ test('German and Russian localize the account, pricing and detector search and p
         await page.locator('.account-language-controls .ui-select-trigger').click();
         await page.getByRole('option', { name: 'Deutsch', exact: true }).click();
         assert.equal(await page.locator('#userAccountTitle').textContent(), 'Benutzerkonto');
-        await page.locator('#btnUpdatePro').click();
-        assert.equal(await page.locator('#proUpgradeTitle').textContent(), 'Tarife und Abos');
-        assert.match(await page.locator('.pro-period').innerText(), /−12 %/);
-        const features = tier => page.locator(`.pro-plan-${tier} .pro-plan-features`);
-        assert.match(await features('standard').innerText(), /bis zu 5 Projekte je Editor/);
-        assert.doesNotMatch(await features('basic').innerText(), /Cloud/);
-        assert.match(await features('basic').innerText(), /Einführung ins erste Projekt/);
-        assert.match(await features('company').innerText(), /Alles aus Pro/);
-        const card = page.locator('.pro-pricing');
-        assert.ok(await card.evaluate(el => el.scrollWidth <= el.clientWidth));
-        const headerHeights = await page.locator('.pro-plan-header').evaluateAll(headers => headers.map(header => header.offsetHeight));
-        assert.ok(headerHeights.every(height => height === headerHeights[0]));
-        assert.equal(await page.locator('#btnProClose').getAttribute('aria-label'), 'Schließen');
-        assert.ok(await page.locator('.pro-plan-basic button').isDisabled());
-        assert.equal(await page.locator('.pro-plan-basic button').textContent(), 'Free');
-        assert.equal(await page.locator('.pro-price-option').first().evaluate(el => getComputedStyle(el).backgroundColor), 'rgba(0, 0, 0, 0)');
-        assert.equal(await page.locator('.pro-period b').evaluate(el => getComputedStyle(el).backgroundColor), 'rgb(217, 244, 187)');
-        assert.equal(await page.locator('.pro-plan-standard').evaluate(el => getComputedStyle(el).borderTopWidth), '0px');
-        if (process.env.TEST_SCREENSHOT_DIR) await smoothScreenshot(page, { path: resolve(process.env.TEST_SCREENSHOT_DIR, 'pzts-pro-pricing-de.png') });
-        await page.locator('#btnProClose').click();
+        assert.equal(await page.locator('#btnUpdatePro').textContent(), 'Tarife ansehen');
+        assert.equal(await page.locator('#btnUpdatePro').getAttribute('href'), 'https://goom.cz/?lang=de#pricing');
         await page.locator('.account-language-controls .ui-select-trigger').click();
         await page.getByRole('option', { name: 'Русский', exact: true }).click();
         assert.equal(await page.locator('#userAccountTitle').textContent(), 'Аккаунт');
-        await page.locator('#btnUpdatePro').click();
-        assert.equal(await page.locator('#proUpgradeTitle').textContent(), 'Тарифы и подписки');
-        assert.equal(await page.locator('#proStandardTitle').textContent(), 'Pro');
-        assert.equal(await page.locator('.pro-plan-basic button').textContent(), 'Free');
-        assert.deepEqual(await page.locator('.pro-price-separator').allTextContents(), ['/', '/', '/', '/']);
-        assert.match(await features('standard').innerText(), /без водяного знака/);
-        await page.setViewportSize({ width: 600, height: 900 });
-        assert.ok(await card.evaluate(el => el.scrollWidth <= el.clientWidth));
-        await page.setViewportSize({ width: 768, height: 900 });
-        if (process.env.TEST_SCREENSHOT_DIR) await smoothScreenshot(page, { path: resolve(process.env.TEST_SCREENSHOT_DIR, 'pzts-pro-pricing-ru.png') });
+        assert.equal(await page.locator('#btnUpdatePro').textContent(), 'Смотреть тарифы');
+        assert.equal(await page.locator('#btnUpdatePro').getAttribute('href'), 'https://goom.cz/?lang=ru#pricing');
         await page.reload();
         await page.waitForFunction(() => window.hasProAccess?.());
         assert.equal(await page.locator('html').getAttribute('lang'), 'ru');
@@ -3334,17 +3279,17 @@ test('common menu link and drawing settings work in Basic and Polish without cha
 
 test('program feedback hides after daily submission and stays hidden when reopened',async()=>{const{context,page,errors}=await openApp({initialSession:true});try{await page.selectOption('[data-language-select]','ru',{force:true});await startRenderProject(page);await dismissOnboarding(page);await page.locator('#btnLogo').click();await page.locator('#btnOpenFeedback').click();await page.waitForFunction(()=>!document.getElementById('feedbackMessage').hidden&&!document.getElementById('btnFeedbackSend').disabled);await page.locator('#feedbackMessage').fill('Нужна дополнительная функция в программе.');await page.locator('#btnFeedbackSend').click();await page.waitForFunction(()=>document.getElementById('feedbackStatus').textContent.includes('за сегодня'));assert.equal(await page.locator('#feedbackMessage').isVisible(),false);assert.equal(await page.locator('#btnFeedbackSend').isVisible(),false);assert.equal(await page.evaluate(()=>testFeedbackCalls.filter(x=>x.action==='feedback').length),1);await page.locator('#btnFeedbackClose').click();await page.locator('#btnOpenFeedback').click();await page.waitForFunction(()=>document.getElementById('feedbackStatus').textContent.includes('за сегодня'));assert.equal(await page.locator('#feedbackMessage').isVisible(),false);assert.deepEqual(errors,[]);}finally{await context.close();}});
 
-test('compact account shows Polish, support address and live Cloud quota with new plan names',async()=>{const{context,page,errors}=await openApp({initialSession:true,company:true});try{await startRenderProject(page);await dismissOnboarding(page);await page.locator('#arrowTabBtn').click();await page.locator('.sliding-row-container').evaluate(async el=>{await Promise.all(el.getAnimations().map(a=>a.finished.catch(()=>{})));});const oldStripStyle=await page.locator('#deviceSetTools').evaluate(el=>{const old=el.style.cssText;el.style.maxWidth='200px';el.style.width='200px';el.scrollLeft=0;return old;});await page.locator('.device-strip-progress').waitFor({state:'visible'});const handle=await page.locator('.device-strip-progress span').boundingBox();assert.ok(handle.width>=22&&handle.width<=36);assert.equal(handle.height,3);await page.locator('#deviceSetTools').hover();await page.mouse.wheel(0,220);await page.waitForFunction(()=>document.getElementById('deviceSetTools').scrollLeft>0);assert.notEqual(await page.locator('.device-strip-progress span').evaluate(el=>el.style.transform),'translateX(0px)');await page.locator('#deviceSetTools').evaluate((el,old)=>el.style.cssText=old,oldStripStyle);await page.locator('#btnOpenCloudProjectsToolbar').click();await page.waitForFunction(()=>document.getElementById('cloudCapacity').dataset.state==='ready');assert.equal(await page.locator('#cloudCapacity').getAttribute('data-free'),'4');assert.ok(await page.locator('#cloudCapacity path').evaluateAll(paths=>paths.every(p=>p.getAttribute('d')==='M8 112 A52 52 0 0 0 8 8')));assert.equal(await page.locator('#cloudCapacity').getAttribute('data-used'),'1');assert.equal(await page.locator('#cloudCapacity .capacity-fill:visible').count(),1);assert.equal(await page.locator('#accountCloudTitle').textContent(),'Cloud');await page.locator('.account-language-controls .ui-select-trigger').click();const polish=page.getByRole('option',{name:'Polski',exact:true});assert.equal(await polish.isVisible(),true);const pos=await polish.boundingBox();assert.ok(pos.y+pos.height<=await page.evaluate(()=>innerHeight));await polish.click();await page.waitForFunction(()=>document.documentElement.lang==='pl');assert.match(await page.locator('#accountCloudInfo').textContent(),/Wolne miejsca/);if(process.env.TEST_SCREENSHOT_DIR)await smoothScreenshot(page,{path:resolve(process.env.TEST_SCREENSHOT_DIR,'compact7-account.png')});await page.locator('#btnUpdatePro').click();assert.deepEqual(await page.locator('#proBasicTitle,#proStandardTitle,#proCompanyTitle').allTextContents(),['Free','Pro','Team']);assert.match(await page.locator('.pro-plan-standard').textContent(),/profesjonalny/);await page.locator('#btnProClose').click();await page.locator('#btnAccountCloudProjects').click();await page.locator('.cloud-project-delete').first().click();await page.locator('#appDialogConfirm').click();await page.waitForFunction(()=>document.getElementById('cloudCapacity').getAttribute('data-free')==='5');assert.equal(await page.locator('#cloudCapacity .capacity-fill:visible').count(),0);await page.locator('#btnCloudProjectsClose').click();await page.locator('#btnLogo').click();await page.locator('#btnOpenFeedback').click();await page.waitForFunction(()=>!document.getElementById('btnFeedbackSend').disabled);assert.equal(await page.locator('#feedbackEmail').textContent(),'support@goom.cz');assert.equal(await page.locator('#feedbackEmail').getAttribute('href'),'mailto:support@goom.cz');assert.equal(await page.locator('#feedbackReply').textContent().then(t=>t.includes('test@example')),false);assert.deepEqual(errors,[]);}finally{await context.close();}});
+test('compact account shows Polish, support address and live Cloud quota with new plan names',async()=>{const{context,page,errors}=await openApp({initialSession:true,company:true});try{await startRenderProject(page);await dismissOnboarding(page);await page.locator('#arrowTabBtn').click();await page.locator('.sliding-row-container').evaluate(async el=>{await Promise.all(el.getAnimations().map(a=>a.finished.catch(()=>{})));});const oldStripStyle=await page.locator('#deviceSetTools').evaluate(el=>{const old=el.style.cssText;el.style.maxWidth='200px';el.style.width='200px';el.scrollLeft=0;return old;});await page.locator('.device-strip-progress').waitFor({state:'visible'});const handle=await page.locator('.device-strip-progress span').boundingBox();assert.ok(handle.width>=22&&handle.width<=36);assert.equal(handle.height,3);await page.locator('#deviceSetTools').hover();await page.mouse.wheel(0,220);await page.waitForFunction(()=>document.getElementById('deviceSetTools').scrollLeft>0);assert.notEqual(await page.locator('.device-strip-progress span').evaluate(el=>el.style.transform),'translateX(0px)');await page.locator('#deviceSetTools').evaluate((el,old)=>el.style.cssText=old,oldStripStyle);await page.locator('#btnOpenCloudProjectsToolbar').click();await page.waitForFunction(()=>document.getElementById('cloudCapacity').dataset.state==='ready');assert.equal(await page.locator('#cloudCapacity').getAttribute('data-free'),'4');assert.ok(await page.locator('#cloudCapacity path').evaluateAll(paths=>paths.every(p=>p.getAttribute('d')==='M8 112 A52 52 0 0 0 8 8')));assert.equal(await page.locator('#cloudCapacity').getAttribute('data-used'),'1');assert.equal(await page.locator('#cloudCapacity .capacity-fill:visible').count(),1);assert.equal(await page.locator('#accountCloudTitle').textContent(),'Cloud');await page.locator('.account-language-controls .ui-select-trigger').click();const polish=page.getByRole('option',{name:'Polski',exact:true});assert.equal(await polish.isVisible(),true);const pos=await polish.boundingBox();assert.ok(pos.y+pos.height<=await page.evaluate(()=>innerHeight));await polish.click();await page.waitForFunction(()=>document.documentElement.lang==='pl');assert.match(await page.locator('#accountCloudInfo').textContent(),/Wolne miejsca/);if(process.env.TEST_SCREENSHOT_DIR)await smoothScreenshot(page,{path:resolve(process.env.TEST_SCREENSHOT_DIR,'compact7-account.png')});assert.equal(await page.locator('#btnUpdatePro').getAttribute('href'),'https://goom.cz/?lang=pl#pricing');await page.locator('#btnAccountCloudProjects').click();await page.locator('.cloud-project-delete').first().click();await page.locator('#appDialogConfirm').click();await page.waitForFunction(()=>document.getElementById('cloudCapacity').getAttribute('data-free')==='5');assert.equal(await page.locator('#cloudCapacity .capacity-fill:visible').count(),0);await page.locator('#btnCloudProjectsClose').click();await page.locator('#btnLogo').click();await page.locator('#btnOpenFeedback').click();await page.waitForFunction(()=>!document.getElementById('btnFeedbackSend').disabled);assert.equal(await page.locator('#feedbackEmail').textContent(),'support@goom.cz');assert.equal(await page.locator('#feedbackEmail').getAttribute('href'),'mailto:support@goom.cz');assert.equal(await page.locator('#feedbackReply').textContent().then(t=>t.includes('test@example')),false);assert.deepEqual(errors,[]);}finally{await context.close();}});
 
 
-test('shared format: Free previews do not alter the plan and pricing stays centred',async()=>{
+test('shared format: Free previews do not alter the plan',async()=>{
  const{context,page,errors}=await openApp({initialSession:true});try{
   await startRenderProject(page);await dismissOnboarding(page);await chooseDetector(page);const before=await page.evaluate(()=>JSON.stringify({icons:customDeviceIcons,floors:getProjectDataPayload().floors}));
   await page.locator('#btnCycleToolbarMenu').click();await page.waitForFunction(()=>displayedToolbarMenu.id==='pro');assert.equal(await page.evaluate(()=>displayedToolbarMenu.id),'pro');assert.equal(await page.locator('#deviceSetTools').getAttribute('data-preview-locked'),'true');
   await page.locator('#deviceSetTools .device-btn:visible').first().click();assert.equal(await page.evaluate(()=>selectedTool),'select');assert.equal(await page.locator('#projectUpgradeHint').isVisible(),true);assert.equal(await page.evaluate(()=>JSON.stringify({icons:customDeviceIcons,floors:getProjectDataPayload().floors})),before);
   await page.locator('#btnCycleToolbarMenu').click();await page.waitForFunction(()=>displayedToolbarMenu.id==='default');assert.equal(await page.evaluate(()=>displayedToolbarMenu.id),'default');assert.equal(await page.locator('#deviceSetTools').getAttribute('data-preview-locked'),'false');
-  await page.evaluate(()=>window.openProjectUpgrade());for(const viewport of [{width:1900,height:900},{width:768,height:900},{width:390,height:844}]){await page.setViewportSize(viewport);const card=await page.locator('#proUpgradeModal .pro-pricing').boundingBox(),note=await page.locator('.pro-plan-standard .pro-suite-feature').boundingBox();assert.ok(Math.abs(card.x+card.width/2-viewport.width/2)<2,JSON.stringify(card));assert.ok(note.x>=card.x&&note.x+note.width<=card.x+card.width+1);assert.ok(await page.locator('#proUpgradeModal').evaluate(el=>el.scrollWidth<=el.clientWidth+1));}
-  if(process.env.TEST_SCREENSHOT_DIR){await page.setViewportSize({width:1900,height:900});await smoothScreenshot(page,{path:resolve(process.env.TEST_SCREENSHOT_DIR,'shared8-pricing.png')});}assert.equal(await page.evaluate(()=>testAuthPersistence),'session');assert.deepEqual(errors,[]);
+  assert.equal(await page.locator('#proUpgradeModal').count(),0);
+  assert.equal(await page.evaluate(()=>testAuthPersistence),'session');assert.deepEqual(errors,[]);
  }finally{await context.close();}
 });
 
@@ -3444,12 +3389,69 @@ test('passage artwork and main-route colour and width can be edited in a copied 
  }finally{await context.close();}
 });
 
-test('editor plans display exact CZK prices and suite inclusion inside each card',async()=>{
- const{context,page,errors}=await openApp({initialSession:true});try{await startRenderProject(page);await page.evaluate(()=>openProjectUpgrade());assert.equal(await page.locator('#proSuiteNote').count(),0);assert.equal(await page.locator('.pro-suite-feature').count(),3);const number=async key=>(await page.locator('[data-pro-price='+key+']').textContent()).replace(/\D/g,'');assert.equal(await number('monthly'),'990');assert.equal(await number('annual'),'10454');assert.equal(await number('companyMonthly'),'1485');assert.equal(await number('companyAnnual'),'15681');assert.equal(await page.locator('[data-currency=EUR]').count(),0);assert.match(await page.locator('#proCurrencyNote').textContent(),/CZK/);assert.deepEqual(errors,[]);}finally{await context.close();}
+test('editor prices open the website and the CAD palette creates a portable device', async () => {
+    const {context, page, errors} = await openApp({initialSession:true});
+    try {
+        await startRenderProject(page);
+        await dismissOnboarding(page);
+        assert.equal(await page.locator('#proUpgradeModal').count(), 0);
+        assert.equal(await page.locator('#btnUpdatePro').getAttribute('href'), 'https://goom.cz/?lang=cs#pricing');
+        assert.equal(await page.locator('#btnUpdatePro').getAttribute('target'), '_blank');
+        await page.evaluate(() => {
+            const nativeClick = HTMLAnchorElement.prototype.click;
+            HTMLAnchorElement.prototype.click = function () {
+                if (this.href.startsWith('https://goom.cz/') && this.hash === '#pricing') {
+                    window.testPricingLink = [this.href, this.target];
+                } else nativeClick.call(this);
+            };
+            openProjectUpgrade();
+        });
+        assert.deepEqual(await page.evaluate(() => testPricingLink), ['https://goom.cz/?lang=cs#pricing', '_blank']);
+        assert.match(await page.locator('#drawingImportLabel').textContent(), /DWG.*DXF/);
+        await page.locator('#arrowTabBtn').click();
+        await page.locator('#btnCadSymbols').click();
+        const option = page.locator('#cadSymbolOptions button').nth(process.env.TEST_PRODUCT === 'CCTV' ? 3 : 1);
+        const type = await option.getAttribute('data-cad-type');
+        const count = await page.locator('#cadSymbolOptions button').count();
+        assert.ok(count >= 5 && count <= 6);
+        await option.click();
+        assert.equal(await page.locator('#cadSymbolsDialog').isVisible(), false);
+        await page.evaluate(() => { offsetX = offsetY = 0; scale = 1; });
+        const box = await page.locator('#canvasContainer').boundingBox();
+        await page.mouse.click(box.x + 250, box.y + 250);
+        const saved = await page.evaluate(type => {
+            const floor = floors[currentFloorIndex];
+            const device = floor.devices.find(row => row.type === type);
+            const payload = getProjectDataPayload();
+            const saved = payload.floors[currentFloorIndex].devices.find(row => row.type === type);
+            const normal = recordSharedSymbol({...device, cadSymbol:false});
+            return {cad: saved.cadSymbol, distinct:JSON.stringify(saved.portableSymbol.ops) !== JSON.stringify(normal.ops)};
+        }, type);
+        assert.deepEqual(saved, {cad:true, distinct:true});
+        await page.locator('#deviceSetTools [data-type="'+type+'"]').click();
+        await page.mouse.click(box.x + 405, box.y + 250);
+        assert.equal(await page.evaluate(type=>floors[currentFloorIndex].devices.filter(d=>d.type===type && d.cadSymbol).length,type),1);
+        assert.deepEqual(errors, []);
+    } finally { await context.close(); }
 });
 
 test('site pricing has exact Pro and Team CZK prices in five languages with suite text only in cards',{skip:!['PZTS',undefined].includes(process.env.TEST_PRODUCT)},async()=>{
- const context=await browser.newContext({viewport:{width:1440,height:1000}}),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));await context.route('**/*',async route=>{const url=route.request().url();if(url.startsWith(origin)){const pathname=new URL(url).pathname;if(pathname.endsWith('/reviews.js'))return route.fulfill({contentType:'text/javascript',body:''});if(!pathname.startsWith('/goom-site/')){const file=resolve(__dirname,'../goom-site','.'+pathname);if(require('node:fs').existsSync(file)&&require('node:fs').statSync(file).isFile())return route.fulfill({path:file,contentType:({'.js':'text/javascript','.css':'text/css','.png':'image/png','.svg':'image/svg+xml','.mp4':'video/mp4'})[extname(file)]||'application/octet-stream'});}return route.continue();}return route.fulfill({contentType:'application/json',headers:{'Access-Control-Allow-Origin':'*'},body:'{}'});});try{await page.goto(origin+'/goom-site/');await page.waitForFunction(()=>document.getElementById('pricing').dataset.billingPeriod==='monthly');assert.equal(await page.locator('.pricing-controls .suite-programs').count(),0);assert.equal(await page.locator('.price-plan .plan-suite').count(),3);for(const lang of ['cs','en','de','ru','pl']){await page.locator('#language').selectOption(lang);await page.locator('[data-period=monthly]').click();const price=async plan=>(await page.locator('[data-price='+plan+']').textContent()).replace(/\D/g,'');assert.equal(await price('pro'),'990');assert.equal(await price('company'),'1485');await page.locator('[data-period=annual]').click();assert.equal(await price('pro'),'10454');assert.equal(await price('company'),'15681');}await page.locator('#language').selectOption('cs');await page.locator('#pricing').scrollIntoViewIfNeeded();if(process.env.TEST_SCREENSHOT_DIR)await smoothScreenshot(page,{path:resolve(process.env.TEST_SCREENSHOT_DIR,'trunk12-pricing.png')});assert.deepEqual(errors,[]);}finally{await context.close();}
+ const context=await browser.newContext({viewport:{width:1440,height:1000}}),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));await context.route('**/*',async route=>{const url=route.request().url();if(url.startsWith(origin)){const pathname=new URL(url).pathname;if(pathname.endsWith('/reviews.js'))return route.fulfill({contentType:'text/javascript',body:''});if(!pathname.startsWith('/goom-site/')){const file=resolve(__dirname,'../goom-site','.'+pathname);if(require('node:fs').existsSync(file)&&require('node:fs').statSync(file).isFile())return route.fulfill({path:file,contentType:({'.js':'text/javascript','.css':'text/css','.png':'image/png','.svg':'image/svg+xml','.mp4':'video/mp4'})[extname(file)]||'application/octet-stream'});}return route.continue();}return route.fulfill({contentType:'application/json',headers:{'Access-Control-Allow-Origin':'*'},body:'{}'});});try{await page.goto(origin+'/goom-site/');await page.waitForFunction(()=>document.getElementById('pricing').dataset.billingPeriod==='monthly');assert.equal(await page.locator('.pricing-controls .suite-programs').count(),0);assert.equal(await page.locator('.price-plan .plan-suite').count(),3);for(const lang of ['cs','en','de','ru','pl']){await page.locator('#language').selectOption(lang);await page.locator('[data-period=monthly]').click();const price=async plan=>(await page.locator('[data-price='+plan+']').textContent()).replace(/\D/g,'');assert.equal(await price('pro'),'990');assert.equal(await price('company'),'1485');await page.locator('[data-period=annual]').click();assert.equal(await price('pro'),'10454');assert.equal(await price('company'),'15681');}await page.locator('#language').selectOption('ru');
+ assert.equal(await page.locator('header [data-guide-link]').getAttribute('href'),'/guide/ru/');
+ for(const width of [768,1024]){
+    await page.setViewportSize({width,height:1024});
+    const gauge=await page.locator('.community-gauge').first().evaluate(el=>{
+        const matrix=el.getScreenCTM();
+        return {x:matrix.a,y:matrix.d,width:el.getBoundingClientRect().width};
+    });
+    assert.ok(Math.abs(gauge.x-gauge.y)<.001 && gauge.width<250);
+ }
+ if(process.env.TEST_SCREENSHOT_DIR){
+    await page.locator('#communityStats').scrollIntoViewIfNeeded();
+    await smoothScreenshot(page,{path:resolve(process.env.TEST_SCREENSHOT_DIR,'guide13-tablet-stats.png')});
+ }
+ await page.setViewportSize({width:1440,height:1000});
+ await page.locator('#language').selectOption('cs');await page.locator('#pricing').scrollIntoViewIfNeeded();if(process.env.TEST_SCREENSHOT_DIR)await smoothScreenshot(page,{path:resolve(process.env.TEST_SCREENSHOT_DIR,'trunk12-pricing.png')});assert.deepEqual(errors,[]);}finally{await context.close();}
 });
 
 

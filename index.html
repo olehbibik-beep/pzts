@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GOOM</title>
+    <title>GooM PZTS – návrh zabezpečovacích systémů</title>
+    <meta name="description" content="Projektování zabezpečovacích systémů v prohlížeči. Detektory, zóny, sběrnice, kabelové trasy a import plánů DWG, DXF a PDF.">
     <link rel="icon" type="image/png" href="Logosite.png?v=20261120-experience">
-    <script src="i18n-pl.js?v=20261125-trunk-12"></script>
-<script src="i18n.js?v=20261125-trunk-12"></script>
-    <script src="device-support.js?v=20261125-trunk-12"></script>
-    <link rel="stylesheet" href="viewer-map.css?v=20261125-trunk-12">
+    <script src="i18n-pl.js?v=20261125-guide-13"></script>
+<script src="i18n.js?v=20261125-guide-13"></script>
+    <script src="device-support.js?v=20261125-guide-13"></script>
+    <link rel="stylesheet" href="viewer-map.css?v=20261125-guide-13">
     <style>
         :root {
             --bg-main: #121214; --bg-toolbar: #1c1c1f; --bg-input: #252529;
@@ -454,10 +455,10 @@
 
 
     </style>
-    <link rel="stylesheet" href="ui-theme.css?v=20261125-trunk-12">
-<link rel="stylesheet" href="editor-experience.css?v=20261125-trunk-12">
-<script src="silent-video.js?v=20261125-trunk-12"></script>
-<link rel="stylesheet" href="editor-polish.css?v=20261125-trunk-12">
+    <link rel="stylesheet" href="ui-theme.css?v=20261125-guide-13">
+<link rel="stylesheet" href="editor-experience.css?v=20261125-guide-13">
+<script src="silent-video.js?v=20261125-guide-13"></script>
+<link rel="stylesheet" href="editor-polish.css?v=20261125-guide-13">
 </head>
 <body>
     <div id="deviceSupportNotice" role="alert">
@@ -472,15 +473,15 @@
     </div>
 
     <input type="file" id="bipsLoader" accept=".tech,.cctv,.bips,.dxf,.dwg,.xcx" style="display:none;">
-    <input type="file" id="imageLoader" accept="image/*, application/pdf, .dxf, .dwg, .xcx" style="display:none;">
+    <input type="file" id="imageLoader" accept=".pdf,.png,.jpg,.jpeg,.webp,.bmp,.gif,.svg,.dxf,.dwg" style="display:none;">
 
     <div class="toolbar">
         <div class="toolbar-row">
             
             <div class="app-title">
                 <button class="menu-logo-button" id="btnLogo" type="button" data-tooltip="Меню" aria-label="Nabídka">
-                    <img src="Link.png?v=20261125-trunk-12" class="menu-logo-default" alt="">
-                    <img src="Link2.png?v=20261125-trunk-12" class="menu-logo-hover" alt="">
+                    <img src="Link.png?v=20261125-guide-13" class="menu-logo-default" alt="">
+                    <img src="Link2.png?v=20261125-guide-13" class="menu-logo-hover" alt="">
                 </button>
                 <span class="app-brand-name" data-user-content translate="no">PZTS</span>
             </div>
@@ -535,6 +536,7 @@
         <div class="sliding-row-container">
             <div class="toolbar-row" style="padding: 10px 20px; justify-content: center;">
                 <div class="device-selector-group" id="deviceSelector">
+                    <button id="btnCadSymbols" class="btn-cad cad-symbol-toggle" type="button" aria-haspopup="dialog" aria-pressed="false">CAD</button>
                     <button id="btnCycleToolbarMenu" class="btn-cad toolbar-menu-cycle" type="button" data-menu-id="default" aria-label="Přepnout sadu nabídek">
                         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
                     </button>
@@ -726,7 +728,7 @@
             <div class="pro-card">
                 <h3>Předplatné PROJECT</h3>
                 <p id="accountProStatus" class="pro-status"></p>
-                <button id="btnUpdatePro" class="btn-cad auth-primary" type="button">Ceník PROJECT</button>
+                <a id="btnUpdatePro" class="btn-cad auth-primary" href="https://goom.cz/#pricing" target="_blank" rel="noopener">Ceník</a>
             </div>
             <p id="accountSubscriptionPeriod" class="account-note"></p><button id="btnManageSubscription" class="btn-cad" type="button" hidden>Spravovat předplatné</button>
             <form id="companySeatForm" class="company-seat-form account-form" hidden>
@@ -746,89 +748,7 @@
         </section>
     </div>
 
-    <div id="proUpgradeModal" class="modal" style="z-index: 460;">
-        <section class="modal-content account-card pro-pricing" role="dialog" aria-modal="true" aria-labelledby="proUpgradeTitle">
-            <div class="account-header">
-                <button id="btnProClose" class="pro-close" type="button" aria-label="Zavřít">×</button>
-                <h2 id="proUpgradeTitle">Tarify a předplatné</h2>
-            </div>
-            <div class="pro-period" role="group" aria-label="Zvolte období">
-                <label><input type="radio" name="proPeriod" value="monthly" checked><span>Měsíčně</span></label>
-                <label><input type="radio" name="proPeriod" value="annual"><span>Ročně <b>−12 %</b></span></label>
-            </div>
-            <div class="pro-plans">
-                <article class="pro-plan pro-plan-basic" aria-labelledby="proBasicTitle">
-                    <header class="pro-plan-header"><h3 id="proBasicTitle" data-user-content>Free</h3><p class="pro-plan-caption">Pro domácí práci</p></header>
-                    <div class="pro-plan-body">
-                        <div class="pro-price-free"><strong>Zdarma</strong></div>
-                        <p class="pro-plan-summary">Pro práci s výkresy a ukládání do zařízení.</p>
-                        <div class="pro-plan-actions"><button class="btn-cad pro-plan-action" type="button" disabled>Aktivní</button></div>
-                        <ul class="pro-plan-features" role="list">
-                            <li>Import a úpravy výkresů</li>
-                            <li>Místní uložení projektů .TECH</li>
-                            <li>Export a tisk s vodoznakem</li>
-                            <li>Světlý a tmavý výkres</li>
-                            <li>Průvodce prvním projektem</li>
-                        </ul>
-                    </div>
-                </article>
-                <article class="pro-plan pro-plan-standard" aria-labelledby="proStandardTitle">
-                    <header class="pro-plan-header">
-                        <h3 id="proStandardTitle" data-user-content>Pro</h3><p class="pro-plan-caption">Doporučujeme</p>
-                    </header>
-                    <div class="pro-plan-body">
-                        <div class="pro-price-option" data-period="monthly">
-                            <span class="pro-price"><strong data-pro-price="monthly" data-currency="CZK"></strong></span><small>Měsíčně</small>
-                        </div>
-                        <div class="pro-price-option" data-period="annual">
-                            <span class="pro-price"><strong data-pro-price="annual" data-currency="CZK"></strong></span><small>Ročně</small>
-                        </div>
-                        <p class="pro-plan-summary">Pro práci napříč zařízeními a s vlastními symboly.</p>
-                        <div class="pro-plan-actions">
-                            <button id="btnProPurchase" class="btn-cad pro-plan-action" type="button" data-buy-tier="pro">Koupit PROJECT</button>
-                            <button class="btn-cad pro-plan-action" type="button" data-manage-tier="pro" hidden>Spravovat předplatné</button>
-                        </div>
-                        <ul class="pro-plan-features" role="list">
-                            <li>Vše ze základní verze</li>
-                            <li>Vlastní nástroje a profesionální sada Pro</li><li>Fotografie plánu z tabletu</li>
-                            <li>Editor nabídek a ikon</li>
-                            <li>Cloud: až 5 projektů v každém editoru</li>
-                            <li>Vyhledávání detektorů ve všech podlažích</li>
-                            <li>Výstupy bez vodoznaku</li>
-                        </ul>
-                    </div>
-                </article>
-                <article class="pro-plan pro-plan-company" aria-labelledby="proCompanyTitle">
-                    <header class="pro-plan-header">
-                        <h3 id="proCompanyTitle" data-user-content>Team</h3><p class="pro-plan-caption">Pro týmy</p>
-                    </header>
-                    <div class="pro-plan-body">
-                        <div class="pro-price-option" data-period="monthly">
-                            <span class="pro-price"><strong data-pro-price="companyMonthly" data-currency="CZK"></strong></span><small>Měsíčně</small>
-                        </div>
-                        <div class="pro-price-option" data-period="annual">
-                            <span class="pro-price"><strong data-pro-price="companyAnnual" data-currency="CZK"></strong></span><small>Ročně</small>
-                        </div>
-                        <p class="pro-plan-summary">Jedno předplatné pro vás a vaše kolegy.</p>
-                        <div class="pro-plan-actions">
-                            <button id="btnCompanyProPurchase" class="btn-cad pro-plan-action" type="button" data-buy-tier="company">Koupit firemní PROJECT</button>
-                            <button class="btn-cad pro-plan-action" type="button" data-manage-tier="company" hidden>Spravovat předplatné</button>
-                        </div>
-                        <ul class="pro-plan-features" role="list">
-                            <li>Vše z PROJECT</li>
-                            <li>Až 3 další účty PROJECT</li>
-                            <li>Přístup kolegů po dobu firemního předplatného</li>
-                        </ul>
-                    </div>
-                </article>
-            </div>
-            <div class="pro-pricing-footer">
-                <p id="proPurchaseStatus" class="pro-status" role="status" aria-live="polite"></p>
-                <p id="proCurrencyNote" class="account-note">Ceny jsou v českých korunách (CZK).</p>
-                <p class="account-note">Předplatné se obnovuje po zvoleném období. Automatické obnovení můžete zrušit v účtu.</p>
-            </div>
-        </section>
-    </div>
+
 
     <div id="cloudProjectsModal" class="modal">
         <div class="modal-content cloud-projects-content" role="dialog" aria-modal="true" aria-labelledby="cloudProjectsTitle">
@@ -879,6 +799,7 @@
                         <img class="main-menu-brand-logo" src="Logo2.png?v=20261115-35" alt="">
                         <span>Zpětná vazba</span>
                     </button>
+                    <a id="goomGuideLink" class="main-menu-guide" href="https://goom.cz/guide/" target="_blank" rel="noopener">Příručka</a>
                 </div>
                 <div class="main-menu-actions">
                 <button id="btnMenuNew" class="btn-cad" style="width: 100%; justify-content: flex-start; background: #ef4444; color: #ffffff; font-weight: bold;">
@@ -890,7 +811,7 @@
                     Otevřít projekt (.TECH)
                 </button>
                 <div class="plan-source-actions">
-                <button id="btnMenuLoadImg" class="btn-cad" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8" cy="8" r="1"/><path d="m21 16-6-6L3 21"/></svg><span>PDF / IMG</span></button>
+                <button id="btnMenuLoadImg" class="btn-cad" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8" cy="8" r="1"/><path d="m21 16-6-6L3 21"/></svg><span id="drawingImportLabel">PDF / IMG / DWG / DXF</span></button>
                 <button id="btnMenuSatellite" class="btn-cad" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3Zm6-3v15m6-12v15"/></svg><span>Mapa</span></button>
                 <button id="btnMenuPhoto" class="btn-cad" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m8 5 2-2h4l2 2h4a2 2 0 0 1 2 2v12H2V7a2 2 0 0 1 2-2Z"/><circle cx="12" cy="12" r="4"/></svg><span>Foto</span></button>
                 </div>
@@ -907,6 +828,10 @@
     </div>
     </div>
 
+    <dialog id="cadSymbolsDialog" class="cad-symbol-dialog" aria-labelledby="cadSymbolsTitle">
+        <form method="dialog"><h2 id="cadSymbolsTitle">Značky CAD</h2><button type="submit" aria-label="Zavřít">×</button></form>
+        <div id="cadSymbolOptions" class="cad-symbol-options"></div>
+    </dialog>
     <div id="printPage" aria-hidden="true"></div>
 
     <div id="detectorSearchModal" class="modal">
@@ -1140,7 +1065,7 @@
                         <div class="overview-detail-addresses"><span id="overviewZonesLabel" class="overview-detail-zones-label">Adresy zón</span><div id="overviewDetailZones" class="overview-detail-zones" role="region" aria-labelledby="overviewZonesLabel" tabindex="0"></div></div>
                     </section>
                 </section>
-                <section class="overview-floor-panel"><div class="overview-artwork"><img id="overviewArtwork" src="NP.png?v=20261125-trunk-12" alt="Dům, průmyslová budova a věž" loading="lazy" decoding="async"></div><header class="overview-floor-heading"><h3>Podlaží</h3><span>6 NP · 3 PP</span></header><div id="overviewFloors" role="group" aria-label="Vyberte podlaží"></div></section>
+                <section class="overview-floor-panel"><div class="overview-artwork"><img id="overviewArtwork" src="NP.png?v=20261125-guide-13" alt="Dům, průmyslová budova a věž" loading="lazy" decoding="async"></div><header class="overview-floor-heading"><h3>Podlaží</h3><span>6 NP · 3 PP</span></header><div id="overviewFloors" role="group" aria-label="Vyberte podlaží"></div></section>
             </div>
         </div>
         <div class="overview-footer">
@@ -1159,6 +1084,6 @@
         <button type="button" data-tablet-action="delete" class="tool-danger"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13m-8 3v7m4-7v7"/></svg></button>
         <button type="button" data-tablet-action="undo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 4-5 5 5 5M4 9h9a6 6 0 0 1 6 6v2"/></svg></button>
     </div>
-    <script src="bootstrap.js?v=20261125-trunk-12"></script>
+    <script src="bootstrap.js?v=20261125-guide-13"></script>
 </body>
 </html>

@@ -154,3 +154,11 @@ table{min-width:720px;font-size:.86rem}th,td{padding:10px 8px}th{font-size:.74re
 .badge.admin,.program-dot.admin{background:#ede6ff;color:#6241b5}
 
 .account-delete{margin-top:24px;padding-top:18px;border-top:1px solid #e6d7dc}.account-delete h3{font-size:15px}.account-delete p{font-size:13px;line-height:1.5;color:#697384}.account-delete label{display:grid;gap:8px;font-size:13px;margin-bottom:12px}.account-delete input{width:100%;box-sizing:border-box}
+
+.infrastructure-capacity { padding: clamp(16px,3vw,28px); }
+.capacity-columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 22px; }
+.capacity-columns article { padding: 16px; border: 1px solid #dce1e7; border-radius: 10px; }
+.capacity-columns article h3 { margin-top: 0; }
+.capacity-columns ul { padding-left: 20px; }
+.capacity-columns li { margin-block: 7px; }
+.capacity-columns input { width: 75px; margin-left: 6px; }
