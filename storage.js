@@ -168,7 +168,7 @@ function getProjectDataPayload() {
         applicationIcons:{...projectApplicationIcons,[APP_PRODUCT]:sanitizeProjectIcons(customDeviceIcons)},
         pirCoverageVisible: isPirCoverageVisible(),
         floors: floors.map(f => ({
-            name: f.name, imgData: f.imgData, devices: f.devices.map(snapshotPlanDevice), cables: f.cables.map(c=>({...c,ownerApplication:c.ownerApplication||APP_PRODUCT,routeColor:c.routeColor||cableRouteColor(f.devices.find(d=>d.id===c.fromId)||{},f.devices.find(d=>d.id===c.toId)||{})})), legend: f.legend?{...f.legend,ownerApplication:APP_PRODUCT}:null, foreignLegends:f.foreignLegends||[],
+            name: f.name, imgData: f.imgData, devices: f.devices.map(snapshotPlanDevice), cables: f.cables.map(c=>({...c,...(c.kind==='trunk'?{routeStyle:{color:getTrunkRouteStyle(c).color,width:getTrunkRouteStyle(c).width}}:{}),ownerApplication:c.ownerApplication||APP_PRODUCT,routeColor:c.routeColor||cableRouteColor(f.devices.find(d=>d.id===c.fromId)||{},f.devices.find(d=>d.id===c.toId)||{})})), legend: f.legend?{...f.legend,ownerApplication:APP_PRODUCT}:null, foreignLegends:f.foreignLegends||[],
             addressReservations: f.addressReservations,
             showConnections: f.showConnections, wallThreshold: f.wallThreshold, pirRangePixels: f.pirRangePixels,
             planTheme: f.planTheme, satellite: f.satellite, vectorPlan: f.vectorPlan, pdfSource: f.pdfSource, rasterSource: f.rasterSource, pdfPage: f.pdfPage, sourceName: f.sourceName

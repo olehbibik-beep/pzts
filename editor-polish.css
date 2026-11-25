@@ -59,3 +59,9 @@
 .sliding-row-container .device-selector-group{width:min(100%,1800px);max-width:none;margin-inline:auto}
 #deviceSelector .device-set-tools{justify-content:safe center!important}
 #deviceSelector .device-btn[data-type="floorPassage"],#deviceSelector .device-btn[data-type="trunkTool"]{min-width:32px;color:#38bdf8}
+
+/* Keep all selector controls together in a centred, content-sized panel. */
+.sliding-row-container .device-selector-group{width:max-content;max-width:min(1800px,100%);margin-inline:auto}
+#deviceSelector .device-set-tools{justify-content:flex-start!important}
+
+.icon-editor-route-properties{border:1px solid #45494f;border-radius:8px;padding:10px 12px;margin:14px 0;color:var(--text-main);display:flex;gap:18px;align-items:center;flex-wrap:wrap}.icon-editor-route-properties[hidden]{display:none}.icon-editor-route-properties legend{font-size:13px}.icon-editor-route-properties label{display:flex;gap:10px;align-items:center;font-size:12px}.icon-editor-route-properties input[type=number]{width:72px}

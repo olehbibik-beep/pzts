@@ -1,6 +1,8 @@
 // A floor annotation in world coordinates; the same vectors are used on screen and on paper.
 const legendDeviceTypes = new Set(APP_PRODUCT === 'CCTV' ? Object.keys(CCTV_DEVICE_LABELS) :
     ['panel','expander','abax','keypad','pir','pir_wl','magnet','magnet_wl','glassbreak','panic','siren', ...NEW_TOOLBAR_DEVICE_TYPES]);
+legendDeviceTypes.add('floorPassage');
+legendDeviceTypes.add('trunkTool');
 let selectedProjectLegend = null;
 let projectLegendDrag = null;
 const projectLegendLayouts = new WeakMap();
@@ -19,6 +21,8 @@ function sanitizeProjectLegend(value) {
                 kind:s.kind,x:s.x,y:s.y,size:s.size,rotation:s.rotation,color:s.color,fill:s.fill,fillColor:s.fillColor,stroke:s.stroke,fontWeight:s.fontWeight,
                 ...(Number.isFinite(s.height) ? {height:s.height} : {}),
                 ...(s.kind==='stockIcon' ? {stockType:s.stockType} : {}),
+                ...(Number.isFinite(s.routeWidth) ? {routeWidth:s.routeWidth} : {}),
+                ...(typeof s.routeColor==='string' ? {routeColor:s.routeColor} : {}),
                 text:typeof s.text==='string'?s.text.slice(0,8):''
             })) : []
         }))
@@ -31,7 +35,7 @@ function projectLegendEntries(menu = getActiveToolbarMenu(), icons = customDevic
     }));
 }
 function includeNewDeviceInLegend(floor, type) {
-    if (!NEW_TOOLBAR_DEVICE_TYPES.includes(type) || !floor.legend || floor.legend.entries.some(entry => entry.type === type)) return;
+    if (!(NEW_TOOLBAR_DEVICE_TYPES.includes(type) || ['floorPassage','trunkTool'].includes(type)) || !floor.legend || floor.legend.entries.some(entry => entry.type === type)) return;
     const entry = projectLegendEntries().find(item => item.type === type);
     if (entry) floor.legend.entries = [...floor.legend.entries, entry];
 }

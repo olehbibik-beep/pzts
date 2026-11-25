@@ -14,8 +14,8 @@ function getOverviewFloorIndex(label){
     return floors.findIndex(floor=>String(floor.name).replace(/\s/g,'').toUpperCase()===label);
 }
 function getFloorOverviewStats(floor){
-    const active=floor.devices.filter(device=>!['deactivated','textNode','cableTool'].includes(device.type));
-    const detectors=active.filter(device=>overviewIsCctv ? Object.hasOwn(CCTV_CAMERAS, device.type) : !overviewAuxiliaryTypes.has(device.type));
+    const active=floor.devices.filter(device=>!['deactivated','textNode','cableTool','trunkJunction','trunkTool'].includes(device.type));
+    const detectors=active.filter(device=>!isInfrastructureDevice(device)&&(overviewIsCctv ? Object.hasOwn(CCTV_CAMERAS, device.type) : !overviewAuxiliaryTypes.has(device.type)));
     const buses=new Map();
     for(const device of detectors){
         const address=Number(device.number),bus=Number(device.loopId)||1;

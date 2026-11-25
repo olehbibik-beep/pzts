@@ -13,6 +13,7 @@ const iconEditorDeviceTypes = APP_PRODUCT === 'CCTV' ? Object.entries(CCTV_DEVIC
     ...Object.entries(ADDITIONAL_DEVICE_LABELS).map(([type, label]) => [type, tr(label)])
 ];
 
+iconEditorDeviceTypes.push(['floorPassage',tr('Mezipodlažní průchod')],['trunkTool',tr('Hlavní trasa')]);
 const iconEditorCanvas = document.getElementById('iconEditorCanvas');
 const iconEditorCtx = iconEditorCanvas.getContext('2d');
 const iconEditorModal = document.getElementById('iconEditorModal');
@@ -122,6 +123,8 @@ function sanitizeIconShapes(shapes) {
     if (!Array.isArray(shapes)) return [];
     return shapes.slice(0, 100).filter(shape => shape && iconEditorShapeKinds.has(shape.kind)
         && (shape.kind !== 'stockIcon' || iconEditorStockTypes.has(shape.stockType))).map(shape => ({
+        ...(Number.isFinite(shape.routeWidth)?{routeWidth:Math.max(2,Math.min(24,shape.routeWidth))}:{}),
+        ...(/^#[0-9a-f]{6}$/i.test(shape.routeColor)?{routeColor:shape.routeColor}:{}),
         kind: shape.kind,
         x: Number.isFinite(shape.x) ? Math.min(400, Math.max(0, shape.x)) : 200,
         y: Number.isFinite(shape.y) ? Math.min(400, Math.max(0, shape.y)) : 200,
@@ -196,7 +199,7 @@ function drawEditorShape(ctx, shape) {
     ctx.translate(shape.x, shape.y);
     ctx.rotate(shape.rotation * Math.PI / 180);
     if (shape.kind === 'stockIcon') {
-        drawDevice(ctx, { type: shape.stockType, x: 0, y: 0 }, true, 'dark', { baseSize: shape.size / 4, defaultIcon: true });
+        drawDevice(ctx, { type: shape.stockType, x: 0, y: 0 }, true, 'dark', { baseSize: shape.size / 4, defaultIcon: true,routeStyle:{color:shape.routeColor,width:shape.routeWidth} });
         ctx.restore();
         return;
     }
@@ -235,6 +238,7 @@ function drawEditorShape(ctx, shape) {
 }
 
 function redrawIconEditor() {
+    window.refreshTrunkStyleEditor?.();
     iconEditorCtx.clearRect(0, 0, 400, 400);
     iconEditorShapes.forEach((shape, index) => {
         drawEditorShape(iconEditorCtx, shape);
@@ -670,3 +674,11 @@ iconShapeScrollButtons.forEach(button => button.addEventListener('click', () => 
 }));
 iconShapeList.addEventListener('scroll', updateIconShapeScroll, { passive: true });
 new ResizeObserver(updateIconShapeScroll).observe(iconShapeList);
+
+// The same tool behavior is used by every palette; artwork and line style are editable.
+(() => {
+ const field=document.createElement('fieldset');field.id='trunkLineProperties';field.hidden=true;field.className='icon-editor-route-properties';field.innerHTML='<legend></legend><label><span id="trunkLineColorLabel"></span><input id="trunkLineColor" type="color" value="#38bdf8"></label><label><span id="trunkLineWidthLabel"></span><input id="trunkLineWidth" type="number" min="2" max="24" step="0.5" value="8.5"></label>';document.getElementById('iconEditorColorPalette').parentElement.append(field);
+ window.refreshTrunkStyleEditor=()=>{field.hidden=iconEditorTarget.value!=='trunkTool';if(field.hidden)return;const ui=window.goomUI;field.querySelector('legend').textContent=ui('Vzhled hlavní trasy','Main-route appearance','Darstellung der Haupttrasse','Вид магистрали','Wygląd trasy głównej');document.getElementById('trunkLineColorLabel').textContent=ui('Barva čáry','Line colour','Linienfarbe','Цвет линии','Kolor linii');document.getElementById('trunkLineWidthLabel').textContent=ui('Tloušťka čáry','Line width','Linienstärke','Толщина линии','Grubość linii');const style=iconEditorShapes.find(s=>s.routeWidth||s.routeColor)||{};document.getElementById('trunkLineColor').value=style.routeColor||'#38bdf8';document.getElementById('trunkLineWidth').value=style.routeWidth||8.5;field.querySelectorAll('input').forEach(input=>input.disabled=!canChangeIcon());};
+ function change(){if(!canChangeIcon()||iconEditorTarget.value!=='trunkTool')return;const color=document.getElementById('trunkLineColor').value,width=Number(document.getElementById('trunkLineWidth').value);if(!Number.isFinite(width)||width<2||width>24)return;if(!iconEditorShapes.length)iconEditorShapes.push({kind:'stockIcon',stockType:'trunkTool',x:200,y:200,size:300,color:'#38bdf8',rotation:0,stroke:6});iconEditorShapes[0].routeColor=color;iconEditorShapes[0].routeWidth=width;pushIconEditorHistory();saveIconEditorChanges();redrawIconEditor();}
+ field.addEventListener('input',change);window.addEventListener('goom-language-changed',()=>window.refreshTrunkStyleEditor());
+})();

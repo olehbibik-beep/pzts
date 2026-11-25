@@ -299,7 +299,6 @@ function applyToolbarMenuIcons(menu = getActiveToolbarMenu()) {
 }
 
 function toolbarMenuButtonContent(type, menu) {
-    if(['floorPassage','trunkTool'].includes(type))return defaultDeviceButtonContent.get(type)||'';
     const iconDataUrl = menu.icons && Object.prototype.hasOwnProperty.call(menu.icons, type)
         ? getCustomDeviceIconDataUrl(type, menu.icons)
         : null;

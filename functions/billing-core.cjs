@@ -1,7 +1,7 @@
 const { randomBytes } = require('node:crypto');
 const { syncCompanySeatPeriods } = require('./company-seats.cjs');
 const APPLICATIONS = ['PZTS', 'EPS', 'CCTV', 'SK'];
-const AMOUNTS = { monthly: 690, annual: 7286, companyMonthly: 890, companyAnnual: 9398, single: 3900, suite: 9900 };
+const AMOUNTS = { monthly: 99000, annual: 1045400, companyMonthly: 148500, companyAnnual: 1568100, single: 3900, suite: 9900 };
 const OFFER_TIERS = { monthly: 'pro', annual: 'pro', companyMonthly: 'company', companyAnnual: 'company' };
 const PRODUCT = 'pzts_pro_monthly_v2';
 class BillingError extends Error { constructor(code, message) { super(message); this.code = code; } }
@@ -31,11 +31,11 @@ function createBillingService({ stripe, db, getUser, priceIds, appOrigin, server
         if (!Object.hasOwn(AMOUNTS, offer) || !APPLICATIONS.includes(application)) throw new BillingError('invalid-argument', 'Invalid product.');
         if (!priceIds[offer]?.startsWith('price_')) throw new BillingError('unavailable', 'Billing is not configured.');
         const annual = offer === 'annual' || offer === 'companyAnnual';
-        return { amount: AMOUNTS[offer], priceId: priceIds[offer], interval: annual ? 'year' : 'month',
+        return { currency:['single','suite'].includes(offer)?'eur':'czk',amount: AMOUNTS[offer], priceId: priceIds[offer], interval: annual ? 'year' : 'month',
             mode: annual ? 'annual' : 'monthly', applications: APPLICATIONS };
     }
     function validPrice(price, expected) {
-        return price && idOf(price) === expected.priceId && price.currency === 'eur' && price.unit_amount === expected.amount
+        return price && idOf(price) === expected.priceId && price.currency === expected.currency && price.unit_amount === expected.amount
             && price.recurring?.interval === expected.interval && price.recurring.interval_count === 1 && price.recurring.usage_type !== 'metered';
     }
     async function ownerSubscriptions(uid) { return db.collection('proSubscriptions').where('uid', '==', uid).get(); }
@@ -49,7 +49,7 @@ function createBillingService({ stripe, db, getUser, priceIds, appOrigin, server
         const expected = offerData(offer, application);
         const price = await stripe.prices.retrieve(expected.priceId);
         checkMode(price);
-        if (!price?.active || !validPrice(price, expected)) throw new BillingError('failed-precondition', 'Configure the EUR price and billing interval matching the offer.');
+        if (!price?.active || !validPrice(price, expected)) throw new BillingError('failed-precondition', `Configure the ${expected.currency.toUpperCase()} price and billing interval matching the offer.`);
         const owned = await ownerSubscriptions(uid);
         const records = owned.docs.map(doc => doc.data());
         if (records.some(record => ['active', 'past_due', 'incomplete', 'paused'].includes(record.status)
@@ -79,7 +79,7 @@ function createBillingService({ stripe, db, getUser, priceIds, appOrigin, server
         const lines = await stripe.invoices.listLineItems(invoice.id, { limit: 2 });
         const line = lines.data[0];
         const priceId = idOf(line?.pricing?.price_details?.price || line?.price);
-        if (invoice.currency !== 'eur' || invoice.amount_paid !== expected.amount || invoice.total !== expected.amount
+        if (invoice.currency !== expected.currency || invoice.amount_paid !== expected.amount || invoice.total !== expected.amount
             || lines.has_more || lines.data.length !== 1 || priceId !== expected.priceId || line.quantity !== 1
             || line.amount !== expected.amount || !Number.isInteger(line.period?.start) || !Number.isInteger(line.period?.end)
             || line.period.end <= line.period.start) throw new BillingError('permission-denied', 'Invoice does not match the subscription.');
@@ -88,7 +88,7 @@ function createBillingService({ stripe, db, getUser, priceIds, appOrigin, server
         if (payments.has_more || payments.data.length !== 1 || !paymentId) throw new BillingError('failed-precondition', 'A confirmed card payment is required.');
         const payment = await stripe.paymentIntents.retrieve(paymentId, { expand: ['latest_charge'] });
         checkMode(payment);
-        if (payment.status !== 'succeeded' || payment.currency !== 'eur' || payment.amount_received !== expected.amount) return null;
+        if (payment.status !== 'succeeded' || payment.currency !== expected.currency || payment.amount_received !== expected.amount) return null;
         const charge = payment.latest_charge;
         const refunded = charge && typeof charge === 'object' && (charge.refunded || charge.amount_refunded >= charge.amount);
         return { invoiceId: invoice.id, paidThrough: new Date(line.period.end * 1000), periodStart: new Date(line.period.start * 1000), created: invoice.created || 0, chargeId: idOf(charge), refunded: Boolean(refunded) };
@@ -171,7 +171,7 @@ function createBillingService({ stripe, db, getUser, priceIds, appOrigin, server
                 await db.runTransaction(async transaction => {
                     if (!(await transaction.get(receiptRef)).exists) transaction.set(receiptRef, {
                         uid, invoiceId:period.invoiceId, chargeId:period.chargeId, applications:APPLICATIONS,
-                        amount:expected.amount, currency:'eur', description, receiptUrl:receipt.receipt_url||null,
+                        amount:expected.amount, currency:expected.currency, description, receiptUrl:receipt.receipt_url||null,
                         sentAt:serverTimestamp(), livemode:Boolean(subscription.livemode)
                     });
                 });

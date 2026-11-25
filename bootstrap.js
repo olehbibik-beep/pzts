@@ -1,6 +1,6 @@
 (() => {
     // Change this version whenever publishing application files together.
-    const version = "20261125-centred-11";
+    const version = "20261125-trunk-12";
     let started = false;
     let pdfLoading = null;
     let pdfAttempt = 0;

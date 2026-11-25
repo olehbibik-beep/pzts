@@ -2,9 +2,9 @@
 
 Состояние на 21.11.2026: платёжные функции в production ещё не развёрнуты. На сайте онлайн-оплата помечена «Скоро».
 
-Подписка Pro включает PZTS, EPS, CCTV и SK. Team добавляет до трёх коллег с тем же доступом. Цены сохранены: Pro €6.90/месяц или €72.86/год; Team €8.90/месяц или €93.98/год.
+Подписка Pro включает PZTS, EPS, CCTV и SK. Team добавляет до трёх коллег с тем же доступом. Цены с 25.11.2026: Pro 990 Kč/месяц или 10 454 Kč/год; Team 1 485 Kč/месяц или 15 681 Kč/год (ровно ×1,5 к Pro). Годовая скидка около 12%, сумма округлена до целых крон.
 
-1. Завершить настройку бизнес-аккаунта Stripe и создать четыре повторяющиеся цены EUR без trial: monthly, annual, companyMonthly, companyAnnual.
+1. Завершить настройку бизнес-аккаунта Stripe и создать четыре повторяющиеся цены CZK без trial: monthly = 99000, annual = 1045400, companyMonthly = 148500, companyAnnual = 1568100 в минимальных единицах валюты (haléř).
 2. Задать STRIPE_SECRET_KEY и STRIPE_WEBHOOK_SECRET через Firebase Secret Manager; не хранить ключи в клиентском коде или GitHub.
 3. В конфигурации Firebase функций указать STRIPE_MONTHLY_PRICE_ID, STRIPE_ANNUAL_PRICE_ID, STRIPE_COMPANY_MONTHLY_PRICE_ID, STRIPE_COMPANY_ANNUAL_PRICE_ID и APP_ORIGIN=https://goom.cz/pzts/.
 4. Развернуть createProCheckout, confirmProCheckout, createProPortal, stripeProWebhook из codebase pro-billing. Сервисы goomAdmin и goomCompanySeats разворачиваются отдельно из codebase project-cloud и не требуют секретов Stripe. На Stripe webhook направить события checkout.session.completed, checkout.session.async_payment_succeeded, customer.subscription.created/updated/deleted/paused/resumed, invoice.paid, invoice.payment_failed и charge.refunded.

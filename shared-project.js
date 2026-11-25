@@ -20,7 +20,7 @@ function sanitizeSharedSymbol(symbol){
     return {ops,stock:symbol.stock===true,size:Math.max(5,Math.min(80,Number(symbol.size)||14)),address:{prefix:String(symbol.address?.prefix||'').slice(0,20),number:String(symbol.address?.number||'').slice(0,30)},color:/^#[a-f0-9]{3,8}$/i.test(symbol.color)?symbol.color:'#8b9caa'};
 }
 function recordSharedSymbol(device,size=Number(document.getElementById('deviceSizeSlider')?.value)||14,shapes=null){
-    const shapeSource=shapes||window.getCustomDeviceShapes?.(device.type),asset=window.epsSymbolAssets?.get(device.type)||window.skSymbolAssets?.get(device.type),key=APP_PRODUCT+':'+device.type+':'+size,cached=sharedSymbolCache.get(key);
+    const shapeSource=shapes||window.getCustomDeviceShapes?.(device.type),asset=window.epsSymbolAssets?.get(device.type)||window.skSymbolAssets?.get(device.type),key=APP_PRODUCT+':'+device.type+':'+size+(isInfrastructureDevice(device)?':'+(device.targetFloorName||''):''),cached=sharedSymbolCache.get(key);
     if(cached&&cached.shapeSource===shapeSource&&cached.asset===asset)return{...cached.symbol,address:getDeviceAddressParts(device)};
     const surface=document.createElement('canvas');surface.width=surface.height=128;const target=surface.getContext('2d'),ops=[];
     const recorder=new Proxy(target,{set(object,key,value){if(sharedSymbolProperties.has(key))ops.push(['property',key,value]);object[key]=value;return true;},get(object,key){
@@ -69,6 +69,7 @@ function drawForeignPlanDevice(context,device){
     const label=symbol?.address,number=(label?.prefix||'')+(label?.number||'');
     context.save();context.textAlign='left';context.textBaseline='middle';context.font='bold 11px sans-serif';
     if(number){const w=context.measureText(number).width;context.fillStyle='#17191c';context.fillRect(device.x+17,device.y+13,w+8,18);context.fillStyle='#fff';context.fillText(number,device.x+21,device.y+22);}
+    if(device.targetFloorName&&!(symbol?.ops||[]).some(op=>op[0]==='fillText'&&op[1]===device.targetFloorName)){context.save();context.fillStyle=symbol?.color||'#38bdf8';context.textAlign='center';context.font='11px sans-serif';context.fillText(device.targetFloorName,device.x,device.y+23*(symbol?.size||14)/14);context.restore();}
     if(device.manualName){context.fillStyle=symbol?.color||'#8b9caa';context.font='11px sans-serif';context.fillText(device.manualName,device.x+19,device.y+(number?43:24));}context.restore();
 }
 

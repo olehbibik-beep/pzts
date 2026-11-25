@@ -24,7 +24,7 @@ function cableRouteColor(from,to) {
 }
 function drawCableRoute(ctx, cable, from, to, color, lineWidth, paintParts) {
     const points = getCableRoute(cable, from, to);
-    drawCableWithJumps(ctx,points,paintParts);
+    ctx.lineCap=cable.kind==='trunk'?'round':'butt';drawCableWithJumps(ctx,points,paintParts);
     ctx.strokeStyle = color; ctx.lineWidth = lineWidth; ctx.stroke();
 }
 
@@ -220,8 +220,9 @@ function hitTestPlanTextNode(device, x, y, labelScale) {
 }
 
 function drawDevice(ctx, dev, skipSelection = false, theme = 'dark', options = {}) {
+    if(dev.type==='trunkJunction'){if(!skipSelection&&!isExporting&&showTrunkHandle(dev))drawInfrastructureDevice(ctx,dev,16,options);return;}
     if(!options.portableCapture&&!isOwnPlanEntity(dev)){drawForeignPlanDevice(ctx,dev);return;}
-    if(isInfrastructureDevice(dev)){drawInfrastructureDevice(ctx,dev,options.baseSize??Number(document.getElementById('deviceSizeSlider').value));return;}
+    if(isInfrastructureDevice(dev)||dev.type==='trunkTool'){drawInfrastructureDevice(ctx,dev,options.baseSize??Number(document.getElementById('deviceSizeSlider').value),options);return;}
     let slider = document.getElementById('deviceSizeSlider');
     let baseSize = options.baseSize ?? ((slider && slider.value) ? parseInt(slider.value) : 16);
     let sMult = (baseSize / 14); 
@@ -425,8 +426,9 @@ function drawFloorData(ctx, floor, skipSelection = false, theme = getPlanTheme(f
                 if (d1.type === 'textNode') arrowEnd = true; if (d2.type === 'textNode') arrowStart = true;
                 drawDirectLeaderLine(ctx, d1.x, d1.y, d2.x, d2.y, color, lineWidth, arrowStart, arrowEnd);
             } else {
-                const color=c.kind==='trunk'?'#38bdf8':(!isOwnPlanEntity(c)&&c.routeColor)||cableRouteColor(d1,d2);
-                const routeWidth=c.kind==='trunk'?8.5:4;
+                const trunkStyle=getTrunkRouteStyle(c);
+                const color=c.kind==='trunk'?trunkStyle.color:(!isOwnPlanEntity(c)&&c.routeColor)||cableRouteColor(d1,d2);
+                const routeWidth=c.kind==='trunk'?trunkStyle.width:4;
                 const lineWidth=isExporting||skipSelection?routeWidth:Math.max(routeWidth,2/Math.max(.01,scale));
                 drawCableRoute(ctx, c, d1, d2, color, lineWidth,cablePaint.get(c.id));
                 if (isOwnPlanEntity(c) && c.kind!=='trunk' && !isExporting && !skipSelection && (selectedTool === 'cableTool' || activeDeviceIds.has(d1.id) || activeDeviceIds.has(d2.id) || (draggedHandle && draggedHandle.cable === c))) {

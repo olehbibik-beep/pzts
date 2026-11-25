@@ -7,10 +7,10 @@ async function buy(f, offer = 'monthly', application = 'PZTS') {
     const result = offer === 'suite' ? await f.legacyCheckout('owner', offer, application) : await f.service.createCheckout('owner', { offer, application }); f.pay(result.id);
     await f.service.confirmCheckout('owner', result.id); return result.id;
 }
-test('6.90 EUR checkout creates a monthly subscription anchored at purchase, with a server price and UID', async () => {
+test('990 CZK checkout creates a monthly subscription anchored at purchase, with a server price and UID', async () => {
     const f = fixture(); const { id } = await f.service.createCheckout('owner', { offer: 'monthly', application: 'PZTS', uid: 'attacker', price: 1 });
     const session = f.sessions.get(id);
-    assert.equal(session.mode, 'subscription'); assert.equal(session.amount_total, 690);
+    assert.equal(session.mode, 'subscription'); assert.equal(session.amount_total, 99000);
     assert.equal(session.client_reference_id, 'owner'); assert.equal(session.subscription_data.metadata.uid, 'owner');
     assert.equal(session.subscription_data.trial_period_days, undefined); assert.equal(session.subscription_data.billing_cycle_anchor, undefined);
 });
@@ -34,7 +34,7 @@ test('checkout accepts German and Russian and defaults to English for an unsuppo
 });
 test('configuration rejects one-time, yearly, multi-month, metered and incorrect prices', async () => {
     for (const patch of [{ recurring: null }, { recurring: { interval: 'year', interval_count: 1 } },
-        { recurring: { interval: 'month', interval_count: 2 } }, { recurring: { interval: 'month', interval_count: 1, usage_type: 'metered' } }, { unit_amount: 1 }]) {
+        { recurring: { interval: 'month', interval_count: 2 } }, { recurring: { interval: 'month', interval_count: 1, usage_type: 'metered' } }, { unit_amount: 1 }, {currency:'eur'}]) {
         const f = fixture(); Object.assign(f.prices.price_monthly, patch);
         await assert.rejects(f.service.createCheckout('owner', { offer: 'monthly', application: 'PZTS' }), { code: 'failed-precondition' });
     }
@@ -43,7 +43,7 @@ test('unpaid checkout never grants PRO', async () => {
     const f = fixture(); const { id } = await f.service.createCheckout('owner', { offer: 'monthly', application: 'PZTS' });
     assert.deepEqual(await f.service.confirmCheckout('owner', id), { active: false }); assert.equal(f.documents.size, 0);
 });
-test('6.90 EUR grants the complete suite until the paid invoice period end', async () => {
+test('990 CZK grants the complete suite until the paid invoice period end', async () => {
     const f = fixture(); const id = await buy(f, 'monthly', 'EPS');
     assert.deepEqual(license(f).applications, ['CCTV','EPS','PZTS','SK']); assert.equal(license(f).billingMode, 'monthly');
     assert.equal(license(f).applicationExpiresAt.EPS.getTime(), f.invoices.get(f.subscriptions.get(f.sessions.get(id).subscription).latest_invoice).lines.data[0].period.end * 1000);
@@ -53,12 +53,12 @@ test('legacy 99 EUR monthly suite still grants all four applications', async () 
     const f = fixture(); await buy(f, 'suite');
     assert.deepEqual(license(f).applications, ['CCTV', 'EPS', 'PZTS', 'SK']);
 });
-test('annual checkout costs 72.86 EUR and grants the full paid year', async () => {
+test('annual checkout costs 10454 CZK and grants the full paid year', async () => {
     const f = fixture();
     const id = await buy(f, 'annual');
     const session = f.sessions.get(id);
     const invoice = f.invoices.get(f.subscriptions.get(session.subscription).latest_invoice);
-    assert.equal(session.amount_total, 7286);
+    assert.equal(session.amount_total, 1045400);
     assert.equal(session.adaptive_pricing.enabled, false);
     assert.equal(license(f).applicationBillingModes.PZTS, 'annual');
     assert.equal(license(f).expiresAt.getTime(), invoice.lines.data[0].period.end * 1000);
@@ -69,7 +69,7 @@ test('paid company seats follow the owner expiry, renewal, removal and cancellat
     f.documents.set('users/owner', { accountType: 'company' });
     await assert.rejects(f.seats.save('owner', ['employee@example.test']), { code: 'permission-denied' });
     const id = await buy(f, 'companyMonthly');
-    assert.equal(f.sessions.get(id).amount_total, 890);
+    assert.equal(f.sessions.get(id).amount_total, 148500);
     await assert.rejects(f.seats.save('owner', ['a@company.test', 'b@company.test', 'c@company.test', 'd@company.test']), { code: 'invalid-argument' });
     await f.seats.save('owner', ['Employee@example.test', 'colleague@example.test', 'replacement@example.test']);
     await assert.rejects(f.seats.save('owner', ['owner@example.test']), { code: 'invalid-argument' });
@@ -94,12 +94,12 @@ test('paid company seats follow the owner expiry, renewal, removal and cancellat
     await f.service.processEvent({ type: 'customer.subscription.deleted', data: { object: subscription } });
     assert.deepEqual(seat('colleague').applicationExpiresAt, {});
 });
-test('company annual billing requires a company profile and verifies 93.98 EUR for a year', async () => {
+test('company annual billing requires a company profile and verifies 15681 CZK for a year', async () => {
     const f = fixture();
     await assert.rejects(f.service.createCheckout('owner', { offer: 'companyAnnual', application: 'PZTS' }), { code: 'permission-denied' });
     f.documents.set('users/owner', { accountType: 'company' });
     const id = await buy(f, 'companyAnnual');
-    assert.equal(f.sessions.get(id).amount_total, 9398);
+    assert.equal(f.sessions.get(id).amount_total, 1568100);
     assert.equal(license(f).applicationBillingModes.PZTS, 'annual');
     assert.equal(license(f).applicationPlans.PZTS, 'company');
     assert.equal(license(f).companyApplicationExpiresAt.PZTS.getTime(), license(f).expiresAt.getTime());

@@ -24,7 +24,7 @@ function fixture(overrides = {}) {
     const sessions = new Map(), subscriptions = new Map(), invoices = new Map(), payments = new Map();
     const livemode = overrides.livemode ?? false;
     const prices = Object.fromEntries(Object.entries(AMOUNTS).map(([offer, amount]) => [`price_${offer}`, {
-        id: `price_${offer}`, active: true, livemode, currency: 'eur', unit_amount: amount, recurring: { interval: ['annual', 'companyAnnual'].includes(offer) ? 'year' : 'month', interval_count: 1, usage_type: 'licensed' }
+        id: `price_${offer}`, active: true, livemode, currency: ['single','suite'].includes(offer)?'eur':'czk', unit_amount: amount, recurring: { interval: ['annual', 'companyAnnual'].includes(offer) ? 'year' : 'month', interval_count: 1, usage_type: 'licensed' }
     }]));
     let clock = Date.now(), verified = true, portalCustomer;
     const receipts=new Map();
@@ -43,12 +43,12 @@ function fixture(overrides = {}) {
                 const price = prices[data.line_items[0].price], customer = data.customer || `cus_${data.client_reference_id}`;
                 const start = Math.floor(clock / 1000), end = start + (price.recurring.interval === 'year' ? 365 : 30) * 86400;
                 const invoice = { id: `in_${subId}_1`, customer, livemode, parent: { subscription_details: { subscription: subId } },
-                    created:Math.floor(clock/1000), status: 'open', currency: 'eur', amount_paid: 0, total: price.unit_amount,
+                    created:Math.floor(clock/1000), status: 'open', currency: price.currency, amount_paid: 0, total: price.unit_amount,
                     lines: { data: [{ pricing: { price_details: { price: price.id } }, quantity: 1, amount: price.unit_amount, period: { start, end } }] } };
                 invoices.set(invoice.id, invoice);
                 subscriptions.set(subId, { id: subId, customer, livemode, metadata: data.subscription_data.metadata, status: 'incomplete', cancel_at_period_end: false,
                     latest_invoice: invoice.id, items: { data: [{ price, quantity: 1, current_period_start: start, current_period_end: end }], has_more: false } });
-                const session = { ...data, id, livemode, currency: 'eur', amount_total: price.unit_amount, payment_status: 'unpaid', subscription: subId, url: `https://checkout.stripe.com/c/pay/${id}` };
+                const session = { ...data, id, livemode, currency: price.currency, amount_total: price.unit_amount, payment_status: 'unpaid', subscription: subId, url: `https://checkout.stripe.com/c/pay/${id}` };
                 sessions.set(id, session); return session;
             }, retrieve: async id => sessions.get(id)
         } }
@@ -67,7 +67,7 @@ function fixture(overrides = {}) {
         const session = sessions.get(id), sub = subscriptions.get(session.subscription), invoice = invoices.get(sub.latest_invoice);
         session.payment_status = 'paid'; sub.status = 'active'; invoice.status = 'paid'; invoice.amount_paid = invoice.total;
         invoice.paymentIntent = `pi_${invoice.id}`;
-        payments.set(invoice.paymentIntent, { status: 'succeeded', livemode, currency: 'eur', amount_received: invoice.total,
+        payments.set(invoice.paymentIntent, { status: 'succeeded', livemode, currency: invoice.currency, amount_received: invoice.total,
             latest_charge: { id:'ch_'+invoice.id, amount: invoice.total, amount_refunded: 0, refunded: false } });
     }
     function renew(id, { paid = true, start, end } = {}) {

@@ -3,10 +3,9 @@
     let purchasePending = false;
     const billingEnabled = false; // Enable after live Stripe prices, keys and webhook are configured.
     let returnHandled = false;
-    const pricesInEuro = { monthly: 6.90, annual: 72.86, companyMonthly: 8.90, companyAnnual: 93.98 };
+    const pricesInCzk = { monthly: 990, annual: 10454, companyMonthly: 1485, companyAnnual: 15681 };
     const buyButtons = [...document.querySelectorAll('[data-buy-tier]')];
     const manageButtons = [...document.querySelectorAll('[data-manage-tier]')];
-    const czkPerEuro = 24.425; // Czech National Bank published rate for 2026-11-13.
     function render() {
         const active = Boolean(window.hasProAccess?.());
         const administrative=Boolean(window.hasAdminAccess?.());
@@ -16,8 +15,9 @@
         document.querySelector('.pro-card h3').textContent=window.goomUI('Předplatné','Subscription','Abonnement','Подписка','Subskrypcja')+' '+(tier==='company'?'Team':'Pro');
         byId('accountProStatus').textContent = administrative?adminStatus:active?activeLabel:tr('Váš účet používá bezplatnou verzi.');
         byId('accountProStatus').classList.toggle('active', active);
-        let suite=byId('proSuiteNote');if(!suite){suite=document.createElement('p');suite.id='proSuiteNote';suite.style.cssText='text-align:center;font-size:14px;margin:8px 0 16px';document.querySelector('.pro-pricing .pro-period').after(suite);}
-        suite.textContent=window.goomUI('Jedno předplatné: PZTS · EPS · CCTV · SK','One subscription: PZTS · EPS · CCTV · SK','Ein Abonnement: PZTS · EPS · CCTV · SK','Одна подписка: PZTS · EPS · CCTV · SK');
+        byId('proSuiteNote')?.remove();
+        for(const card of document.querySelectorAll('.pro-plan-basic,.pro-plan-standard,.pro-plan-company')){let item=card.querySelector('.pro-suite-feature');if(!item){item=document.createElement('li');item.className='pro-suite-feature';card.querySelector('ul').prepend(item);}item.setAttribute('data-user-content','');item.textContent=card.classList.contains('pro-plan-basic')?'PZTS · EPS · CCTV · SK':window.goomUI('Jedno předplatné: PZTS · EPS · CCTV · SK','One subscription: PZTS · EPS · CCTV · SK','Ein Abonnement: PZTS · EPS · CCTV · SK','Одна подписка: PZTS · EPS · CCTV · SK','Jedna subskrypcja: PZTS · EPS · CCTV · SK');}
+        const currencyNote=byId('proCurrencyNote');currencyNote.setAttribute('data-user-content','');currencyNote.textContent=window.goomUI('Ceny jsou v českých korunách (CZK).','Prices are in Czech crowns (CZK).','Preise in tschechischen Kronen (CZK).','Цены указаны в чешских кронах (CZK).','Ceny podano w koronach czeskich (CZK).');
         for (const button of buyButtons) {
             button.hidden = active;
             button.disabled = purchasePending || active || !billingEnabled;
@@ -29,8 +29,7 @@
         for (const button of manageButtons) button.hidden = button.dataset.manageTier !== tier;
         for (const price of document.querySelectorAll('[data-pro-price]')) {
             const currency = price.dataset.currency;
-            const euros = pricesInEuro[price.dataset.proPrice];
-            const value = currency === 'CZK' ? Math.round(euros * czkPerEuro) : euros;
+            const value = pricesInCzk[price.dataset.proPrice];
             const formatted = new Intl.NumberFormat(getGoomLocale(), { style: 'currency', currency,
                 maximumFractionDigits: currency === 'CZK' ? 0 : 2 }).format(value);
             price.textContent = formatted;
